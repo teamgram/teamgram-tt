@@ -73,6 +73,8 @@ async function download(
   mediaFormat?: ApiMediaFormat,
   isHtmlAllowed?: boolean,
 ) {
+// eslint-disable-next-line no-console
+  console.warn(url);
   const mediaMatch = url.startsWith('webDocument')
     ? url.match(/(webDocument):(.+)/)
     : url.match(/(avatar|profile|photo|msg|stickerSet|sticker|wallpaper|gif|file)([-\d\w./]+)(\?size=\w+)?/);
