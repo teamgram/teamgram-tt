@@ -12,6 +12,10 @@ const MAX_DAY_IN_MONTH = 31;
 const MAX_MONTH_IN_YEAR = 12;
 export const MILLISECONDS_IN_DAY = 24 * 60 * 60 * 1000;
 
+export function isToday(date: Date) {
+  return getDayStart(new Date()) === getDayStart(date);
+}
+
 export function getDayStart(datetime: number | Date) {
   const date = new Date(datetime);
   date.setHours(0, 0, 0, 0);
@@ -32,7 +36,7 @@ function toIsoString(date: Date) {
 }
 
 // @optimization `toLocaleTimeString` is avoided because of bad performance
-export function formatTime(datetime: number | Date, lang: LangFn) {
+export function formatTime(lang: LangFn, datetime: number | Date) {
   const date = typeof datetime === 'number' ? new Date(datetime) : datetime;
   const timeFormat = lang.timeFormat || '24h';
 
@@ -51,7 +55,7 @@ export function formatPastTimeShort(lang: LangFn, datetime: number | Date) {
 
   const today = getDayStart(new Date());
   if (date >= today) {
-    return formatTime(date, lang);
+    return formatTime(lang, date);
   }
 
   const weekAgo = new Date(today);
@@ -80,6 +84,26 @@ export function formatMonthAndYear(lang: LangFn, date: Date, isShort = false) {
   const format = lang(isShort ? 'formatterMonthYear2' : 'formatterMonthYear') || 'MMM yyyy';
 
   return formatDate(lang, date, format);
+}
+
+export function formatCountdown(
+  lang: LangFn,
+  msLeft: number,
+) {
+  const days = Math.floor(msLeft / MILLISECONDS_IN_DAY);
+  if (msLeft < 0) {
+    return 0;
+  } else if (days < 1) {
+    return formatMediaDuration(msLeft / 1000);
+  } else if (days < 7) {
+    return lang('Days', days);
+  } else if (days < 30) {
+    return lang('Weeks', Math.floor(days / 7));
+  } else if (days < 365) {
+    return lang('Months', Math.floor(days / 30));
+  } else {
+    return lang('Years', Math.floor(days / 365));
+  }
 }
 
 export function formatHumanDate(
@@ -136,7 +160,9 @@ function formatDate(lang: LangFn, date: Date, format: string) {
     .replace('MM', String(monthIndex + 1).padStart(2, '0'))
     .replace('dd', String(day).padStart(2, '0'))
     .replace('d', String(day))
-    .replace('yyyy', String(date.getFullYear()));
+    .replace('yyyy', String(date.getFullYear()))
+    // Workaround for https://bugs.telegram.org/c/5777
+    .replace(/'de'/g, 'de');
 }
 
 export function formatMediaDateTime(
@@ -146,7 +172,7 @@ export function formatMediaDateTime(
 ) {
   const date = typeof datetime === 'number' ? new Date(datetime) : datetime;
 
-  return `${formatHumanDate(lang, date, true, undefined, isUpperFirst)}, ${formatTime(date, lang)}`;
+  return `${formatHumanDate(lang, date, true, undefined, isUpperFirst)}, ${formatTime(lang, date)}`;
 }
 
 export function formatMediaDuration(duration: number, maxValue?: number) {
@@ -197,13 +223,29 @@ export function formatVoiceRecordDuration(durationInMs: number) {
   return `${parts.join(':')},${String(milliseconds).padStart(2, '0')}`;
 }
 
-export function formatDateToString(date: Date, locale = 'en-US') {
+export function formatDateToString(datetime: Date | number, locale = 'en-US') {
+  const date = typeof datetime === 'number' ? new Date(datetime) : datetime;
   return date.toLocaleString(
     locale,
     {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
+    },
+  );
+}
+
+export function formatDateTimeToString(datetime: Date | number, locale = 'en-US') {
+  const date = typeof datetime === 'number' ? new Date(datetime) : datetime;
+  return date.toLocaleString(
+    locale,
+    {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      second: 'numeric',
     },
   );
 }

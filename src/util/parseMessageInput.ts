@@ -60,9 +60,6 @@ function parseMarkdown(html: string) {
     parsedHtml = parsedHtml.replace(/<img[^>]+alt="([^"]+)"[^>]*>/gm, '$1');
   }
 
-  // Strip redundant <span> tags
-  parsedHtml = parsedHtml.replace(/<\/?span([^>]*)?>/g, '');
-
   // Strip redundant nbsp's
   parsedHtml = parsedHtml.replace(/&nbsp;/g, ' ');
 
@@ -95,6 +92,10 @@ function parseMarkdown(html: string) {
   parsedHtml = parsedHtml.replace(
     /(^|\s)(?!<code[^<]*|<\/)[~]{2}([^~\n]+)[~]{2}(?![^<]*<\/code>)(\s|$)/g,
     '$1<s>$2</s>$3',
+  );
+  parsedHtml = parsedHtml.replace(
+    /(^|\s)(?!<code[^<]*|<\/)[|]{2}([^|\n]+)[|]{2}(?![^<]*<\/code>)(\s|$)/g,
+    `$1<span data-entity-type="${ApiMessageEntityTypes.Spoiler}">$2</span>$3`,
   );
 
   return parsedHtml;

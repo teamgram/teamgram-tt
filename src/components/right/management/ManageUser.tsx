@@ -2,13 +2,11 @@ import { ChangeEvent } from 'react';
 import React, {
   FC, memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
-import { ApiChat, ApiUser } from '../../../api/types';
+import { ApiUser } from '../../../api/types';
 import { ManagementProgress } from '../../../types';
 
-import { pick } from '../../../util/iteratees';
 import {
   selectChat, selectNotifyExceptions, selectNotifySettings, selectUser,
 } from '../../../modules/selectors';
@@ -35,31 +33,26 @@ type OwnProps = {
 
 type StateProps = {
   user?: ApiUser;
-  chat: ApiChat;
   progress?: ManagementProgress;
   isMuted?: boolean;
 };
 
-type DispatchProps = Pick<GlobalActions, (
-  'updateContact' | 'deleteUser' | 'deleteHistory' | 'closeManagement' | 'openChat'
-)>;
-
 const ERROR_FIRST_NAME_MISSING = 'Please provide first name';
 
-const ManageUser: FC<OwnProps & StateProps & DispatchProps> = ({
+const ManageUser: FC<OwnProps & StateProps> = ({
   userId,
   user,
-  chat,
   progress,
   isMuted,
-  updateContact,
-  deleteUser,
-  deleteHistory,
-  closeManagement,
-  openChat,
   onClose,
   isActive,
 }) => {
+  const {
+    updateContact,
+    deleteContact,
+    closeManagement,
+  } = getDispatch();
+
   const [isDeleteDialogOpen, openDeleteDialog, closeDeleteDialog] = useFlag();
   const [isProfileFieldsTouched, setIsProfileFieldsTouched] = useState(false);
   const [error, setError] = useState<string | undefined>();
@@ -128,15 +121,10 @@ const ManageUser: FC<OwnProps & StateProps & DispatchProps> = ({
   }, [firstName, lastName, updateContact, userId, isNotificationsEnabled]);
 
   const handleDeleteContact = useCallback(() => {
-    deleteHistory({
-      chatId: chat.id,
-      shouldDeleteForAll: false,
-    });
-    deleteUser({ userId });
+    deleteContact({ userId });
     closeDeleteDialog();
     closeManagement();
-    openChat({ id: undefined });
-  }, [chat.id, closeDeleteDialog, closeManagement, deleteHistory, deleteUser, openChat, userId]);
+  }, [closeDeleteDialog, closeManagement, deleteContact, userId]);
 
   if (!user) {
     return undefined;
@@ -216,10 +204,7 @@ export default memo(withGlobal<OwnProps>(
     const isMuted = selectIsChatMuted(chat, selectNotifySettings(global), selectNotifyExceptions(global));
 
     return {
-      user, chat, progress, isMuted,
+      user, progress, isMuted,
     };
   },
-  (global, actions): DispatchProps => pick(actions, [
-    'updateContact', 'deleteUser', 'closeManagement', 'openChat', 'deleteHistory',
-  ]),
 )(ManageUser));

@@ -18,6 +18,11 @@ import ManageGroupRecentActions from './ManageGroupRecentActions';
 import ManageGroupAdminRights from './ManageGroupAdminRights';
 import ManageGroupMembers from './ManageGroupMembers';
 import ManageGroupUserPermissionsCreate from './ManageGroupUserPermissionsCreate';
+import ManageInvites from './ManageInvites';
+import ManageInvite from './ManageInvite';
+import ManageReactions from './ManageReactions';
+import ManageInviteInfo from './ManageInviteInfo';
+import ManageJoinRequests from './ManageJoinRequests';
 
 export type OwnProps = {
   chatId: string;
@@ -73,6 +78,7 @@ const Management: FC<OwnProps & StateProps> = ({
                 ManagementScreens.GroupUserPermissionsCreate,
                 ManagementScreens.GroupUserPermissions,
                 ManagementScreens.ChatAdminRights,
+                ManagementScreens.ChatNewAdminRights,
                 ManagementScreens.GroupRecentActions,
               ].includes(currentScreen)}
             />
@@ -90,6 +96,7 @@ const Management: FC<OwnProps & StateProps> = ({
                 ManagementScreens.Discussion,
                 ManagementScreens.ChatPrivacyType,
                 ManagementScreens.ChatAdminRights,
+                ManagementScreens.ChatNewAdminRights,
                 ManagementScreens.GroupRecentActions,
               ].includes(currentScreen)}
             />
@@ -175,6 +182,7 @@ const Management: FC<OwnProps & StateProps> = ({
           onChatMemberSelect={onChatMemberSelect}
           isActive={isActive || [
             ManagementScreens.ChatAdminRights,
+            ManagementScreens.ChatNewAdminRights,
             ManagementScreens.GroupRecentActions,
           ].includes(currentScreen)}
           onClose={onClose}
@@ -190,11 +198,13 @@ const Management: FC<OwnProps & StateProps> = ({
         />
       );
 
+    case ManagementScreens.ChatNewAdminRights:
     case ManagementScreens.ChatAdminRights:
       return (
         <ManageGroupAdminRights
           chatId={chatId}
-          selectedChatMemberId={selectedChatMemberId}
+          isNewAdmin={currentScreen === ManagementScreens.ChatNewAdminRights}
+          selectedUserId={selectedChatMemberId}
           isPromotedByCurrentUser={isPromotedByCurrentUser}
           onScreenSelect={onScreenSelect}
           isActive={isActive}
@@ -206,6 +216,60 @@ const Management: FC<OwnProps & StateProps> = ({
     case ManagementScreens.GroupMembers:
       return (
         <ManageGroupMembers
+          chatId={chatId}
+          isActive={isActive}
+          onClose={onClose}
+        />
+      );
+    case ManagementScreens.Invites:
+      return (
+        <ManageInvites
+          chatId={chatId}
+          isActive={isActive}
+          onClose={onClose}
+          onScreenSelect={onScreenSelect}
+        />
+      );
+    case ManagementScreens.EditInvite:
+      return (
+        <ManageInvite
+          chatId={chatId}
+          isActive={isActive}
+          onClose={onClose}
+          onScreenSelect={onScreenSelect}
+        />
+      );
+    case ManagementScreens.GroupAddAdmins:
+      return (
+        <ManageGroupMembers
+          chatId={chatId}
+          noAdmins
+          isActive={isActive}
+          onClose={onClose}
+          onScreenSelect={onScreenSelect}
+          onChatMemberSelect={onChatMemberSelect}
+        />
+      );
+
+    case ManagementScreens.Reactions:
+      return (
+        <ManageReactions
+          chatId={chatId}
+          isActive={isActive}
+          onClose={onClose}
+        />
+      );
+    case ManagementScreens.InviteInfo:
+      return (
+        <ManageInviteInfo
+          chatId={chatId}
+          isActive={isActive}
+          onClose={onClose}
+        />
+      );
+    case ManagementScreens.JoinRequests:
+      return (
+        <ManageJoinRequests
           chatId={chatId}
           isActive={isActive}
           onClose={onClose}

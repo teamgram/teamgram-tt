@@ -2,13 +2,12 @@ import { ApiChat, MAIN_THREAD_ID } from '../../api/types';
 import { GlobalState } from '../../global/types';
 
 import {
-  getPrivateChatUserId, isChatChannel, isUserId, isHistoryClearMessage, isUserBot, isUserOnline, selectIsChatMuted,
+  getPrivateChatUserId, isChatChannel, isUserId, isHistoryClearMessage, isUserBot, isUserOnline,
 } from '../helpers';
 import { selectUser } from './users';
 import {
   ALL_FOLDER_ID, ARCHIVED_FOLDER_ID, MEMBERS_LOAD_SLICE, SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../config';
-import { selectNotifyExceptions, selectNotifySettings } from './settings';
 
 export function selectChat(global: GlobalState, chatId: string): ApiChat | undefined {
   return global.chats.byId[chatId];
@@ -132,17 +131,17 @@ export function selectIsChatPinned(global: GlobalState, chatId: string, folderId
   const { active, archived } = global.chats.orderedPinnedIds;
 
   if (folderId === ALL_FOLDER_ID) {
-    return !!active && active.includes(chatId);
+    return Boolean(active?.includes(chatId));
   }
 
   if (folderId === ARCHIVED_FOLDER_ID) {
-    return !!archived && archived.includes(chatId);
+    return Boolean(archived?.includes(chatId));
   }
 
   const { byId: chatFoldersById } = global.chatFolders;
 
   const { pinnedChatIds } = chatFoldersById[folderId] || {};
-  return !!pinnedChatIds && pinnedChatIds.includes(chatId);
+  return Boolean(pinnedChatIds?.includes(chatId));
 }
 
 // Slow, not to be used in `withGlobal`
@@ -153,35 +152,16 @@ export function selectChatByUsername(global: GlobalState, username: string) {
   );
 }
 
-// Slow, not to be used in `withGlobal`
-export function selectCountNotMutedUnread(global: GlobalState) {
-  const activeChatIds = global.chats.listIds.active;
-  if (!activeChatIds) {
-    return 0;
-  }
-
-  const chats = global.chats.byId;
-  const notifySettings = selectNotifySettings(global);
-  const notifyExceptions = selectNotifyExceptions(global);
-
-  return activeChatIds.reduce((acc, chatId) => {
-    const chat = chats[chatId];
-
-    if (
-      chat
-      && chat.unreadCount
-      && chat.isListed
-      && !chat.isNotJoined
-      && !chat.isRestricted
-      && (chat.unreadMentionsCount || !selectIsChatMuted(chat, notifySettings, notifyExceptions))
-    ) {
-      return acc + chat.unreadCount;
-    }
-
-    return acc;
-  }, 0);
-}
-
 export function selectIsServiceChatReady(global: GlobalState) {
   return Boolean(selectChat(global, SERVICE_NOTIFICATIONS_USER_ID));
+}
+
+export function selectSendAs(global: GlobalState, chatId: string) {
+  const chat = selectChat(global, chatId);
+  if (!chat) return undefined;
+
+  const id = chat?.fullInfo?.sendAsId;
+  if (!id) return undefined;
+
+  return selectUser(global, id) || selectChat(global, id);
 }

@@ -5,7 +5,6 @@ import { withGlobal } from '../../../lib/teact/teactn';
 
 import { ApiSticker, ApiVideo } from '../../../api/types';
 
-import { IAllowedAttachmentOptions } from '../../../modules/helpers';
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../../util/environment';
 import { fastRaf } from '../../../util/schedulers';
 import buildClassName from '../../../util/buildClassName';
@@ -27,8 +26,11 @@ import './SymbolMenu.scss';
 const ANIMATION_DURATION = 350;
 
 export type OwnProps = {
+  chatId: string;
+  threadId?: number;
   isOpen: boolean;
-  allowedAttachmentOptions: IAllowedAttachmentOptions;
+  canSendStickers: boolean;
+  canSendGifs: boolean;
   onLoad: () => void;
   onClose: () => void;
   onEmojiSelect: (emoji: string) => void;
@@ -46,10 +48,20 @@ type StateProps = {
 let isActivated = false;
 
 const SymbolMenu: FC<OwnProps & StateProps> = ({
-  isOpen, allowedAttachmentOptions, isLeftColumnShown,
-  onLoad, onClose,
-  onEmojiSelect, onStickerSelect, onGifSelect,
-  onRemoveSymbol, onSearchOpen, addRecentEmoji,
+  chatId,
+  threadId,
+  isOpen,
+  canSendStickers,
+  canSendGifs,
+  isLeftColumnShown,
+  onLoad,
+  onClose,
+  onEmojiSelect,
+  onStickerSelect,
+  onGifSelect,
+  onRemoveSymbol,
+  onSearchOpen,
+  addRecentEmoji,
 }) => {
   const [activeTab, setActiveTab] = useState<number>(0);
   const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
@@ -120,8 +132,6 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
 
   const lang = useLang();
 
-  const { canSendStickers, canSendGifs } = allowedAttachmentOptions;
-
   function renderContent(isActive: boolean, isFrom: boolean) {
     switch (activeTab) {
       case SymbolMenuTabs.Emoji:
@@ -138,6 +148,8 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
             loadAndPlay={canSendStickers ? isOpen && (isActive || isFrom) : false}
             canSendStickers={canSendStickers}
             onStickerSelect={handleStickerSelect}
+            chatId={chatId}
+            threadId={threadId}
           />
         );
       case SymbolMenuTabs.GIFs:

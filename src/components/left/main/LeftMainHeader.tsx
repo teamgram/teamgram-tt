@@ -1,24 +1,26 @@
 import React, {
-  FC, useCallback, useMemo, memo,
+  FC, memo, useCallback, useMemo,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
-import { LeftColumnContent, ISettings } from '../../../types';
+import { ISettings, LeftColumnContent } from '../../../types';
 import { ApiChat } from '../../../api/types';
+import { GlobalState } from '../../../global/types';
 
 import {
   ANIMATION_LEVEL_MAX, APP_NAME, APP_VERSION, FEEDBACK_URL,
 } from '../../../config';
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import buildClassName from '../../../util/buildClassName';
-import { pick } from '../../../util/iteratees';
-import { isChatArchived } from '../../../modules/helpers';
 import { formatDateToString } from '../../../util/dateFormat';
-import { selectTheme } from '../../../modules/selectors';
 import switchTheme from '../../../util/switchTheme';
+import { setPermanentWebVersion } from '../../../util/permanentWebVersion';
+import { clearWebsync } from '../../../util/websync';
+import { selectCurrentMessageList, selectTheme } from '../../../modules/selectors';
+import { isChatArchived } from '../../../modules/helpers';
 import useLang from '../../../hooks/useLang';
 import { disableHistoryBack } from '../../../hooks/useHistoryBack';
+import useConnectionStatus from '../../../hooks/useConnectionStatus';
 
 import DropdownMenu from '../../ui/DropdownMenu';
 import MenuItem from '../../ui/MenuItem';
@@ -26,6 +28,8 @@ import Button from '../../ui/Button';
 import SearchInput from '../../ui/SearchInput';
 import PickerSelectedItem from '../../common/PickerSelectedItem';
 import Switcher from '../../ui/Switcher';
+import ShowTransition from '../../ui/ShowTransition';
+import ConnectionStatusOverlay from '../ConnectionStatusOverlay';
 
 import './LeftMainHeader.scss';
 
@@ -40,36 +44,34 @@ type OwnProps = {
   onReset: () => void;
 };
 
-type StateProps = {
-  searchQuery?: string;
-  isLoading: boolean;
-  currentUserId?: string;
-  globalSearchChatId?: string;
-  searchDate?: number;
-  theme: ISettings['theme'];
-  animationLevel: 0 | 1 | 2;
-  chatsById?: Record<string, ApiChat>;
-};
-
-type DispatchProps = Pick<GlobalActions, (
-  'openChat' | 'openTipsChat' | 'setGlobalSearchDate' | 'setGlobalSearchChatId' | 'setSettingOption'
-)>;
+type StateProps =
+  {
+    searchQuery?: string;
+    isLoading: boolean;
+    currentUserId?: string;
+    globalSearchChatId?: string;
+    searchDate?: number;
+    theme: ISettings['theme'];
+    animationLevel: 0 | 1 | 2;
+    chatsById?: Record<string, ApiChat>;
+    isConnectionStatusMinimized: ISettings['isConnectionStatusMinimized'];
+    isMessageListOpen: boolean;
+  }
+  & Pick<GlobalState, 'connectionState' | 'isSyncing'>;
 
 const ANIMATION_LEVEL_OPTIONS = [0, 1, 2];
 
 const PRODUCTION_HOSTNAME = 'web.telegram.org';
 const LEGACY_VERSION_URL = 'https://web.telegram.org/?legacy=1';
 const WEBK_VERSION_URL = 'https://web.telegram.org/k/';
-const PERMANENT_VERSION_KEY = 'kz_version';
 
-const LeftMainHeader: FC<OwnProps & StateProps & DispatchProps> = ({
+const LeftMainHeader: FC<OwnProps & StateProps> = ({
   content,
   contactsFilter,
   onSearchQuery,
   onSelectSettings,
   onSelectContacts,
   onSelectArchived,
-  setGlobalSearchChatId,
   onReset,
   searchQuery,
   isLoading,
@@ -80,11 +82,18 @@ const LeftMainHeader: FC<OwnProps & StateProps & DispatchProps> = ({
   theme,
   animationLevel,
   chatsById,
-  openChat,
-  openTipsChat,
-  setGlobalSearchDate,
-  setSettingOption,
+  connectionState,
+  isSyncing,
+  isConnectionStatusMinimized,
+  isMessageListOpen,
 }) => {
+  const {
+    openChat,
+    openTipsChat,
+    setGlobalSearchDate,
+    setSettingOption, setGlobalSearchChatId,
+  } = getDispatch();
+
   const lang = useLang();
   const hasMenu = content === LeftColumnContent.ChatList;
   const clearedDateSearchParam = { date: undefined };
@@ -107,6 +116,10 @@ const LeftMainHeader: FC<OwnProps & StateProps & DispatchProps> = ({
       return chat.unreadCount ? total + 1 : total;
     }, 0);
   }, [hasMenu, chatsById]);
+
+  const { connectionStatus, connectionStatusText, connectionStatusPosition } = useConnectionStatus(
+    lang, connectionState, isSyncing, isMessageListOpen, isConnectionStatusMinimized,
+  );
 
   const withOtherVersions = window.location.hostname === PRODUCTION_HOSTNAME;
 
@@ -137,6 +150,10 @@ const LeftMainHeader: FC<OwnProps & StateProps & DispatchProps> = ({
     }
   }, [searchQuery, onSearchQuery]);
 
+  const toggleConnectionStatus = useCallback(() => {
+    setSettingOption({ isConnectionStatusMinimized: !isConnectionStatusMinimized });
+  }, [isConnectionStatusMinimized, setSettingOption]);
+
   const handleSelectSaved = useCallback(() => {
     openChat({ id: currentUserId, shouldReplaceHistory: true });
   }, [currentUserId, openChat]);
@@ -162,7 +179,8 @@ const LeftMainHeader: FC<OwnProps & StateProps & DispatchProps> = ({
   }, [animationLevel, setSettingOption]);
 
   const handleSwitchToWebK = () => {
-    localStorage.setItem(PERMANENT_VERSION_KEY, JSON.stringify('K'));
+    setPermanentWebVersion('K');
+    clearWebsync();
     disableHistoryBack();
   };
 
@@ -274,13 +292,16 @@ const LeftMainHeader: FC<OwnProps & StateProps & DispatchProps> = ({
           className={globalSearchChatId || searchDate ? 'with-picker-item' : ''}
           value={contactsFilter || searchQuery}
           focused={isSearchFocused}
-          isLoading={isLoading}
+          isLoading={isLoading || connectionStatusPosition === 'minimized'}
+          spinnerColor={connectionStatusPosition === 'minimized' ? 'yellow' : undefined}
+          spinnerBackgroundColor={connectionStatusPosition === 'minimized' && theme === 'light' ? 'light' : undefined}
           placeholder={searchInputPlaceholder}
           autoComplete="off"
           canClose={Boolean(globalSearchChatId || searchDate)}
           onChange={onSearchQuery}
           onReset={onReset}
           onFocus={handleSearchFocus}
+          onSpinnerClick={connectionStatusPosition === 'minimized' ? toggleConnectionStatus : undefined}
         >
           {selectedSearchDate && (
             <PickerSelectedItem
@@ -302,6 +323,19 @@ const LeftMainHeader: FC<OwnProps & StateProps & DispatchProps> = ({
             />
           )}
         </SearchInput>
+        <ShowTransition
+          isOpen={connectionStatusPosition === 'overlay'}
+          isCustom
+          className="connection-state-wrapper"
+        >
+          {() => (
+            <ConnectionStatusOverlay
+              connectionStatus={connectionStatus}
+              connectionStatusText={connectionStatusText!}
+              onClick={toggleConnectionStatus}
+            />
+          )}
+        </ShowTransition>
       </div>
     </div>
   );
@@ -312,9 +346,9 @@ export default memo(withGlobal<OwnProps>(
     const {
       query: searchQuery, fetchingStatus, chatId, date,
     } = global.globalSearch;
-    const { currentUserId } = global;
+    const { currentUserId, connectionState, isSyncing } = global;
     const { byId: chatsById } = global.chats;
-    const { animationLevel } = global.settings.byKey;
+    const { isConnectionStatusMinimized, animationLevel } = global.settings.byKey;
 
     return {
       searchQuery,
@@ -325,13 +359,10 @@ export default memo(withGlobal<OwnProps>(
       searchDate: date,
       theme: selectTheme(global),
       animationLevel,
+      connectionState,
+      isSyncing,
+      isConnectionStatusMinimized,
+      isMessageListOpen: Boolean(selectCurrentMessageList(global)),
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'openChat',
-    'openTipsChat',
-    'setGlobalSearchDate',
-    'setGlobalSearchChatId',
-    'setSettingOption',
-  ]),
 )(LeftMainHeader));

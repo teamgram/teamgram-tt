@@ -11,8 +11,11 @@ const {
     constructors,
     requests,
 } = require('../tl');
-const MTProtoSender = require('../network/MTProtoSender');
-const { ConnectionTCPObfuscated } = require('../network/connection/TCPObfuscated');
+const {
+    ConnectionTCPObfuscated,
+    MTProtoSender,
+    UpdateConnectionState,
+} = require('../network');
 const {
     authFlow,
     checkAuthorization,
@@ -37,6 +40,14 @@ const PING_INTERVAL = 3000; // 3 sec
 const PING_TIMEOUT = 5000; // 5 sec
 const PING_FAIL_ATTEMPTS = 3;
 const PING_FAIL_INTERVAL = 100; // ms
+
+// An unusually long interval is a sign of returning from background mode...
+const PING_INTERVAL_TO_WAKE_UP = 5000; // 5 sec
+// ... so we send a quick "wake-up" ping to confirm than connection was dropped ASAP
+const PING_WAKE_UP_TIMEOUT = 3000; // 3 sec
+// We also send a warning to the user even a bit more quickly
+const PING_WAKE_UP_WARNING_TIMEOUT = 1000; // 1 sec
+
 const PING_DISCONNECT_DELAY = 60000; // 1 min
 
 // All types
@@ -148,7 +159,7 @@ class TelegramClient {
         this._exportedSenderReleaseTimeouts = {};
         this._additionalDcsDisabled = args.additionalDcsDisabled;
         this._loopStarted = false;
-        this._reconnecting = false;
+        this._isSwitchingDc = false;
         this._destroyed = false;
     }
 
@@ -180,7 +191,7 @@ class TelegramClient {
         // set defaults vars
         this._sender.userDisconnected = false;
         this._sender._user_connected = false;
-        this._sender._reconnecting = false;
+        this._sender.isReconnecting = false;
         this._sender._disconnected = true;
 
         const connection = new this._connection(
@@ -206,7 +217,7 @@ class TelegramClient {
             this._updateLoop();
             this._loopStarted = true;
         }
-        this._reconnecting = false;
+        this._isSwitchingDc = false;
     }
 
     async _initSession() {
@@ -220,23 +231,52 @@ class TelegramClient {
     }
 
     async _updateLoop() {
+        let lastPongAt;
+
         while (!this._destroyed) {
             await Helpers.sleep(PING_INTERVAL);
-            if (this._reconnecting) {
+            if (this._sender.isReconnecting || this._isSwitchingDc) {
+                lastPongAt = undefined;
                 continue;
             }
 
             try {
-                await attempts(() => {
-                    return timeout(this._sender.send(new requests.PingDelayDisconnect({
+                const ping = () => {
+                    return this._sender.send(new requests.PingDelayDisconnect({
                         pingId: Helpers.getRandomInt(Number.MIN_SAFE_INTEGER, Number.MAX_SAFE_INTEGER),
                         disconnectDelay: PING_DISCONNECT_DELAY,
-                    })), PING_TIMEOUT);
-                }, PING_FAIL_ATTEMPTS, PING_FAIL_INTERVAL);
+                    }));
+                };
+
+                const pingAt = Date.now();
+                const lastInterval = lastPongAt ? pingAt - lastPongAt : undefined;
+
+                if (!lastInterval || lastInterval < PING_INTERVAL_TO_WAKE_UP) {
+                    await attempts(() => timeout(ping, PING_TIMEOUT), PING_FAIL_ATTEMPTS, PING_FAIL_INTERVAL);
+                } else {
+                    let wakeUpWarningTimeout = setTimeout(() => {
+                        this._handleUpdate(new UpdateConnectionState(UpdateConnectionState.disconnected));
+                        wakeUpWarningTimeout = undefined;
+                    }, PING_WAKE_UP_WARNING_TIMEOUT);
+
+                    await timeout(ping, PING_WAKE_UP_TIMEOUT);
+
+                    if (wakeUpWarningTimeout) {
+                        clearTimeout(wakeUpWarningTimeout);
+                        wakeUpWarningTimeout = undefined;
+                    }
+
+                    this._handleUpdate(new UpdateConnectionState(UpdateConnectionState.connected));
+                }
+
+                lastPongAt = Date.now();
             } catch (err) {
                 // eslint-disable-next-line no-console
                 console.warn(err);
-                if (this._reconnecting) {
+
+                lastPongAt = undefined;
+
+                if (this._sender.isReconnecting || this._isSwitchingDc) {
                     continue;
                 }
 
@@ -255,6 +295,8 @@ class TelegramClient {
                 } catch (e) {
                     // we don't care about errors here
                 }
+
+                lastPongAt = undefined;
             }
         }
         await this.disconnect();
@@ -309,7 +351,7 @@ class TelegramClient {
         // so it's not valid anymore. Set to None to force recreating it.
         await this._sender.authKey.setKey(undefined);
         this.session.setAuthKey(undefined);
-        this._reconnecting = true;
+        this._isSwitchingDc = true;
         await this.disconnect();
         return this.connect();
     }
@@ -332,7 +374,7 @@ class TelegramClient {
 
     async _connectSender(sender, dcId) {
         // if we don't already have an auth key we want to use normal DCs not -1
-        const dc = utils.getDC(dcId, !!sender.authKey.getKey());
+        const dc = utils.getDC(dcId, Boolean(sender.authKey.getKey()));
 
         while (true) {
             try {
@@ -1056,9 +1098,9 @@ class TelegramClient {
     }
 }
 
-function timeout(promise, ms) {
+function timeout(cb, ms) {
     return Promise.race([
-        promise,
+        cb(),
         Helpers.sleep(ms)
             .then(() => Promise.reject(new Error('TIMEOUT'))),
     ]);
@@ -1068,7 +1110,7 @@ async function attempts(cb, times, pause) {
     for (let i = 0; i < times; i++) {
         try {
             // We need to `return await` here so it can be caught locally
-            // eslint-disable-next-line no-return-await
+            // eslint-disable-next-line @typescript-eslint/return-await
             return await cb();
         } catch (err) {
             if (i === times - 1) {

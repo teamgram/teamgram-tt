@@ -5,7 +5,6 @@ import { ApiUser, ApiMessage, ApiChat } from '../../api/types';
 import {
   getMessageMediaHash,
   isActionMessage,
-  getMessageSummaryText,
   getSenderTitle,
   getMessageRoundVideo,
 } from '../../modules/helpers';
@@ -16,6 +15,7 @@ import { ObserveFn, useIsIntersecting } from '../../hooks/useIntersectionObserve
 import useMedia from '../../hooks/useMedia';
 import useWebpThumbnail from '../../hooks/useWebpThumbnail';
 import useLang from '../../hooks/useLang';
+import { renderMessageSummary } from './helpers/renderMessageText';
 
 import ActionMessage from '../middle/ActionMessage';
 
@@ -28,6 +28,7 @@ type OwnProps = {
   sender?: ApiUser | ApiChat;
   title?: string;
   customText?: string;
+  isProtected?: boolean;
   onClick: NoneToVoidFunction;
 };
 
@@ -39,6 +40,7 @@ const EmbeddedMessage: FC<OwnProps> = ({
   sender,
   title,
   customText,
+  isProtected,
   observeIntersection,
   onClick,
 }) => {
@@ -61,7 +63,7 @@ const EmbeddedMessage: FC<OwnProps> = ({
       className={buildClassName('EmbeddedMessage', className)}
       onClick={message ? onClick : undefined}
     >
-      {mediaThumbnail && renderPictogram(pictogramId, mediaThumbnail, mediaBlobUrl, isRoundVideo)}
+      {mediaThumbnail && renderPictogram(pictogramId, mediaThumbnail, mediaBlobUrl, isRoundVideo, isProtected)}
       <div className="message-text">
         <p dir="auto">
           {!message ? (
@@ -69,7 +71,7 @@ const EmbeddedMessage: FC<OwnProps> = ({
           ) : isActionMessage(message) ? (
             <ActionMessage message={message} isEmbedded />
           ) : (
-            renderText(getMessageSummaryText(lang, message, Boolean(mediaThumbnail)))
+            renderMessageSummary(lang, message, Boolean(mediaThumbnail))
           )}
         </p>
         <div className="message-title" dir="auto">{renderText(senderTitle || title || NBSP)}</div>
@@ -83,18 +85,23 @@ function renderPictogram(
   thumbDataUri: string,
   blobUrl?: string,
   isRoundVideo?: boolean,
+  isProtected?: boolean,
 ) {
   const { width, height } = getPictogramDimensions();
 
   return (
-    <img
-      id={id}
-      src={blobUrl || thumbDataUri}
-      width={width}
-      height={height}
-      alt=""
-      className={isRoundVideo ? 'round' : ''}
-    />
+    <>
+      <img
+        id={id}
+        src={blobUrl || thumbDataUri}
+        width={width}
+        height={height}
+        alt=""
+        className={isRoundVideo ? 'round' : ''}
+        draggable={!isProtected}
+      />
+      {isProtected && <span className="protector" />}
+    </>
   );
 }
 

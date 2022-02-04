@@ -1,20 +1,18 @@
 import React, {
   FC, memo, useMemo, useCallback, useState, useEffect,
 } from '../../../../lib/teact/teact';
-import { withGlobal } from '../../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../../lib/teact/teactn';
 
-import { GlobalActions, GlobalState } from '../../../../global/types';
-import { ApiChatFolder, ApiChat, ApiUser } from '../../../../api/types';
-import { NotifyException, NotifySettings, SettingsScreens } from '../../../../types';
+import { ApiChatFolder } from '../../../../api/types';
+import { SettingsScreens } from '../../../../types';
 
 import { STICKER_SIZE_FOLDER_SETTINGS } from '../../../../config';
-import { pick } from '../../../../util/iteratees';
-import { selectNotifyExceptions, selectNotifySettings } from '../../../../modules/selectors';
 import { throttle } from '../../../../util/schedulers';
 import getAnimationData from '../../../common/helpers/animatedAssets';
 import { getFolderDescriptionText } from '../../../../modules/helpers';
 import useLang from '../../../../hooks/useLang';
 import useHistoryBack from '../../../../hooks/useHistoryBack';
+import { useFolderManagerForChatsCount } from '../../../../hooks/useFolderManager';
 
 import ListItem from '../../../ui/ListItem';
 import Button from '../../../ui/Button';
@@ -30,41 +28,32 @@ type OwnProps = {
 };
 
 type StateProps = {
-  allListIds: GlobalState['chats']['listIds'];
-  chatsById: Record<string, ApiChat>;
-  usersById: Record<string, ApiUser>;
   orderedFolderIds?: number[];
   foldersById: Record<number, ApiChatFolder>;
   recommendedChatFolders?: ApiChatFolder[];
-  notifySettings: NotifySettings;
-  notifyExceptions?: Record<number, NotifyException>;
 };
-
-type DispatchProps = Pick<GlobalActions, 'loadRecommendedChatFolders' | 'addChatFolder' | 'showDialog'>;
 
 const runThrottledForLoadRecommended = throttle((cb) => cb(), 60000, true);
 
 const MAX_ALLOWED_FOLDERS = 10;
 
-const SettingsFoldersMain: FC<OwnProps & StateProps & DispatchProps> = ({
+const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
   isActive,
-  allListIds,
-  chatsById,
-  usersById,
-  orderedFolderIds,
-  foldersById,
-  recommendedChatFolders,
-  notifySettings,
-  notifyExceptions,
   onCreateFolder,
   onEditFolder,
   onScreenSelect,
   onReset,
-  loadRecommendedChatFolders,
-  addChatFolder,
-  showDialog,
+  orderedFolderIds,
+  foldersById,
+  recommendedChatFolders,
 }) => {
-  const [animationData, setAnimationData] = useState<Record<string, any>>();
+  const {
+    loadRecommendedChatFolders,
+    addChatFolder,
+    showDialog,
+  } = getDispatch();
+
+  const [animationData, setAnimationData] = useState<string>();
   const [isAnimationLoaded, setIsAnimationLoaded] = useState(false);
   const handleAnimationLoad = useCallback(() => setIsAnimationLoaded(true), []);
 
@@ -101,6 +90,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps & DispatchProps> = ({
 
   useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.Folders);
 
+  const chatsCountByFolderId = useFolderManagerForChatsCount();
   const userFolders = useMemo(() => {
     if (!orderedFolderIds) {
       return undefined;
@@ -112,12 +102,10 @@ const SettingsFoldersMain: FC<OwnProps & StateProps & DispatchProps> = ({
       return {
         id: folder.id,
         title: folder.title,
-        subtitle: getFolderDescriptionText(
-          lang, allListIds, chatsById, usersById, folder, notifySettings, notifyExceptions,
-        ),
+        subtitle: getFolderDescriptionText(lang, folder, chatsCountByFolderId[folder.id]),
       };
     });
-  }, [lang, allListIds, foldersById, chatsById, usersById, orderedFolderIds, notifySettings, notifyExceptions]);
+  }, [orderedFolderIds, foldersById, lang, chatsCountByFolderId]);
 
   const handleCreateFolderFromRecommended = useCallback((folder: ApiChatFolder) => {
     if (Object.keys(foldersById).length >= MAX_ALLOWED_FOLDERS) {
@@ -189,7 +177,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps & DispatchProps> = ({
         ) : <Loading />}
       </div>
 
-      {(recommendedChatFolders && !!recommendedChatFolders.length) && (
+      {(recommendedChatFolders && Boolean(recommendedChatFolders.length)) && (
         <div className="settings-item pt-3">
           <h4 className="settings-item-header mb-3" dir={lang.isRtl ? 'rtl' : undefined}>
             {lang('FilterRecommended')}
@@ -229,26 +217,15 @@ const SettingsFoldersMain: FC<OwnProps & StateProps & DispatchProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global): StateProps => {
     const {
-      chats: { listIds: allListIds, byId: chatsById },
-      users: { byId: usersById },
-    } = global;
-
-    const {
       orderedIds: orderedFolderIds,
       byId: foldersById,
       recommended: recommendedChatFolders,
     } = global.chatFolders;
 
     return {
-      allListIds,
-      chatsById,
-      usersById,
       orderedFolderIds,
       foldersById,
       recommendedChatFolders,
-      notifySettings: selectNotifySettings(global),
-      notifyExceptions: selectNotifyExceptions(global),
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, ['loadRecommendedChatFolders', 'addChatFolder', 'showDialog']),
 )(SettingsFoldersMain));

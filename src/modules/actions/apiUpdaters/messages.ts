@@ -5,6 +5,7 @@ import {
 } from '../../../api/types';
 
 import { unique } from '../../../util/iteratees';
+import { areDeepEqual } from '../../../util/areDeepEqual';
 import {
   updateChat,
   deleteChatMessages,
@@ -17,7 +18,7 @@ import {
   deleteChatScheduledMessages,
   updateThreadUnreadFromForwardedMessage,
 } from '../../reducers';
-import { GlobalActions, GlobalState } from '../../../global/types';
+import { ActiveEmojiInteraction, GlobalActions, GlobalState } from '../../../global/types';
 import {
   selectChatMessage,
   selectChatMessages,
@@ -39,6 +40,8 @@ import {
   selectChat,
   selectIsChatWithBot,
   selectIsServiceChatReady,
+  selectLocalAnimatedEmojiEffect,
+  selectLocalAnimatedEmoji,
 } from '../../selectors';
 import { getMessageContent, isUserId, isMessageLocal } from '../../helpers';
 
@@ -104,6 +107,26 @@ addReducer('apiUpdate', (global, actions, update: ApiUpdate) => {
       if (!selectIsChatListed(global, chatId)) {
         actions.loadTopChats();
       }
+
+      break;
+    }
+
+    case 'updateStartEmojiInteraction': {
+      const { chatId: currentChatId } = selectCurrentMessageList(global) || {};
+
+      if (global.activeEmojiInteraction || currentChatId !== update.id) return;
+
+      const localEmoji = selectLocalAnimatedEmoji(global, update.emoji);
+
+      global = {
+        ...global,
+        activeEmojiInteraction: {
+          animatedEffect: localEmoji ? selectLocalAnimatedEmojiEffect(localEmoji) : update.emoji,
+          messageId: update.messageId,
+        } as ActiveEmojiInteraction,
+      };
+
+      setGlobal(global);
 
       break;
     }
@@ -441,6 +464,21 @@ addReducer('apiUpdate', (global, actions, update: ApiUpdate) => {
       if (selectIsServiceChatReady(global)) {
         actions.createServiceNotification({ message });
       }
+
+      break;
+    }
+
+    case 'updateMessageReactions': {
+      const { chatId, id, reactions } = update;
+      const message = selectChatMessage(global, chatId, id);
+      const currentReactions = message?.reactions;
+
+      // `updateMessageReactions` happens with an interval so we try to avoid redundant global state updates
+      if (currentReactions && areDeepEqual(reactions, currentReactions)) {
+        return;
+      }
+
+      setGlobal(updateChatMessage(global, chatId, id, { reactions: update.reactions }));
 
       break;
     }

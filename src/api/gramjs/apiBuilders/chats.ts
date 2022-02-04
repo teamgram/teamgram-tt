@@ -8,6 +8,8 @@ import {
   ApiChatFolder,
   ApiChatMember,
   ApiRestrictionReason,
+  ApiExportedInvite,
+  ApiChatInviteImporter,
 } from '../../types';
 import { pick, pickTruthy } from '../../../util/iteratees';
 import {
@@ -48,6 +50,9 @@ function buildApiChatFieldsFromPeerEntity(
     ...((peerEntity instanceof GramJs.Chat || peerEntity instanceof GramJs.Channel) && {
       ...(peerEntity.participantsCount && { membersCount: peerEntity.participantsCount }),
       joinDate: peerEntity.date,
+    }),
+    ...((peerEntity instanceof GramJs.Chat || peerEntity instanceof GramJs.Channel) && {
+      isProtected: Boolean('noforwards' in peerEntity && peerEntity.noforwards),
     }),
     ...(isSupport && { isSupport: true }),
     ...buildApiChatPermissions(peerEntity),
@@ -300,6 +305,7 @@ export function buildChatTypingStatus(
   serverTimeOffset: number,
 ) {
   let action: string = '';
+  let emoticon: string | undefined;
   if (update.action instanceof GramJs.SendMessageCancelAction) {
     return undefined;
   } else if (update.action instanceof GramJs.SendMessageTypingAction) {
@@ -330,10 +336,16 @@ export function buildChatTypingStatus(
     action = 'lng_send_action_choose_sticker';
   } else if (update.action instanceof GramJs.SpeakingInGroupCallAction) {
     return undefined;
+  } else if (update.action instanceof GramJs.SendMessageEmojiInteractionSeen) {
+    action = 'lng_user_action_watching_animations';
+    emoticon = update.action.emoticon;
+  } else if (update.action instanceof GramJs.SendMessageEmojiInteraction) {
+    return undefined;
   }
 
   return {
     action,
+    ...(emoticon && { emoji: emoticon }),
     ...(!(update instanceof GramJs.UpdateUserTyping) && { userId: getApiChatIdFromMtpPeer(update.fromId) }),
     timestamp: Date.now() + serverTimeOffset * 1000,
   };
@@ -375,4 +387,50 @@ export function buildApiChatBotCommands(botInfos: GramJs.BotInfo[]) {
 
     return botCommands;
   }, [] as ApiBotCommand[]);
+}
+
+export function buildApiExportedInvite(invite: GramJs.ChatInviteExported): ApiExportedInvite {
+  const {
+    revoked,
+    date,
+    expireDate,
+    link,
+    permanent,
+    startDate,
+    usage,
+    usageLimit,
+    requested,
+    requestNeeded,
+    title,
+    adminId,
+  } = invite;
+  return {
+    isRevoked: revoked,
+    date,
+    expireDate,
+    link,
+    isPermanent: permanent,
+    startDate,
+    usage,
+    usageLimit,
+    isRequestNeeded: requestNeeded,
+    requested,
+    title,
+    adminId: buildApiPeerId(adminId, 'user'),
+  };
+}
+
+export function buildChatInviteImporter(importer: GramJs.ChatInviteImporter): ApiChatInviteImporter {
+  const {
+    userId,
+    date,
+    about,
+    requested,
+  } = importer;
+  return {
+    userId: buildApiPeerId(userId, 'user'),
+    date,
+    about,
+    isRequested: requested,
+  };
 }

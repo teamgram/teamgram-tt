@@ -1,20 +1,17 @@
 import React, {
   FC, useEffect, memo, useCallback,
 } from '../../lib/teact/teact';
-import { getGlobal, withGlobal } from '../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../lib/teact/teactn';
 
 import { LangCode } from '../../types';
-import { GlobalActions } from '../../global/types';
 import { ApiMessage } from '../../api/types';
 
 import '../../modules/actions/all';
 import {
   BASE_EMOJI_KEYWORD_LANG, DEBUG, INACTIVE_MARKER, PAGE_TITLE,
 } from '../../config';
-import { pick } from '../../util/iteratees';
 import {
   selectChatMessage,
-  selectCountNotMutedUnread,
   selectIsForwardModalOpen,
   selectIsMediaViewerOpen,
   selectIsRightColumnShown,
@@ -25,7 +22,9 @@ import buildClassName from '../../util/buildClassName';
 import { fastRaf } from '../../util/schedulers';
 import { waitForTransitionEnd } from '../../util/cssAnimationEndListeners';
 import { processDeepLink } from '../../util/deeplink';
+import stopEvent from '../../util/stopEvent';
 import windowSize from '../../util/windowSize';
+import { getAllNotificationsCount } from '../../util/folderManager';
 import useShowTransition from '../../hooks/useShowTransition';
 import useBackgroundMode from '../../hooks/useBackgroundMode';
 import useBeforeUnload from '../../hooks/useBeforeUnload';
@@ -33,6 +32,8 @@ import useOnChange from '../../hooks/useOnChange';
 import usePreventPinchZoomGesture from '../../hooks/usePreventPinchZoomGesture';
 import { LOCATION_HASH } from '../../hooks/useHistoryBack';
 
+import StickerSetModal from '../common/StickerSetModal.async';
+import UnreadCount from '../common/UnreadCounter';
 import LeftColumn from '../left/LeftColumn';
 import MiddleColumn from '../middle/MiddleColumn';
 import RightColumn from '../right/RightColumn';
@@ -44,7 +45,6 @@ import Dialogs from './Dialogs.async';
 import ForwardPicker from './ForwardPicker.async';
 import SafeLinkModal from './SafeLinkModal.async';
 import HistoryCalendar from './HistoryCalendar.async';
-import StickerSetModal from '../common/StickerSetModal.async';
 import GroupCall from '../calls/group/GroupCall.async';
 import ActiveCallHeader from '../calls/ActiveCallHeader.async';
 import CallFallbackConfirm from '../calls/CallFallbackConfirm.async';
@@ -70,13 +70,8 @@ type StateProps = {
   language?: LangCode;
   wasTimeFormatSetManually?: boolean;
   isCallFallbackConfirmOpen: boolean;
+  addedSetIds?: string[];
 };
-
-type DispatchProps = Pick<GlobalActions, (
-  'loadAnimatedEmojis' | 'loadNotificationSettings' | 'loadNotificationExceptions' | 'updateIsOnline' |
-  'loadTopInlineBots' | 'loadEmojiKeywords' | 'openStickerSetShortName' |
-  'loadCountryList' | 'ensureTimeFormat' | 'checkVersionNotification'
-)>;
 
 const NOTIFICATION_INTERVAL = 1000;
 
@@ -85,7 +80,7 @@ let notificationInterval: number | undefined;
 // eslint-disable-next-line @typescript-eslint/naming-convention
 let DEBUG_isLogged = false;
 
-const Main: FC<StateProps & DispatchProps> = ({
+const Main: FC<StateProps> = ({
   lastSyncTime,
   isLeftColumnShown,
   isRightColumnShown,
@@ -104,17 +99,27 @@ const Main: FC<StateProps & DispatchProps> = ({
   language,
   wasTimeFormatSetManually,
   isCallFallbackConfirmOpen,
-  loadAnimatedEmojis,
-  loadNotificationSettings,
-  loadNotificationExceptions,
-  updateIsOnline,
-  loadTopInlineBots,
-  loadEmojiKeywords,
-  loadCountryList,
-  ensureTimeFormat,
-  openStickerSetShortName,
-  checkVersionNotification,
+  addedSetIds,
 }) => {
+  const {
+    loadAnimatedEmojis,
+    loadNotificationSettings,
+    loadNotificationExceptions,
+    updateIsOnline,
+    loadTopInlineBots,
+    loadEmojiKeywords,
+    loadCountryList,
+    loadAvailableReactions,
+    loadStickerSets,
+    loadAddedStickers,
+    loadFavoriteStickers,
+    ensureTimeFormat,
+    openStickerSetShortName,
+    checkVersionNotification,
+    loadAppConfig,
+  } = getDispatch();
+  const isSynced = Boolean(lastSyncTime);
+
   if (DEBUG && !DEBUG_isLogged) {
     DEBUG_isLogged = true;
     // eslint-disable-next-line no-console
@@ -125,6 +130,8 @@ const Main: FC<StateProps & DispatchProps> = ({
   useEffect(() => {
     if (lastSyncTime) {
       updateIsOnline(true);
+      loadAppConfig();
+      loadAvailableReactions();
       loadAnimatedEmojis();
       loadNotificationSettings();
       loadNotificationExceptions();
@@ -133,7 +140,7 @@ const Main: FC<StateProps & DispatchProps> = ({
     }
   }, [
     lastSyncTime, loadAnimatedEmojis, loadEmojiKeywords, loadNotificationExceptions, loadNotificationSettings,
-    loadTopInlineBots, updateIsOnline,
+    loadTopInlineBots, updateIsOnline, loadAvailableReactions, loadAppConfig,
   ]);
 
   // Language-based API calls
@@ -146,6 +153,18 @@ const Main: FC<StateProps & DispatchProps> = ({
       loadCountryList({ langCode: language });
     }
   }, [language, lastSyncTime, loadCountryList, loadEmojiKeywords]);
+
+  // Sticker sets
+  useEffect(() => {
+    if (isSynced) {
+      if (!addedSetIds) {
+        loadStickerSets();
+        loadFavoriteStickers();
+      } else {
+        loadAddedStickers();
+      }
+    }
+  }, [isSynced, addedSetIds, loadStickerSets, loadFavoriteStickers, loadAddedStickers]);
 
   // Check version when service chat is ready
   useEffect(() => {
@@ -230,7 +249,7 @@ const Main: FC<StateProps & DispatchProps> = ({
   const handleBlur = useCallback(() => {
     updateIsOnline(false);
 
-    const initialUnread = selectCountNotMutedUnread(getGlobal());
+    const initialUnread = getAllNotificationsCount();
     let index = 0;
 
     clearInterval(notificationInterval);
@@ -241,7 +260,7 @@ const Main: FC<StateProps & DispatchProps> = ({
       }
 
       if (index % 2 === 0) {
-        const newUnread = selectCountNotMutedUnread(getGlobal()) - initialUnread;
+        const newUnread = getAllNotificationsCount() - initialUnread;
         if (newUnread > 0) {
           updatePageTitle(`${newUnread} notification${newUnread > 1 ? 's' : ''}`);
           updateIcon(true);
@@ -278,11 +297,6 @@ const Main: FC<StateProps & DispatchProps> = ({
 
   usePreventPinchZoomGesture(isMediaViewerOpen);
 
-  function stopEvent(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
   return (
     <div id="Main" className={className} onDrop={stopEvent} onDragOver={stopEvent}>
       <LeftColumn />
@@ -308,6 +322,7 @@ const Main: FC<StateProps & DispatchProps> = ({
       )}
       <DownloadManager />
       <CallFallbackConfirm isOpen={isCallFallbackConfirmOpen} />
+      <UnreadCount isForAppBadge />
     </div>
   );
 };
@@ -360,11 +375,7 @@ export default memo(withGlobal(
       language,
       wasTimeFormatSetManually,
       isCallFallbackConfirmOpen: Boolean(global.groupCalls.isFallbackConfirmOpen),
+      addedSetIds: global.stickers.added.setIds,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'loadAnimatedEmojis', 'loadNotificationSettings', 'loadNotificationExceptions', 'updateIsOnline',
-    'loadTopInlineBots', 'loadEmojiKeywords', 'openStickerSetShortName', 'loadCountryList', 'ensureTimeFormat',
-    'checkVersionNotification',
-  ]),
 )(Main));

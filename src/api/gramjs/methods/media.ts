@@ -1,5 +1,3 @@
-import { inflate } from 'pako/dist/pako_inflate';
-
 import { Api as GramJs, TelegramClient } from '../../../lib/gramjs';
 import {
   ApiMediaFormat, ApiOnProgress, ApiParsedMedia, ApiPreparedMedia,
@@ -17,9 +15,12 @@ import { getEntityTypeById } from '../gramjsBuilders';
 import * as cacheApi from '../../../util/cacheApi';
 
 type EntityType = (
-  'msg' | 'sticker' | 'wallpaper' | 'gif' | 'channel' | 'chat' | 'user' | 'photo' | 'stickerSet' | 'webDocument'
+  'msg' | 'sticker' | 'wallpaper' | 'gif' | 'channel' | 'chat' | 'user' | 'photo' | 'stickerSet' | 'webDocument' |
+  'document'
 );
-const MEDIA_ENTITY_TYPES = new Set(['msg', 'sticker', 'gif', 'wallpaper', 'photo', 'webDocument']);
+
+const MEDIA_ENTITY_TYPES = new Set(['msg', 'sticker', 'gif', 'wallpaper', 'photo', 'webDocument', 'document']);
+const TGS_MIME_TYPE = 'application/x-tgsticker';
 
 export default async function downloadMedia(
   {
@@ -52,7 +53,7 @@ export default async function downloadMedia(
     void cacheApi.save(cacheName, url, parsed);
   }
 
-  const prepared = mediaFormat === ApiMediaFormat.Progressive ? '' : prepareMedia(parsed);
+  const prepared = mediaFormat === ApiMediaFormat.Progressive ? '' : prepareMedia(parsed as string | Blob);
   const arrayBuffer = mediaFormat === ApiMediaFormat.Progressive ? parsed as ArrayBuffer : undefined;
 
   return {
@@ -77,7 +78,9 @@ async function download(
   console.warn(url);
   const mediaMatch = url.startsWith('webDocument')
     ? url.match(/(webDocument):(.+)/)
-    : url.match(/(avatar|profile|photo|msg|stickerSet|sticker|wallpaper|gif|file)([-\d\w./]+)(\?size=\w+)?/);
+    : url.match(
+      /(avatar|profile|photo|msg|stickerSet|sticker|wallpaper|gif|file|document)([-\d\w./]+)(?::\d+)?(\?size=\w+)?/,
+    );
   if (!mediaMatch) {
     return undefined;
   }
@@ -104,7 +107,8 @@ async function download(
   if (mediaMatch[1] === 'avatar' || mediaMatch[1] === 'profile') {
     entityType = getEntityTypeById(entityId);
   } else {
-    entityType = mediaMatch[1] as 'msg' | 'sticker' | 'wallpaper' | 'gif' | 'stickerSet' | 'photo' | 'webDocument';
+    entityType = mediaMatch[1] as 'msg' | 'sticker' | 'wallpaper' | 'gif' | 'stickerSet' | 'photo' | 'webDocument' |
+    'document';
   }
 
   switch (entityType) {
@@ -131,6 +135,9 @@ async function download(
       break;
     case 'webDocument':
       entity = localDb.webDocuments[entityId];
+      break;
+    case 'document':
+      entity = localDb.documents[entityId];
       break;
   }
 
@@ -178,7 +185,7 @@ async function download(
     return { mimeType, data, fullSize };
   } else if (entityType === 'stickerSet') {
     const data = await client.downloadStickerSetThumb(entity);
-    const mimeType = mediaFormat === ApiMediaFormat.Lottie ? 'application/json' : getMimeType(data);
+    const mimeType = mediaFormat === ApiMediaFormat.Lottie ? TGS_MIME_TYPE : getMimeType(data);
 
     return { mimeType, data };
   } else {
@@ -223,10 +230,8 @@ async function parseMedia(
 ): Promise<ApiParsedMedia | undefined> {
   switch (mediaFormat) {
     case ApiMediaFormat.BlobUrl:
-      return new Blob([data], { type: mimeType });
     case ApiMediaFormat.Lottie: {
-      const json = inflate(data, { to: 'string' });
-      return JSON.parse(json);
+      return new Blob([data], { type: mimeType });
     }
     case ApiMediaFormat.Progressive: {
       return data.buffer;
@@ -236,7 +241,7 @@ async function parseMedia(
   return undefined;
 }
 
-function prepareMedia(mediaData: ApiParsedMedia): ApiPreparedMedia {
+function prepareMedia(mediaData: Exclude<ApiParsedMedia, ArrayBuffer>): ApiPreparedMedia {
   if (mediaData instanceof Blob) {
     return URL.createObjectURL(mediaData);
   }

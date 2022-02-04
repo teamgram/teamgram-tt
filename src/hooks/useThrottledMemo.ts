@@ -5,7 +5,9 @@ import useOnChange from './useOnChange';
 import useHeavyAnimationCheck from './useHeavyAnimationCheck';
 import useFlag from './useFlag';
 
-export default <R extends any, D extends any[]>(resolverFn: () => R, ms: number, dependencies: D) => {
+export default function useThrottledMemo<R extends any, D extends any[]>(
+  resolverFn: () => R, ms: number, dependencies: D,
+): R | undefined {
   const runThrottled = useThrottle(ms, true);
   const [value, setValue] = useState<R>();
   const [isFrozen, freeze, unfreeze] = useFlag();
@@ -20,7 +22,7 @@ export default <R extends any, D extends any[]>(resolverFn: () => R, ms: number,
     runThrottled(() => {
       setValue(resolverFn());
     });
-  }, dependencies.concat([isFrozen]));
+  }, [...dependencies, isFrozen]);
 
   return value;
-};
+}

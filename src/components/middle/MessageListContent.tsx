@@ -15,9 +15,12 @@ import useScrollHooks from './hooks/useScrollHooks';
 import useMessageObservers from './hooks/useMessageObservers';
 
 import Message from './message/Message';
+import SponsoredMessage from './message/SponsoredMessage';
 import ActionMessage from './ActionMessage';
+import { getDispatch } from '../../lib/teact/teactn';
 
 interface OwnProps {
+  chatId: string;
   messageIds: number[];
   messageGroups: MessageDateGroup[];
   isViewportNewest: boolean;
@@ -31,6 +34,7 @@ interface OwnProps {
   threadId: number;
   type: MessageListType;
   isReady: boolean;
+  areReactionsInMeta: boolean;
   isScrollingRef: { current: boolean | undefined };
   isScrollPatchNeededRef: { current: boolean | undefined };
   threadTopMessageId: number | undefined;
@@ -39,17 +43,18 @@ interface OwnProps {
   noAppearanceAnimation: boolean;
   onFabToggle: AnyToVoidFunction;
   onNotchToggle: AnyToVoidFunction;
-  openHistoryCalendar: Function;
 }
 
 const UNREAD_DIVIDER_CLASS = 'unread-divider';
 
 const MessageListContent: FC<OwnProps> = ({
+  chatId,
   messageIds,
   messageGroups,
   isViewportNewest,
   isUnread,
   withUsers,
+  areReactionsInMeta,
   noAvatars,
   containerRef,
   anchorIdRef,
@@ -66,8 +71,9 @@ const MessageListContent: FC<OwnProps> = ({
   noAppearanceAnimation,
   onFabToggle,
   onNotchToggle,
-  openHistoryCalendar,
 }) => {
+  const { openHistoryCalendar } = getDispatch();
+
   const {
     observeIntersectionForMedia,
     observeIntersectionForReading,
@@ -184,6 +190,7 @@ const MessageListContent: FC<OwnProps> = ({
             noAvatars={noAvatars}
             withAvatar={position.isLastInGroup && withUsers && !isOwn && !(message.id === threadTopMessageId)}
             withSenderName={position.isFirstInGroup && withUsers && !isOwn}
+            areReactionsInMeta={areReactionsInMeta}
             threadId={threadId}
             messageListType={type}
             noComments={hasLinkedChat === false}
@@ -235,6 +242,7 @@ const MessageListContent: FC<OwnProps> = ({
     <div className="messages-container" teactFastList>
       <div ref={backwardsTriggerRef} key="backwards-trigger" className="backwards-trigger" />
       {flatten(dateGroups)}
+      {isViewportNewest && <SponsoredMessage key={chatId} chatId={chatId} containerRef={containerRef} />}
       <div
         ref={forwardsTriggerRef}
         key="forwards-trigger"

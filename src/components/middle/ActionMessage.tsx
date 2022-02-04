@@ -14,7 +14,6 @@ import {
 } from '../../modules/selectors';
 import { isChatChannel } from '../../modules/helpers';
 import buildClassName from '../../util/buildClassName';
-import renderText from '../common/helpers/renderText';
 import { renderActionMessageText } from '../common/helpers/renderActionMessageText';
 import useEnsureMessage from '../../hooks/useEnsureMessage';
 import useContextMenuHandlers from '../../hooks/useContextMenuHandlers';
@@ -37,7 +36,8 @@ type OwnProps = {
 
 type StateProps = {
   usersById: Record<string, ApiUser>;
-  sender?: ApiUser | ApiChat;
+  senderUser?: ApiUser;
+  senderChat?: ApiChat;
   targetUserIds?: string[];
   targetMessage?: ApiMessage;
   targetChatId?: string;
@@ -55,7 +55,8 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   appearanceOrder = 0,
   isLastInList,
   usersById,
-  sender,
+  senderUser,
+  senderChat,
   targetUserIds,
   targetMessage,
   targetChatId,
@@ -92,11 +93,12 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   const content = renderActionMessageText(
     lang,
     message,
-    sender,
+    senderUser,
+    senderChat,
     targetUsers,
     targetMessage,
     targetChatId,
-    isEmbedded ? { isEmbedded: true, asPlain: true } : undefined,
+    { asTextWithSpoilers: isEmbedded },
   );
   const {
     isContextMenuOpen, contextMenuPosition,
@@ -111,7 +113,7 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   };
 
   if (isEmbedded) {
-    return <span className="embedded-action-message">{renderText(content as string)}</span>;
+    return <span className="embedded-action-message">{content}</span>;
   }
 
   const className = buildClassName(
@@ -160,13 +162,14 @@ export default memo(withGlobal<OwnProps>(
     const { direction: focusDirection, noHighlight: noFocusHighlight } = (isFocused && global.focusedMessage) || {};
 
     const chat = selectChat(global, message.chatId);
-    const sender = chat && (isChatChannel(chat) || userId === message.chatId)
-      ? chat
-      : userId ? selectUser(global, userId) : undefined;
+    const isChat = chat && (isChatChannel(chat) || userId === message.chatId);
+    const senderUser = !isChat && userId ? selectUser(global, userId) : undefined;
+    const senderChat = isChat ? chat : undefined;
 
     return {
       usersById,
-      sender,
+      senderUser,
+      senderChat,
       targetChatId,
       targetUserIds,
       targetMessage,

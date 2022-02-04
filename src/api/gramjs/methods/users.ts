@@ -98,7 +98,7 @@ export async function fetchTopUsers() {
     return undefined;
   }
 
-  const users = topPeers.users.map(buildApiUser).filter((user) => !!user && !user.isSelf) as ApiUser[];
+  const users = topPeers.users.map(buildApiUser).filter((user) => Boolean(user) && !user.isSelf) as ApiUser[];
   const ids = users.map(({ id }) => id);
 
   return {
@@ -157,7 +157,7 @@ export function updateContact({
       firstName: firstName || '',
       lastName: lastName || '',
     })],
-  }));
+  }), true);
 }
 
 export function addContact({
@@ -181,7 +181,7 @@ export function addContact({
   }), true);
 }
 
-export async function deleteUser({
+export async function deleteContact({
   id,
   accessHash,
 }: {
@@ -200,7 +200,7 @@ export async function deleteUser({
   }
 
   onUpdate({
-    '@type': 'deleteUser',
+    '@type': 'deleteContact',
     id,
   });
 }

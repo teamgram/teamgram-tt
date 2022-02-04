@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from '../lib/teact/teact';
 
-export default (
+const useSendWithEnter = (
   onSelect: NoneToVoidFunction,
 ) => {
   // eslint-disable-next-line no-null/no-null
@@ -18,8 +18,10 @@ export default (
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown, false);
 
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown, false);
   }, [handleKeyDown]);
 
   return buttonRef;
 };
+
+export default useSendWithEnter;

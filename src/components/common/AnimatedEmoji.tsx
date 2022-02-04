@@ -1,14 +1,16 @@
 import React, {
-  FC, useCallback, useRef, useState,
+  FC, memo,
 } from '../../lib/teact/teact';
 
 import { ApiMediaFormat, ApiSticker } from '../../api/types';
+import { ActiveEmojiInteraction } from '../../global/types';
 
-import { LIKE_STICKER_ID } from './helpers/mediaDimensions';
+import buildClassName from '../../util/buildClassName';
 import { ObserveFn, useIsIntersecting } from '../../hooks/useIntersectionObserver';
 import useMedia from '../../hooks/useMedia';
 import useMediaTransition from '../../hooks/useMediaTransition';
-import useFlag from '../../hooks/useFlag';
+import useAnimatedEmoji from './hooks/useAnimatedEmoji';
+import { LIKE_STICKER_ID } from './helpers/mediaDimensions';
 
 import AnimatedSticker from './AnimatedSticker';
 
@@ -16,30 +18,43 @@ import './AnimatedEmoji.scss';
 
 type OwnProps = {
   sticker: ApiSticker;
+  effect?: ApiSticker;
+  isOwn?: boolean;
+  soundId?: string;
   observeIntersection?: ObserveFn;
   size?: 'large' | 'medium' | 'small';
   lastSyncTime?: number;
   forceLoadPreview?: boolean;
+  messageId?: number;
+  chatId?: string;
+  activeEmojiInteraction?: ActiveEmojiInteraction;
 };
 
 const QUALITY = 1;
-const WIDTH = {
-  large: 160,
-  medium: 128,
-  small: 104,
-};
 
 const AnimatedEmoji: FC<OwnProps> = ({
   sticker,
+  effect,
+  isOwn,
+  soundId,
   size = 'medium',
   observeIntersection,
   lastSyncTime,
   forceLoadPreview,
+  messageId,
+  chatId,
+  activeEmojiInteraction,
 }) => {
-  // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  const {
+    markAnimationLoaded,
+    isAnimationLoaded,
+    ref,
+    width,
+    style,
+    handleClick,
+    playKey,
+  } = useAnimatedEmoji(size, chatId, messageId, soundId, activeEmojiInteraction, isOwn, undefined, effect?.emoji);
 
-  const [isAnimationLoaded, markAnimationLoaded] = useFlag();
   const localMediaHash = `sticker${sticker.id}`;
 
   const isIntersecting = useIsIntersecting(ref, observeIntersection);
@@ -56,36 +71,29 @@ const AnimatedEmoji: FC<OwnProps> = ({
   const mediaData = useMedia(localMediaHash, !isIntersecting, ApiMediaFormat.Lottie, lastSyncTime);
   const isMediaLoaded = Boolean(mediaData);
 
-  const [playKey, setPlayKey] = useState(String(Math.random()));
-  const handleClick = useCallback(() => {
-    setPlayKey(String(Math.random()));
-  }, []);
-
-  const width = WIDTH[size];
-  const style = `width: ${width}px; height: ${width}px;`;
-
   return (
     <div
       ref={ref}
-      className="AnimatedEmoji media-inner"
-      // @ts-ignore
+      className={buildClassName('AnimatedEmoji media-inner', sticker.id === LIKE_STICKER_ID && 'like-sticker-thumb')}
+      // @ts-ignore teact feature
       style={style}
       onClick={handleClick}
     >
       {!isAnimationLoaded && thumbDataUri && (
-        <img src={thumbDataUri} className={sticker.id === LIKE_STICKER_ID ? 'like-sticker-thumb' : undefined} alt="" />
+        <img src={thumbDataUri} alt="" />
       )}
       {!isAnimationLoaded && previewBlobUrl && (
         <img src={previewBlobUrl} className={transitionClassNames} alt="" />
       )}
-      {isMediaLoaded && (
+      {isMediaLoaded && localMediaHash && (
         <AnimatedSticker
           key={localMediaHash}
           id={localMediaHash}
-          animationData={mediaData as AnyLiteral}
+          animationData={mediaData!}
           size={width}
           quality={QUALITY}
           play={isIntersecting && playKey}
+          forceOnHeavyAnimation
           noLoop
           onLoad={markAnimationLoaded}
         />
@@ -94,4 +102,4 @@ const AnimatedEmoji: FC<OwnProps> = ({
   );
 };
 
-export default AnimatedEmoji;
+export default memo(AnimatedEmoji);

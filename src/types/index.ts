@@ -1,5 +1,7 @@
 import {
   ApiBotInlineMediaResult, ApiBotInlineResult, ApiBotInlineSwitchPm,
+  ApiChatInviteImporter,
+  ApiExportedInvite,
   ApiLanguage, ApiMessage, ApiShippingAddress, ApiStickerSet,
 } from '../api/types';
 
@@ -80,6 +82,7 @@ export interface ISettings extends NotifySettings, Record<string, any> {
   canChangeSensitive?: boolean;
   timeFormat: TimeFormat;
   wasTimeFormatSetManually: boolean;
+  isConnectionStatusMinimized: boolean;
 }
 
 export interface ApiPrivacySettings {
@@ -201,10 +204,11 @@ export enum SettingsScreens {
   TwoFaRecoveryEmail,
   TwoFaRecoveryEmailCode,
   TwoFaCongratulations,
+  QuickReaction,
 }
 
 export type StickerSetOrRecent = Pick<ApiStickerSet, (
-  'id' | 'title' | 'count' | 'stickers' | 'hasThumbnail' | 'isAnimated'
+  'id' | 'title' | 'count' | 'stickers' | 'hasThumbnail' | 'isLottie' | 'isGifs'
 )>;
 
 export enum LeftColumnContent {
@@ -278,6 +282,21 @@ export enum ManagementProgress {
   Error,
 }
 
+export interface ManagementState {
+  isActive: boolean;
+  nextScreen?: ManagementScreens;
+  isUsernameAvailable?: boolean;
+  error?: string;
+  invites?: ApiExportedInvite[];
+  revokedInvites?: ApiExportedInvite[];
+  editingInvite?: ApiExportedInvite;
+  inviteInfo?: {
+    invite: ApiExportedInvite;
+    importers?: ApiChatInviteImporter[];
+    requesters?: ApiChatInviteImporter[];
+  };
+}
+
 export enum NewChatMembersProgress {
   Closed,
   InProgress,
@@ -317,7 +336,14 @@ export enum ManagementScreens {
   ChatAdministrators,
   GroupRecentActions,
   ChatAdminRights,
+  ChatNewAdminRights,
   GroupMembers,
+  GroupAddAdmins,
+  Invites,
+  EditInvite,
+  Reactions,
+  InviteInfo,
+  JoinRequests,
 }
 
 export type ManagementType = 'user' | 'group' | 'channel';

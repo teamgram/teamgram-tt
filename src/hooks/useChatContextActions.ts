@@ -9,24 +9,24 @@ import {
 import { compact } from '../util/iteratees';
 import useLang from './useLang';
 
-export default ({
+const useChatContextActions = ({
   chat,
   user,
-  handleDelete,
-  handleChatFolderChange,
   folderId,
   isPinned,
   isMuted,
   canChangeFolder,
+  handleDelete,
+  handleChatFolderChange,
 }: {
   chat: ApiChat | undefined;
   user: ApiUser | undefined;
-  handleDelete: () => void;
-  handleChatFolderChange: () => void;
   folderId?: number;
   isPinned?: boolean;
   isMuted?: boolean;
   canChangeFolder?: boolean;
+  handleDelete: () => void;
+  handleChatFolderChange: () => void;
 }, isInSearch = false) => {
   const lang = useLang();
 
@@ -107,3 +107,5 @@ export default ({
     chat, canChangeFolder, lang, handleChatFolderChange, isPinned, isInSearch, isMuted, handleDelete, folderId, isSelf,
   ]);
 };
+
+export default useChatContextActions;

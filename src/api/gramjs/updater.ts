@@ -13,6 +13,7 @@ import {
   buildPollResults,
   buildApiMessageFromNotification,
   buildMessageDraft,
+  buildMessageReactions,
 } from './apiBuilders/messages';
 import {
   buildChatMember,
@@ -36,6 +37,7 @@ import {
   addEntitiesWithPhotosToLocalDb,
   addPhotoToLocalDb,
   resolveMessageApiChatId,
+  serializeBytes,
 } from './helpers';
 import { buildApiNotifyException, buildPrivacyKey, buildPrivacyRules } from './apiBuilders/misc';
 import { buildApiPhoto } from './apiBuilders/common';
@@ -45,6 +47,7 @@ import {
   getGroupCallId,
 } from './apiBuilders/calls';
 import { buildApiPeerId, getApiChatIdFromMtpPeer } from './apiBuilders/peers';
+import { buildApiEmojiInteraction } from './apiBuilders/symbols';
 
 type Update = (
   (GramJs.TypeUpdate | GramJs.TypeUpdates) & { _entities?: (GramJs.TypeUser | GramJs.TypeChat)[] }
@@ -60,6 +63,9 @@ export function init(_onUpdate: OnApiUpdate) {
 
 const sentMessageIds = new Set();
 let serverTimeOffset = 0;
+// Workaround for a situation when an incorrect update comes with an undefined property `adminRights`
+let shouldIgnoreNextChannelUpdate = false;
+const IGNORE_NEXT_CHANNEL_UPDATE_TIMEOUT = 2000;
 
 function dispatchUserAndChatUpdates(entities: (GramJs.TypeUser | GramJs.TypeChat)[]) {
   entities
@@ -224,7 +230,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       } else if (action instanceof GramJs.MessageActionChatDeleteUser) {
         // eslint-disable-next-line no-underscore-dangle
         if (update._entities && update._entities.some((e): e is GramJs.User => (
-          e instanceof GramJs.User && !!e.self && e.id === action.userId
+          e instanceof GramJs.User && Boolean(e.self) && e.id === action.userId
         ))) {
           onUpdate({
             '@type': 'updateChat',
@@ -242,7 +248,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       } else if (action instanceof GramJs.MessageActionChatAddUser) {
         // eslint-disable-next-line no-underscore-dangle
         if (update._entities && update._entities.some((e): e is GramJs.User => (
-          e instanceof GramJs.User && !!e.self && action.users.includes(e.id)
+          e instanceof GramJs.User && Boolean(e.self) && action.users.includes(e.id)
         ))) {
           onUpdate({
             '@type': 'updateChatJoin',
@@ -287,6 +293,13 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       id: message.id,
       chatId: message.chatId,
       message,
+    });
+  } else if (update instanceof GramJs.UpdateMessageReactions) {
+    onUpdate({
+      '@type': 'updateMessageReactions',
+      id: update.msgId,
+      chatId: getApiChatIdFromMtpPeer(update.peer),
+      reactions: buildMessageReactions(update.reactions),
     });
   } else if (update instanceof GramJs.UpdateDeleteMessages) {
     onUpdate({
@@ -466,7 +479,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       '@type': 'updateMessagePollVote',
       pollId: String(update.pollId),
       userId: buildApiPeerId(update.userId, 'user'),
-      options: update.options.map((option) => String.fromCharCode(...option)),
+      options: update.options.map(serializeBytes),
     });
   } else if (update instanceof GramJs.UpdateChannelMessageViews) {
     onUpdate({
@@ -610,11 +623,21 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       ? buildApiPeerId(update.userId, 'user')
       : buildApiPeerId(update.chatId, 'chat');
 
-    onUpdate({
-      '@type': 'updateChatTypingStatus',
-      id,
-      typingStatus: buildChatTypingStatus(update, serverTimeOffset),
-    });
+    if (update.action instanceof GramJs.SendMessageEmojiInteraction) {
+      onUpdate({
+        '@type': 'updateStartEmojiInteraction',
+        id,
+        emoji: update.action.emoticon,
+        messageId: update.action.msgId,
+        interaction: buildApiEmojiInteraction(JSON.parse(update.action.interaction.data)),
+      });
+    } else {
+      onUpdate({
+        '@type': 'updateChatTypingStatus',
+        id,
+        typingStatus: buildChatTypingStatus(update, serverTimeOffset),
+      });
+    }
   } else if (update instanceof GramJs.UpdateChannelUserTyping) {
     const id = buildApiPeerId(update.channelId, 'channel');
 
@@ -635,6 +658,16 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
     ));
 
     if (channel instanceof GramJs.Channel) {
+      if (shouldIgnoreNextChannelUpdate) {
+        shouldIgnoreNextChannelUpdate = false;
+        return;
+      }
+
+      if (originRequest instanceof GramJs.messages.ToggleNoForwards) {
+        shouldIgnoreNextChannelUpdate = true;
+        setTimeout(() => { shouldIgnoreNextChannelUpdate = false; }, IGNORE_NEXT_CHANNEL_UPDATE_TIMEOUT);
+      }
+
       const chat = buildApiChatFromPreview(channel);
       if (chat) {
         onUpdate({
@@ -744,7 +777,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
         .filter((e) => e instanceof GramJs.User && !e.contact)
         .forEach((user) => {
           onUpdate({
-            '@type': 'deleteUser',
+            '@type': 'deleteContact',
             id: buildApiPeerId(user.id, 'user'),
           });
         });
@@ -845,6 +878,20 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       '@type': 'updateGroupCallParticipants',
       groupCallId: getGroupCallId(update.call),
       participants: update.participants.map(buildApiGroupCallParticipant),
+    });
+  } else if (update instanceof GramJs.UpdatePendingJoinRequests) {
+    // eslint-disable-next-line no-underscore-dangle
+    const entities = update._entities;
+    if (entities) {
+      addEntitiesWithPhotosToLocalDb(entities);
+      dispatchUserAndChatUpdates(entities);
+    }
+
+    onUpdate({
+      '@type': 'updatePendingJoinRequests',
+      chatId: getApiChatIdFromMtpPeer(update.peer),
+      recentRequesterIds: update.recentRequesters.map((id) => buildApiPeerId(id, 'user')),
+      requestsPending: update.requestsPending,
     });
   } else if (DEBUG) {
     const params = typeof update === 'object' && 'className' in update ? update.className : update;

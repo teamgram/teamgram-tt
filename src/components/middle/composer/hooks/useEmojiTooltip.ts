@@ -14,6 +14,7 @@ import {
 } from '../../../../util/iteratees';
 import memoized from '../../../../util/memoized';
 import useFlag from '../../../../hooks/useFlag';
+import renderText from '../../../common/helpers/renderText';
 
 interface Library {
   keywords: string[];
@@ -43,7 +44,7 @@ try {
 
 export default function useEmojiTooltip(
   isAllowed: boolean,
-  html: string,
+  htmlRef: { current: string },
   recentEmojiIds: string[],
   inputId = EDITABLE_INPUT_ID,
   onUpdateHtml: (html: string) => void,
@@ -71,6 +72,7 @@ export default function useEmojiTooltip(
     }
   }, [isDisabled]);
 
+  const html = htmlRef.current;
   useEffect(() => {
     if (!isAllowed || !html || !byId || isDisabled) {
       unmarkIsOpen();
@@ -111,17 +113,18 @@ export default function useEmojiTooltip(
   ]);
 
   const insertEmoji = useCallback((textEmoji: string, isForce?: boolean) => {
-    const atIndex = html.lastIndexOf(':', isForce ? html.lastIndexOf(':') - 1 : undefined);
+    const currentHtml = htmlRef.current;
+    const atIndex = currentHtml.lastIndexOf(':', isForce ? currentHtml.lastIndexOf(':') - 1 : undefined);
     if (atIndex !== -1) {
-      onUpdateHtml(`${html.substr(0, atIndex)}${textEmoji}`);
+      onUpdateHtml(`${currentHtml.substr(0, atIndex)}${renderText(textEmoji, ['emoji_html'])}`);
       const messageInput = document.getElementById(inputId)!;
       requestAnimationFrame(() => {
-        focusEditableElement(messageInput, true);
+        focusEditableElement(messageInput, true, true);
       });
     }
 
     unmarkIsOpen();
-  }, [html, inputId, onUpdateHtml, unmarkIsOpen]);
+  }, [htmlRef, inputId, onUpdateHtml, unmarkIsOpen]);
 
   useEffect(() => {
     if (isOpen && shouldForceInsertEmoji && filteredEmojis.length) {

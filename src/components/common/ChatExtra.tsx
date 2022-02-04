@@ -1,9 +1,9 @@
 import React, {
   FC, memo, useCallback, useEffect,
 } from '../../lib/teact/teact';
-import { withGlobal } from '../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../lib/teact/teactn';
 
-import { GlobalActions, GlobalState } from '../../global/types';
+import { GlobalState } from '../../global/types';
 import { ApiChat, ApiCountryCode, ApiUser } from '../../api/types';
 
 import {
@@ -13,7 +13,6 @@ import {
   getChatDescription, getChatLink, getHasAdminRight, isChatChannel, isUserId, isUserRightBanned, selectIsChatMuted,
 } from '../../modules/helpers';
 import renderText from './helpers/renderText';
-import { pick } from '../../util/iteratees';
 import { copyTextToClipboard } from '../../util/clipboard';
 import { formatPhoneNumberWithCode } from '../../util/phoneNumber';
 import useLang from '../../hooks/useLang';
@@ -26,17 +25,17 @@ type OwnProps = {
   forceShowSelf?: boolean;
 };
 
-type StateProps = {
-  user?: ApiUser;
-  chat?: ApiChat;
-  canInviteUsers?: boolean;
-  isMuted?: boolean;
-  phoneCodeList: ApiCountryCode[];
-} & Pick<GlobalState, 'lastSyncTime'>;
+type StateProps =
+  {
+    user?: ApiUser;
+    chat?: ApiChat;
+    canInviteUsers?: boolean;
+    isMuted?: boolean;
+    phoneCodeList: ApiCountryCode[];
+  }
+  & Pick<GlobalState, 'lastSyncTime'>;
 
-type DispatchProps = Pick<GlobalActions, 'loadFullUser' | 'updateChatMutedState' | 'showNotification'>;
-
-const ChatExtra: FC<OwnProps & StateProps & DispatchProps> = ({
+const ChatExtra: FC<OwnProps & StateProps> = ({
   lastSyncTime,
   user,
   chat,
@@ -44,10 +43,13 @@ const ChatExtra: FC<OwnProps & StateProps & DispatchProps> = ({
   canInviteUsers,
   isMuted,
   phoneCodeList,
-  loadFullUser,
-  showNotification,
-  updateChatMutedState,
 }) => {
+  const {
+    loadFullUser,
+    showNotification,
+    updateChatMutedState,
+  } = getDispatch();
+
   const {
     id: userId,
     fullInfo,
@@ -83,7 +85,7 @@ const ChatExtra: FC<OwnProps & StateProps & DispatchProps> = ({
 
   return (
     <div className="ChatExtra">
-      {formattedNumber && !!formattedNumber.length && (
+      {formattedNumber && Boolean(formattedNumber.length) && (
         <ListItem icon="phone" multiline narrow ripple onClick={() => copy(formattedNumber, lang('Phone'))}>
           <span className="title" dir="auto">{formattedNumber}</span>
           <span className="subtitle">{lang('Phone')}</span>
@@ -101,7 +103,7 @@ const ChatExtra: FC<OwnProps & StateProps & DispatchProps> = ({
           <span className="subtitle">{lang('Username')}</span>
         </ListItem>
       )}
-      {description && !!description.length && (
+      {description && Boolean(description.length) && (
         <ListItem
           icon="info"
           multiline
@@ -115,7 +117,13 @@ const ChatExtra: FC<OwnProps & StateProps & DispatchProps> = ({
         </ListItem>
       )}
       {(canInviteUsers || !username) && link && (
-        <ListItem icon="mention" multiline narrow ripple onClick={() => copy(link, lang('SetUrlPlaceholder'))}>
+        <ListItem
+          icon={chat.username ? 'mention' : 'link'}
+          multiline
+          narrow
+          ripple
+          onClick={() => copy(link, lang('SetUrlPlaceholder'))}
+        >
           <div className="title">{link}</div>
           <span className="subtitle">{lang('SetUrlPlaceholder')}</span>
         </ListItem>
@@ -152,7 +160,4 @@ export default memo(withGlobal<OwnProps>(
       lastSyncTime, phoneCodeList, chat, user, canInviteUsers, isMuted,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'loadFullUser', 'updateChatMutedState', 'showNotification',
-  ]),
 )(ChatExtra));

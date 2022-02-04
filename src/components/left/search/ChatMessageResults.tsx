@@ -1,21 +1,19 @@
 import React, {
   FC, memo, useCallback, useMemo,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
 import { ApiChat, ApiMessage } from '../../../api/types';
-import { GlobalActions } from '../../../global/types';
 import { LoadMoreDirection } from '../../../types';
 
-import { pick } from '../../../util/iteratees';
-import { getMessageSummaryText } from '../../../modules/helpers';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import { throttle } from '../../../util/schedulers';
 import useLang from '../../../hooks/useLang';
+import { renderMessageSummary } from '../../common/helpers/renderMessageText';
 
 import InfiniteScroll from '../../ui/InfiniteScroll';
-import ChatMessage from './ChatMessage';
 import NothingFound from '../../common/NothingFound';
+import ChatMessage from './ChatMessage';
 import DateSuggest from './DateSuggest';
 
 export type OwnProps = {
@@ -34,11 +32,9 @@ type StateProps = {
   lastSyncTime?: number;
 };
 
-type DispatchProps = Pick<GlobalActions, ('searchMessagesGlobal')>;
-
 const runThrottled = throttle((cb) => cb(), 500, true);
 
-const ChatMessageResults: FC<OwnProps & StateProps & DispatchProps> = ({
+const ChatMessageResults: FC<OwnProps & StateProps> = ({
   searchQuery,
   currentUserId,
   dateSearchQuery,
@@ -47,9 +43,10 @@ const ChatMessageResults: FC<OwnProps & StateProps & DispatchProps> = ({
   chatsById,
   fetchingStatus,
   lastSyncTime,
-  searchMessagesGlobal,
   onSearchDateSelect,
 }) => {
+  const { searchMessagesGlobal } = getDispatch();
+
   const lang = useLang();
   const handleLoadMore = useCallback(({ direction }: { direction: LoadMoreDirection }) => {
     if (lastSyncTime && direction === LoadMoreDirection.Backwards) {
@@ -79,7 +76,7 @@ const ChatMessageResults: FC<OwnProps & StateProps & DispatchProps> = ({
   }, [foundIds, globalMessagesByChatId]);
 
   function renderFoundMessage(message: ApiMessage) {
-    const text = getMessageSummaryText(lang, message);
+    const text = renderMessageSummary(lang, message);
     const chat = chatsById[message.chatId];
 
     if (!text || !chat) {
@@ -119,7 +116,7 @@ const ChatMessageResults: FC<OwnProps & StateProps & DispatchProps> = ({
             description={lang('ChatList.Search.NoResultsDescription')}
           />
         )}
-        {!!foundMessages.length && foundMessages.map(renderFoundMessage)}
+        {foundMessages.map(renderFoundMessage)}
       </InfiniteScroll>
     </div>
   );
@@ -142,5 +139,4 @@ export default memo(withGlobal<OwnProps>(
       lastSyncTime,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, ['searchMessagesGlobal']),
 )(ChatMessageResults));

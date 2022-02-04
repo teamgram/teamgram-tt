@@ -8,7 +8,7 @@ import captureEscKeyListener from '../../../../util/captureEscKeyListener';
 
 type ActiveVoiceRecording = { stop: () => Promise<voiceRecording.Result>; pause: NoneToVoidFunction } | undefined;
 
-export default () => {
+const useVoiceRecording = () => {
   // eslint-disable-next-line no-null/no-null
   const recordButtonRef = useRef<HTMLButtonElement>(null);
   const [activeVoiceRecording, setActiveVoiceRecording] = useState<ActiveVoiceRecording>();
@@ -50,7 +50,6 @@ export default () => {
     if (recordButtonRef.current) {
       recordButtonRef.current.style.boxShadow = 'none';
     }
-
     try {
       return activeVoiceRecording!.pause();
     } catch (err) {
@@ -94,3 +93,5 @@ export default () => {
     startRecordTimeRef,
   };
 };
+
+export default useVoiceRecording;

@@ -5,7 +5,6 @@ import { ApiUpdate, MAIN_THREAD_ID } from '../../../api/types';
 import { ARCHIVED_FOLDER_ID, MAX_ACTIVE_PINNED_CHATS } from '../../../config';
 import { pick } from '../../../util/iteratees';
 import { closeMessageNotifications, notifyAboutNewMessage } from '../../../util/notifications';
-import { updateAppBadge } from '../../../util/appBadge';
 import {
   updateChat,
   updateChatListIds,
@@ -19,15 +18,11 @@ import {
   selectIsChatListed,
   selectChatListType,
   selectCurrentMessageList,
-  selectCountNotMutedUnread,
 } from '../../selectors';
-import { throttle } from '../../../util/schedulers';
 
 const TYPING_STATUS_CLEAR_DELAY = 6000; // 6 seconds
 // Enough to animate and mark as read in Message List
 const CURRENT_CHAT_UNREAD_DELAY = 1500;
-
-const runThrottledForUpdateAppBadge = throttle((cb) => cb(), 500, true);
 
 addReducer('apiUpdate', (global, actions, update: ApiUpdate) => {
   switch (update['@type']) {
@@ -39,8 +34,6 @@ addReducer('apiUpdate', (global, actions, update: ApiUpdate) => {
 
       const newGlobal = updateChat(global, update.id, update.chat, update.newProfilePhoto);
       setGlobal(newGlobal);
-
-      runThrottledForUpdateAppBadge(() => updateAppBadge(selectCountNotMutedUnread(getGlobal())));
 
       if (update.chat.id) {
         closeMessageNotifications({
@@ -76,8 +69,6 @@ addReducer('apiUpdate', (global, actions, update: ApiUpdate) => {
 
     case 'updateChatInbox': {
       setGlobal(updateChat(global, update.id, update.chat));
-
-      runThrottledForUpdateAppBadge(() => updateAppBadge(selectCountNotMutedUnread(getGlobal())));
 
       break;
     }
@@ -129,7 +120,6 @@ addReducer('apiUpdate', (global, actions, update: ApiUpdate) => {
         }));
       }
 
-      updateAppBadge(selectCountNotMutedUnread(getGlobal()));
       notifyAboutNewMessage({
         chat,
         message,
@@ -381,6 +371,22 @@ addReducer('apiUpdate', (global, actions, update: ApiUpdate) => {
 
       actions.showDialog({ data });
       break;
+    }
+
+    case 'updatePendingJoinRequests': {
+      const { chatId, requestsPending, recentRequesterIds } = update;
+      const chat = global.chats.byId[chatId];
+      if (chat) {
+        global = updateChat(global, chatId, {
+          fullInfo: {
+            ...chat.fullInfo,
+            requestsPending,
+            recentRequesterIds,
+          },
+        });
+        setGlobal(global);
+        actions.loadChatJoinRequests({ chatId });
+      }
     }
   }
 });

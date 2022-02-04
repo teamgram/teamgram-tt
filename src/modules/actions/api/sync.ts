@@ -5,14 +5,12 @@ import {
 import {
   ApiChat, ApiFormattedText, ApiMessage, ApiUser, MAIN_THREAD_ID,
 } from '../../../api/types';
-import { GlobalActions } from '../../../global/types';
 
 import {
   CHAT_LIST_LOAD_SLICE, DEBUG, MESSAGE_LIST_SLICE, SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../../config';
 import { callApi } from '../../../api/gramjs';
 import { buildCollectionByKey } from '../../../util/iteratees';
-import { updateAppBadge } from '../../../util/appBadge';
 import {
   replaceChatListIds,
   replaceChats,
@@ -35,7 +33,6 @@ import {
   selectDraft,
   selectChatMessage,
   selectThreadInfo,
-  selectCountNotMutedUnread,
   selectLastServiceNotification,
 } from '../../selectors';
 import { isUserId } from '../../helpers';
@@ -44,15 +41,31 @@ addReducer('sync', (global, actions) => {
   void sync(actions.afterSync);
 });
 
-addReducer('afterSync', (global, actions) => {
-  void afterSync(actions);
+addReducer('afterSync', () => {
+  void afterSync();
 });
+
+const RELEASE_STATUS_TIMEOUT = 15000; // 10 sec;
+
+let releaseStatusTimeout: number | undefined;
 
 async function sync(afterSyncCallback: () => void) {
   if (DEBUG) {
     // eslint-disable-next-line no-console
     console.log('>>> START SYNC');
   }
+
+  if (releaseStatusTimeout) {
+    clearTimeout(releaseStatusTimeout);
+  }
+
+  setGlobal({ ...getGlobal(), isSyncing: true });
+
+  // Workaround for `isSyncing = true` sometimes getting stuck for some reason
+  releaseStatusTimeout = window.setTimeout(() => {
+    setGlobal({ ...getGlobal(), isSyncing: false });
+    releaseStatusTimeout = undefined;
+  }, RELEASE_STATUS_TIMEOUT);
 
   await callApi('fetchCurrentUser');
 
@@ -63,6 +76,7 @@ async function sync(afterSyncCallback: () => void) {
   setGlobal({
     ...getGlobal(),
     lastSyncTime: Date.now(),
+    isSyncing: false,
   });
 
   if (DEBUG) {
@@ -73,13 +87,11 @@ async function sync(afterSyncCallback: () => void) {
   afterSyncCallback();
 }
 
-async function afterSync(actions: GlobalActions) {
+async function afterSync() {
   if (DEBUG) {
     // eslint-disable-next-line no-console
     console.log('>>> START AFTER-SYNC');
   }
-
-  actions.loadFavoriteStickers();
 
   await Promise.all([
     loadAndUpdateUsers(),
@@ -87,8 +99,6 @@ async function afterSync(actions: GlobalActions) {
   ]);
 
   await callApi('fetchCurrentUser');
-
-  updateAppBadge(selectCountNotMutedUnread(getGlobal()));
 
   if (DEBUG) {
     // eslint-disable-next-line no-console

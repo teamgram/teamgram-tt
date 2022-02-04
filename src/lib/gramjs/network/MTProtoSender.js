@@ -21,7 +21,7 @@ const BinaryReader = require('../extensions/BinaryReader');
 const {
     UpdateConnectionState,
     UpdateServerTimeOffset,
-} = require('./index');
+} = require('./updates');
 const { BadMessageError } = require('../errors/Common');
 const {
     BadServerSalt,
@@ -100,7 +100,7 @@ class MTProtoSender {
          * pending futures should be cancelled.
          */
         this._user_connected = false;
-        this._reconnecting = false;
+        this.isReconnecting = false;
         this._disconnected = true;
 
         /**
@@ -169,6 +169,8 @@ class MTProtoSender {
      * @returns {Promise<boolean>}
      */
     async connect(connection, force) {
+        this.userDisconnected = false;
+
         if (this._user_connected && !force) {
             this._log.info('User is already connected!');
             return false;
@@ -297,7 +299,7 @@ class MTProtoSender {
             this._log.debug('Already have an auth key ...');
         }
         this._user_connected = true;
-        this._reconnecting = false;
+        this.isReconnecting = false;
 
         this._log.debug('Starting send loop');
         this._send_loop_handle = this._sendLoop();
@@ -315,13 +317,15 @@ class MTProtoSender {
     async _disconnect() {
         this._send_queue.rejectAll();
 
+        if (this._updateCallback) {
+            this._updateCallback(new UpdateConnectionState(UpdateConnectionState.disconnected));
+        }
+
         if (this._connection === undefined) {
             this._log.info('Not disconnecting (already have no connection)');
             return;
         }
-        if (this._updateCallback) {
-            this._updateCallback(new UpdateConnectionState(UpdateConnectionState.disconnected));
-        }
+
         this._log.info('Disconnecting from %s...'.replace('%s', this._connection.toString()));
         this._user_connected = false;
         this._log.debug('Closing current connection...');
@@ -338,7 +342,7 @@ class MTProtoSender {
     async _sendLoop() {
         this._send_queue = new MessagePacker(this._state, this._log);
 
-        while (this._user_connected && !this._reconnecting) {
+        while (this._user_connected && !this.isReconnecting) {
             if (this._pending_ack.size) {
                 const ack = new RequestState(new MsgsAck({ msgIds: Array(...this._pending_ack) }));
                 this._send_queue.append(ack);
@@ -348,13 +352,13 @@ class MTProtoSender {
                 }
                 this._pending_ack.clear();
             }
-            this._log.debug(`Waiting for messages to send...${this._reconnecting}`);
+            this._log.debug(`Waiting for messages to send...${this.isReconnecting}`);
             // TODO Wait for the connection send queue to be empty?
             // This means that while it's not empty we can wait for
             // more messages to be added to the send queue.
             const res = await this._send_queue.get();
 
-            if (this._reconnecting) {
+            if (this.isReconnecting) {
                 return;
             }
 
@@ -395,7 +399,7 @@ class MTProtoSender {
         let body;
         let message;
 
-        while (this._user_connected && !this._reconnecting) {
+        while (this._user_connected && !this.isReconnecting) {
             // this._log.debug('Receiving items from the network...');
             this._log.debug('Receiving items from the network...');
             try {
@@ -842,8 +846,8 @@ class MTProtoSender {
     }
 
     reconnect() {
-        if (this._user_connected && !this._reconnecting) {
-            this._reconnecting = true;
+        if (this._user_connected && !this.isReconnecting) {
+            this.isReconnecting = true;
             // TODO Should we set this?
             // this._user_connected = false
             // we want to wait a second between each reconnect try to not flood the server with reconnects
@@ -877,7 +881,7 @@ class MTProtoSender {
         );
         await this.connect(newConnection, true);
 
-        this._reconnecting = false;
+        this.isReconnecting = false;
         // uncomment this if you want to resend
         // this._send_queue.extend(Object.values(this._pending_state))
         for (const state of Object.values(this._pending_state)) {

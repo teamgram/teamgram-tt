@@ -6,6 +6,7 @@ import {
 } from '../../api/types';
 import { MediaViewerOrigin } from '../../types';
 
+import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../util/environment';
 import useBlurSync from '../../hooks/useBlurSync';
 import useMedia from '../../hooks/useMedia';
 import useMediaWithLoadProgress from '../../hooks/useMediaWithLoadProgress';
@@ -26,10 +27,11 @@ import {
   isMessageDocumentVideo,
 } from '../../modules/helpers';
 import {
-  selectChat, selectChatMessage, selectScheduledMessage, selectUser,
+  selectChat, selectChatMessage, selectIsMessageProtected, selectScheduledMessage, selectUser,
 } from '../../modules/selectors';
 import { AVATAR_FULL_DIMENSIONS, calculateMediaViewerDimensions } from '../common/helpers/mediaDimensions';
 import { renderMessageText } from '../common/helpers/renderMessageText';
+import stopEvent from '../../util/stopEvent';
 
 import Spinner from '../ui/Spinner';
 import MediaViewerFooter from './MediaViewerFooter';
@@ -60,6 +62,7 @@ type StateProps = {
   profilePhotoIndex?: number;
   message?: ApiMessage;
   origin?: MediaViewerOrigin;
+  isProtected?: boolean;
 };
 
 const ANIMATION_DURATION = 350;
@@ -77,6 +80,7 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
     onClose,
     onFooterClick,
     isFooterHidden,
+    isProtected,
   } = props;
   /* Content */
   const photo = message ? getMessagePhoto(message) : undefined;
@@ -163,7 +167,7 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
         {renderPhoto(
           fullMediaBlobUrl || previewBlobUrl,
           calculateMediaViewerDimensions(AVATAR_FULL_DIMENSIONS, false),
-          false,
+          !IS_SINGLE_COLUMN_LAYOUT && !isProtected,
         )}
       </div>
     );
@@ -172,38 +176,40 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
   if (!message) return undefined;
   const textParts = renderMessageText(message);
   const hasFooter = Boolean(textParts);
+
   return (
     <div
       className={`MediaViewerContent ${hasFooter ? 'has-footer' : ''}`}
     >
+      {isProtected && <div onContextMenu={stopEvent} className="protector" />}
       {isPhoto && renderPhoto(
         localBlobUrl || fullMediaBlobUrl || previewBlobUrl || pictogramBlobUrl,
         message && calculateMediaViewerDimensions(dimensions!, hasFooter),
-        false,
+        !IS_SINGLE_COLUMN_LAYOUT && !isProtected,
       )}
-      {isVideo && (isActive ? (
+      {isVideo && ((!isActive && IS_TOUCH_ENV) ? renderVideoPreview(
+        bestImageData,
+        message && calculateMediaViewerDimensions(dimensions!, hasFooter, false),
+        !IS_SINGLE_COLUMN_LAYOUT && !isProtected,
+      ) : (
         <VideoPlayer
           key={messageId}
           url={localBlobUrl || fullMediaBlobUrl}
           isGif={isGif}
           posterData={bestImageData}
-          posterSize={message && calculateMediaViewerDimensions(dimensions!, hasFooter, true)}
+          posterSize={message && calculateMediaViewerDimensions(dimensions!, hasFooter, false)}
           loadProgress={loadProgress}
           fileSize={videoSize!}
-          isMediaViewerOpen={isOpen}
+          isMediaViewerOpen={isOpen && isActive}
           noPlay={!isActive}
           onClose={onClose}
         />
-      ) : renderVideoPreview(
-        bestImageData,
-        message && calculateMediaViewerDimensions(dimensions!, hasFooter, true),
-        false,
       ))}
       {textParts && (
         <MediaViewerFooter
           text={textParts}
           onClick={onFooterClick}
-          isHidden={isFooterHidden && (!isVideo || isGif)}
+          isHidden={isFooterHidden}
           isForVideo={isVideo && !isGif}
         />
       )}
@@ -238,6 +244,7 @@ export default memo(withGlobal<OwnProps>(
         senderId: message.senderId,
         origin,
         message,
+        isProtected: selectIsMessageProtected(global, message),
       };
     }
 
@@ -275,6 +282,7 @@ export default memo(withGlobal<OwnProps>(
       senderId: message.senderId,
       origin,
       message,
+      isProtected: selectIsMessageProtected(global, message),
     };
   },
 )(MediaViewerContent));

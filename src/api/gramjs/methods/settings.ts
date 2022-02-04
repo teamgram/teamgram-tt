@@ -2,24 +2,36 @@ import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 
 import {
-  ApiChat, ApiLangString, ApiLanguage, ApiNotifyException, ApiUser, ApiWallpaper,
+  ApiAppConfig,
+  ApiChat,
+  ApiLangString,
+  ApiLanguage,
+  ApiNotifyException,
+  ApiUser,
+  ApiWallpaper,
 } from '../../types';
 import { ApiPrivacyKey, InputPrivacyRules, LangCode } from '../../../types';
 
 import { BLOCKED_LIST_LIMIT, DEFAULT_LANG_PACK, LANG_PACKS } from '../../../config';
 import {
-  buildApiWallpaper, buildApiSession, buildPrivacyRules, buildApiNotifyException, buildApiCountryList,
+  buildApiCountryList,
+  buildApiNotifyException,
+  buildApiSession,
+  buildApiWallpaper,
+  buildPrivacyRules,
 } from '../apiBuilders/misc';
 
 import { buildApiUser } from '../apiBuilders/users';
 import { buildApiChatFromPreview } from '../apiBuilders/chats';
-import { buildInputPrivacyKey, buildInputPeer, buildInputEntity } from '../gramjsBuilders';
-import { invokeRequest, uploadFile, getClient } from './client';
+import { buildInputEntity, buildInputPeer, buildInputPrivacyKey } from '../gramjsBuilders';
+import { getClient, invokeRequest, uploadFile } from './client';
 import { omitVirtualClassFields } from '../apiBuilders/helpers';
 import { buildCollectionByKey } from '../../../util/iteratees';
 import { getServerTime } from '../../../util/serverTime';
-import { buildApiPeerId, getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
+import { getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 import localDb from '../localDb';
+import { buildApiConfig } from '../apiBuilders/appConfig';
+import { addEntitiesWithPhotosToLocalDb } from '../helpers';
 
 const MAX_INT_32 = 2 ** 31 - 1;
 const BETA_LANG_CODES = ['ar', 'fa', 'id', 'ko', 'uz'];
@@ -37,7 +49,7 @@ export function updateProfile({
     firstName: firstName || '',
     lastName: lastName || '',
     about: about || '',
-  }));
+  }), true);
 }
 
 export function checkUsername(username: string) {
@@ -45,14 +57,14 @@ export function checkUsername(username: string) {
 }
 
 export function updateUsername(username: string) {
-  return invokeRequest(new GramJs.account.UpdateUsername({ username }));
+  return invokeRequest(new GramJs.account.UpdateUsername({ username }), true);
 }
 
 export async function updateProfilePhoto(file: File) {
   const inputFile = await uploadFile(file);
   return invokeRequest(new GramJs.photos.UploadProfilePhoto({
     file: inputFile,
-  }));
+  }), true);
 }
 
 export async function uploadProfilePhoto(file: File) {
@@ -162,7 +174,9 @@ export function terminateAllAuthorizations() {
 export async function fetchNotificationExceptions({
   serverTimeOffset,
 }: { serverTimeOffset: number }) {
-  const result = await invokeRequest(new GramJs.account.GetNotifyExceptions({ compareSound: true }));
+  const result = await invokeRequest(new GramJs.account.GetNotifyExceptions({
+    compareSound: true,
+  }), undefined, undefined, true);
 
   if (!(result instanceof GramJs.Updates || result instanceof GramJs.UpdatesCombined)) {
     return undefined;
@@ -300,7 +314,7 @@ export async function fetchLangPack({ sourceLangPacks, langCode }: {
     return undefined;
   }
 
-  return { langPack: Object.assign({}, ...collections.reverse()) };
+  return { langPack: Object.assign({}, ...collections.reverse()) as typeof collections[0] };
 }
 
 export async function fetchLangStrings({ langPack, langCode, keys }: {
@@ -429,23 +443,21 @@ export function updateContentSettings(isEnabled: boolean) {
   }));
 }
 
+export async function fetchAppConfig(): Promise<ApiAppConfig | undefined> {
+  const result = await invokeRequest(new GramJs.help.GetAppConfig());
+  if (!result) return undefined;
+
+  return buildApiConfig(result);
+}
+
 function updateLocalDb(
   result: (
     GramJs.account.PrivacyRules | GramJs.contacts.Blocked | GramJs.contacts.BlockedSlice |
     GramJs.Updates | GramJs.UpdatesCombined
   ),
 ) {
-  result.users.forEach((user) => {
-    if (user instanceof GramJs.User) {
-      localDb.users[buildApiPeerId(user.id, 'user')] = user;
-    }
-  });
-
-  result.chats.forEach((chat) => {
-    if (chat instanceof GramJs.Chat || chat instanceof GramJs.Channel) {
-      localDb.chats[buildApiPeerId(chat.id, chat instanceof GramJs.Chat ? 'chat' : 'channel')] = chat;
-    }
-  });
+  addEntitiesWithPhotosToLocalDb(result.users);
+  addEntitiesWithPhotosToLocalDb(result.chats);
 }
 
 export async function fetchCountryList({ langCode = 'en' }: { langCode?: LangCode }) {

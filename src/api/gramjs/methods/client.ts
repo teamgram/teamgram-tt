@@ -47,12 +47,14 @@ export async function init(_onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) 
   onUpdate = _onUpdate;
 
   const {
-    userAgent, platform, sessionData, isTest, isMovSupported,
+    userAgent, platform, sessionData, isTest, isMovSupported, isWebmSupported,
   } = initialArgs;
   const session = new sessions.CallbackSession(sessionData, onSessionUpdate);
 
   // eslint-disable-next-line no-restricted-globals
   (self as any).isMovSupported = isMovSupported;
+  // eslint-disable-next-line no-restricted-globals
+  (self as any).isWebmSupported = isWebmSupported;
 
   client = new TelegramClient(
     session,
@@ -93,8 +95,10 @@ export async function init(_onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) 
         onError: onAuthError,
         initialMethod: platform === 'iOS' || platform === 'Android' ? 'phoneNumber' : 'qrCode',
       });
-    } catch (err) {
-      // TODO Investigate which request causes this exception
+    } catch (err: any) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+
       if (err.message !== 'Disconnect') {
         onUpdate({
           '@type': 'updateConnectionState',
@@ -162,9 +166,23 @@ function handleGramJsUpdate(update: any) {
 
 export async function invokeRequest<T extends GramJs.AnyRequest>(
   request: T,
-  shouldHandleUpdates = false,
+  shouldReturnTrue: true,
+  shouldThrow?: boolean,
+): Promise<true | undefined>;
+
+export async function invokeRequest<T extends GramJs.AnyRequest>(
+  request: T,
+  shouldReturnTrue?: boolean,
+  shouldThrow?: boolean,
+  shouldIgnoreUpdates?: boolean,
+): Promise<T['__response'] | undefined>;
+
+export async function invokeRequest<T extends GramJs.AnyRequest>(
+  request: T,
+  shouldReturnTrue = false,
   shouldThrow = false,
-): Promise<T['__response'] | undefined> {
+  shouldIgnoreUpdates = false,
+) {
   if (!isConnected) {
     if (DEBUG) {
       // eslint-disable-next-line no-console
@@ -187,36 +205,12 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
       console.log(`[GramJs/client] INVOKE RESPONSE ${request.className}`, result);
     }
 
-    if (shouldHandleUpdates) {
-      type ResultWithUpdates =
-        typeof result
-        & { updates?: GramJs.Updates | GramJs.UpdatesCombined };
-
-      let updatesContainer;
-      if (result instanceof GramJs.Updates || result instanceof GramJs.UpdatesCombined) {
-        updatesContainer = result;
-      } else if ('updates' in (result as ResultWithUpdates) && (
-        (result as ResultWithUpdates).updates instanceof GramJs.Updates
-        || (result as ResultWithUpdates).updates instanceof GramJs.UpdatesCombined
-      )) {
-        updatesContainer = (result as ResultWithUpdates).updates;
-      }
-
-      if (updatesContainer) {
-        injectUpdateEntities(updatesContainer);
-
-        updatesContainer.updates.forEach((update) => {
-          updater(update, request);
-        });
-      } else if (result instanceof GramJs.UpdatesTooLong) {
-        // TODO Implement
-      } else {
-        updater(result as GramJs.TypeUpdates, request);
-      }
+    if (!shouldIgnoreUpdates) {
+      handleUpdatesFromRequest(request, result);
     }
 
-    return result;
-  } catch (err) {
+    return shouldReturnTrue ? result && true : result;
+  } catch (err: any) {
     if (DEBUG) {
       // eslint-disable-next-line no-console
       console.log(`[GramJs/client] INVOKE ERROR ${request.className}`);
@@ -231,6 +225,36 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
     dispatchErrorUpdate(err, request);
 
     return undefined;
+  }
+}
+
+function handleUpdatesFromRequest<T extends GramJs.AnyRequest>(request: T, result: T['__response']) {
+  let manyUpdates;
+  let singleUpdate;
+
+  if (result instanceof GramJs.UpdatesCombined || result instanceof GramJs.Updates) {
+    manyUpdates = result;
+  } else if (typeof result === 'object' && 'updates' in result && (
+    result.updates instanceof GramJs.Updates || result.updates instanceof GramJs.UpdatesCombined
+  )) {
+    manyUpdates = result.updates;
+  } else if (
+    result instanceof GramJs.UpdateShortMessage
+    || result instanceof GramJs.UpdateShortChatMessage
+    || result instanceof GramJs.UpdateShort
+    || result instanceof GramJs.UpdateShortSentMessage
+  ) {
+    singleUpdate = result;
+  }
+
+  if (manyUpdates) {
+    injectUpdateEntities(manyUpdates);
+
+    manyUpdates.updates.forEach((update) => {
+      updater(update, request);
+    });
+  } else if (singleUpdate) {
+    updater(singleUpdate, request);
   }
 }
 
@@ -254,11 +278,13 @@ export async function fetchCurrentUser() {
     id: new GramJs.InputUserSelf(),
   }));
 
-  if (!userFull || !(userFull.user instanceof GramJs.User)) {
+  if (!userFull || !(userFull.users[0] instanceof GramJs.User)) {
     return;
   }
 
-  localDb.users[buildApiPeerId(userFull.user.id, 'user')] = userFull.user;
+  const user = userFull.users[0];
+
+  localDb.users[buildApiPeerId(user.id, 'user')] = user;
   const currentUser = buildApiUserFromFull(userFull);
 
   setMessageBuilderCurrentUserId(currentUser.id);
@@ -300,7 +326,7 @@ async function handleTerminatedSession() {
     await invokeRequest(new GramJs.users.GetFullUser({
       id: new GramJs.InputUserSelf(),
     }), undefined, true);
-  } catch (err) {
+  } catch (err: any) {
     if (err.message === 'AUTH_KEY_UNREGISTERED') {
       onUpdate({
         '@type': 'updateConnectionState',

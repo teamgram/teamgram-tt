@@ -1,18 +1,21 @@
 import React, {
   FC, memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
 
 import { ApiChat, ApiMessage } from '../../../api/types';
-import { GlobalActions } from '../../../global/types';
 import { LoadMoreDirection } from '../../../types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
-import { unique, pick } from '../../../util/iteratees';
-import { getMessageSummaryText, sortChatIds, filterUsersByName } from '../../../modules/helpers';
+import { unique } from '../../../util/iteratees';
+import {
+  sortChatIds,
+  filterUsersByName,
+} from '../../../modules/helpers';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import { throttle } from '../../../util/schedulers';
 import useLang from '../../../hooks/useLang';
+import { renderMessageSummary } from '../../common/helpers/renderMessageText';
 
 import InfiniteScroll from '../../ui/InfiniteScroll';
 import LeftSearchResultChat from './LeftSearchResultChat';
@@ -45,21 +48,21 @@ type StateProps = {
   lastSyncTime?: number;
 };
 
-type DispatchProps = Pick<GlobalActions, (
-  'openChat' | 'addRecentlyFoundChatId' | 'searchMessagesGlobal' | 'setGlobalSearchChatId'
-)>;
-
 const MIN_QUERY_LENGTH_FOR_GLOBAL_SEARCH = 4;
 const LESS_LIST_ITEMS_AMOUNT = 5;
 
 const runThrottled = throttle((cb) => cb(), 500, true);
 
-const ChatResults: FC<OwnProps & StateProps & DispatchProps> = ({
+const ChatResults: FC<OwnProps & StateProps> = ({
   searchQuery, searchDate, dateSearchQuery, currentUserId,
   localContactIds, localChatIds, localUserIds, globalChatIds, globalUserIds,
   foundIds, globalMessagesByChatId, chatsById, fetchingStatus, lastSyncTime,
-  onReset, onSearchDateSelect, openChat, addRecentlyFoundChatId, searchMessagesGlobal, setGlobalSearchChatId,
+  onReset, onSearchDateSelect,
 }) => {
+  const {
+    openChat, addRecentlyFoundChatId, searchMessagesGlobal, setGlobalSearchChatId,
+  } = getDispatch();
+
   const lang = useLang();
 
   const [shouldShowMoreLocal, setShouldShowMoreLocal] = useState<boolean>(false);
@@ -106,7 +109,9 @@ const ChatResults: FC<OwnProps & StateProps & DispatchProps> = ({
     ];
     // No need for expensive global updates on users, so we avoid them
     const usersById = getGlobal().users.byId;
-    const foundContactIds = filterUsersByName(contactIdsWithMe, usersById, searchQuery);
+    const foundContactIds = filterUsersByName(
+      contactIdsWithMe, usersById, searchQuery, currentUserId, lang('SavedMessages'),
+    );
 
     return [
       ...sortChatIds(unique([
@@ -115,7 +120,7 @@ const ChatResults: FC<OwnProps & StateProps & DispatchProps> = ({
         ...(localUserIds || []),
       ]), chatsById, undefined, currentUserId ? [currentUserId] : undefined),
     ];
-  }, [searchQuery, localContactIds, currentUserId, localChatIds, localUserIds, chatsById]);
+  }, [searchQuery, currentUserId, localContactIds, lang, localChatIds, localUserIds, chatsById]);
 
   const globalResults = useMemo(() => {
     if (!searchQuery || searchQuery.length < MIN_QUERY_LENGTH_FOR_GLOBAL_SEARCH || !globalChatIds || !globalUserIds) {
@@ -153,7 +158,7 @@ const ChatResults: FC<OwnProps & StateProps & DispatchProps> = ({
   }, [shouldShowMoreGlobal]);
 
   function renderFoundMessage(message: ApiMessage) {
-    const text = getMessageSummaryText(lang, message);
+    const text = renderMessageSummary(lang, message);
     const chat = chatsById[message.chatId];
 
     if (!text || !chat) {
@@ -199,7 +204,7 @@ const ChatResults: FC<OwnProps & StateProps & DispatchProps> = ({
           description={lang('ChatList.Search.NoResultsDescription')}
         />
       )}
-      {!!localResults.length && (
+      {Boolean(localResults.length) && (
         <div className="chat-selection no-selection no-scrollbar" dir={lang.isRtl ? 'rtl' : undefined}>
           {localResults.map((id) => (
             <PickerSelectedItem
@@ -210,7 +215,7 @@ const ChatResults: FC<OwnProps & StateProps & DispatchProps> = ({
           ))}
         </div>
       )}
-      {!!localResults.length && (
+      {Boolean(localResults.length) && (
         <div className="search-section">
           <h3 className="section-heading" dir={lang.isRtl ? 'auto' : undefined}>
             {localResults.length > LESS_LIST_ITEMS_AMOUNT && (
@@ -234,7 +239,7 @@ const ChatResults: FC<OwnProps & StateProps & DispatchProps> = ({
           })}
         </div>
       )}
-      {!!globalResults.length && (
+      {Boolean(globalResults.length) && (
         <div className="search-section">
           <h3 className="section-heading" dir={lang.isRtl ? 'auto' : undefined}>
             {globalResults.length > LESS_LIST_ITEMS_AMOUNT && (
@@ -259,7 +264,7 @@ const ChatResults: FC<OwnProps & StateProps & DispatchProps> = ({
           })}
         </div>
       )}
-      {!!foundMessages.length && (
+      {Boolean(foundMessages.length) && (
         <div className="search-section">
           <h3 className="section-heading" dir={lang.isRtl ? 'auto' : undefined}>{lang('SearchMessages')}</h3>
           {foundMessages.map(renderFoundMessage)}
@@ -306,10 +311,4 @@ export default memo(withGlobal<OwnProps>(
       lastSyncTime,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'openChat',
-    'addRecentlyFoundChatId',
-    'searchMessagesGlobal',
-    'setGlobalSearchChatId',
-  ]),
 )(ChatResults));

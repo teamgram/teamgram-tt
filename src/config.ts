@@ -30,7 +30,7 @@ export const MEDIA_PROGRESSIVE_CACHE_DISABLED = false;
 export const MEDIA_PROGRESSIVE_CACHE_NAME = 'tt-media-progressive';
 export const MEDIA_CACHE_MAX_BYTES = 512 * 1024; // 512 KB
 export const CUSTOM_BG_CACHE_NAME = 'tt-custom-bg';
-export const LANG_CACHE_NAME = 'tt-lang-packs-v6';
+export const LANG_CACHE_NAME = 'tt-lang-packs-v7';
 export const ASSET_CACHE_NAME = 'tt-assets';
 export const AUTODOWNLOAD_FILESIZE_MB_LIMITS = [1, 5, 10, 50, 100, 500];
 
@@ -58,9 +58,12 @@ export const PROFILE_PHOTOS_LIMIT = 40;
 export const PROFILE_SENSITIVE_AREA = 500;
 export const COMMON_CHATS_LIMIT = 100;
 export const GROUP_CALL_PARTICIPANTS_LIMIT = 100;
+export const REACTION_LIST_LIMIT = 100;
 
 export const TOP_CHAT_MESSAGES_PRELOAD_LIMIT = 20;
 export const ALL_CHATS_PRELOAD_DISABLED = false;
+
+export const SPONSORED_MESSAGE_CACHE_MS = 300000; // 5 min
 
 export const DEFAULT_VOLUME = 1;
 export const DEFAULT_PLAYBACK_RATE = 1;
@@ -75,6 +78,7 @@ export const IOS_DEFAULT_MESSAGE_TEXT_SIZE_PX = 17;
 export const MACOS_DEFAULT_MESSAGE_TEXT_SIZE_PX = 15;
 
 export const DRAFT_DEBOUNCE = 10000; // 10s
+export const SEND_MESSAGE_ACTION_INTERVAL = 3000; // 3s
 
 export const EDITABLE_INPUT_ID = 'editable-message-text';
 export const EDITABLE_INPUT_MODAL_ID = 'editable-message-text-modal';
@@ -117,10 +121,12 @@ export const STICKER_SIZE_SEARCH = 64;
 export const STICKER_SIZE_MODAL = 64;
 export const STICKER_SIZE_TWO_FA = 160;
 export const STICKER_SIZE_DISCUSSION_GROUPS = 140;
-export const STICKER_SIZE_FOLDER_SETTINGS = 80;
+export const STICKER_SIZE_FOLDER_SETTINGS = 100;
 export const STICKER_SIZE_INLINE_BOT_RESULT = 100;
+export const STICKER_SIZE_JOIN_REQUESTS = 140;
+export const STICKER_SIZE_INVITES = 140;
 export const RECENT_STICKERS_LIMIT = 20;
-export const MEMOJI_STICKER_ID = 'MEMOJI_STICKER';
+export const NO_STICKER_SET_ID = 'NO_STICKER_SET';
 
 export const BASE_EMOJI_KEYWORD_LANG = 'en';
 
@@ -141,6 +147,8 @@ export const CONTENT_TYPES_WITH_PREVIEW = new Set([
   ...SUPPORTED_IMAGE_CONTENT_TYPES,
   ...SUPPORTED_VIDEO_CONTENT_TYPES,
 ]);
+
+export const CONTENT_NOT_SUPPORTED = 'The message is not supported on this version of Telegram.';
 
 // eslint-disable-next-line max-len
 export const RE_LINK_TEMPLATE = '((ftp|https?):\\/\\/)?((www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,63})\\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)';
@@ -170,9 +178,6 @@ export const LIGHT_THEME_BG_COLOR = '#A2AF8E';
 export const DARK_THEME_BG_COLOR = '#0F0F0F';
 export const DARK_THEME_PATTERN_COLOR = '#0a0a0a8c';
 export const DEFAULT_PATTERN_COLOR = 'rgba(90, 110, 70, 0.6)';
-// TODO Get values from `getConfig` method once it's available
-export const SEEN_BY_MEMBERS_CHAT_MAX = 50;
-export const SEEN_BY_MEMBERS_EXPIRE = 604680; // One week - 2 min
 
 // Group calls
 export const GROUP_CALL_VOLUME_MULTIPLIER = 100;

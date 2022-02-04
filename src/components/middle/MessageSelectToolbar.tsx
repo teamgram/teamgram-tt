@@ -1,18 +1,18 @@
 import React, {
   FC, memo, useCallback, useEffect,
 } from '../../lib/teact/teact';
-import { withGlobal } from '../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../lib/teact/teactn';
 
-import { GlobalActions, MessageListType } from '../../global/types';
+import { MessageListType } from '../../global/types';
 
 import {
   selectCanDeleteSelectedMessages,
   selectCanDownloadSelectedMessages,
   selectCanReportSelectedMessages,
   selectCurrentMessageList,
+  selectHasProtectedMessage,
   selectSelectedMessagesCount,
 } from '../../modules/selectors';
-import { pick } from '../../util/iteratees';
 import useFlag from '../../hooks/useFlag';
 import captureKeyboardListeners from '../../util/captureKeyboardListeners';
 import buildClassName from '../../util/buildClassName';
@@ -38,14 +38,11 @@ type StateProps = {
   canDeleteMessages?: boolean;
   canReportMessages?: boolean;
   canDownloadMessages?: boolean;
+  hasProtectedMessage?: boolean;
   selectedMessageIds?: number[];
 };
 
-type DispatchProps = Pick<GlobalActions, (
-  'exitMessageSelectMode' | 'openForwardMenuForSelectedMessages' | 'downloadSelectedMessages'
-)>;
-
-const MessageSelectToolbar: FC<OwnProps & StateProps & DispatchProps> = ({
+const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
   canPost,
   isActive,
   messageListType,
@@ -54,11 +51,15 @@ const MessageSelectToolbar: FC<OwnProps & StateProps & DispatchProps> = ({
   canDeleteMessages,
   canReportMessages,
   canDownloadMessages,
+  hasProtectedMessage,
   selectedMessageIds,
-  exitMessageSelectMode,
-  openForwardMenuForSelectedMessages,
-  downloadSelectedMessages,
 }) => {
+  const {
+    exitMessageSelectMode,
+    openForwardMenuForSelectedMessages,
+    downloadSelectedMessages,
+  } = getDispatch();
+
   const [isDeleteModalOpen, openDeleteModal, closeDeleteModal] = useFlag();
   const [isReportModalOpen, openReportModal, closeReportModal] = useFlag();
 
@@ -125,16 +126,18 @@ const MessageSelectToolbar: FC<OwnProps & StateProps & DispatchProps> = ({
           {formattedMessagesCount}
         </span>
 
-        {!!selectedMessagesCount && (
+        {Boolean(selectedMessagesCount) && (
           <div className="MessageSelectToolbar-actions">
             {messageListType !== 'scheduled' && (
-              renderButton('forward', lang('Chat.ForwardActionHeader'), openForwardMenuForSelectedMessages)
+              renderButton(
+                'forward', lang('Chat.ForwardActionHeader'), openForwardMenuForSelectedMessages, hasProtectedMessage,
+              )
             )}
             {canReportMessages && (
               renderButton('flag', lang('Conversation.ReportMessages'), openReportModal)
             )}
             {canDownloadMessages && (
-              renderButton('download', lang('lng_media_download'), handleDownload)
+              renderButton('download', lang('lng_media_download'), handleDownload, hasProtectedMessage)
             )}
             {renderButton('delete', lang('EditAdminGroupDeleteMessages'), openDeleteModal, !canDeleteMessages, true)}
           </div>
@@ -156,11 +159,12 @@ const MessageSelectToolbar: FC<OwnProps & StateProps & DispatchProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   (global): StateProps => {
-    const { type: messageListType } = selectCurrentMessageList(global) || {};
+    const { type: messageListType, chatId } = selectCurrentMessageList(global) || {};
     const { canDelete } = selectCanDeleteSelectedMessages(global);
     const canReport = selectCanReportSelectedMessages(global);
     const canDownload = selectCanDownloadSelectedMessages(global);
     const { messageIds: selectedMessageIds } = global.selectedMessages || {};
+    const hasProtectedMessage = chatId ? selectHasProtectedMessage(global, chatId, selectedMessageIds) : false;
 
     return {
       isSchedule: messageListType === 'scheduled',
@@ -169,9 +173,7 @@ export default memo(withGlobal<OwnProps>(
       canReportMessages: canReport,
       canDownloadMessages: canDownload,
       selectedMessageIds,
+      hasProtectedMessage,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'exitMessageSelectMode', 'openForwardMenuForSelectedMessages', 'downloadSelectedMessages',
-  ]),
 )(MessageSelectToolbar));

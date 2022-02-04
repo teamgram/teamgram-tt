@@ -5,28 +5,30 @@ import { RE_LINK_TEMPLATE, RE_MENTION_TEMPLATE } from '../../../config';
 import { IS_EMOJI_SUPPORTED } from '../../../util/environment';
 import { fixNonStandardEmoji, nativeToUnified } from '../../../util/emoji';
 import buildClassName from '../../../util/buildClassName';
+import { compact } from '../../../util/iteratees';
 
 import MentionLink from '../../middle/message/MentionLink';
 import SafeLink from '../SafeLink';
 
 type TextPart = string | Element;
+export type TextFilter = (
+  'escape_html' | 'hq_emoji' | 'emoji' | 'emoji_html' | 'br' | 'br_html' | 'highlight' | 'links' |
+  'simple_markdown' | 'simple_markdown_html'
+);
 
 const RE_LETTER_OR_DIGIT = /^[\d\wа-яё]$/i;
 const SIMPLE_MARKDOWN_REGEX = /(\*\*|__).+?\1/g;
 
 export default function renderText(
   part: TextPart,
-  filters: Array<(
-    'escape_html' | 'hq_emoji' | 'emoji' | 'emoji_html' | 'br' | 'br_html' | 'highlight' | 'links' |
-    'simple_markdown' | 'simple_markdown_html'
-  )> = ['emoji'],
+  filters: Array<TextFilter> = ['emoji'],
   params?: { highlight: string | undefined },
 ): TextPart[] {
   if (typeof part !== 'string') {
     return [part];
   }
 
-  return filters.reduce((text, filter) => {
+  return compact(filters.reduce((text, filter) => {
     switch (filter) {
       case 'escape_html':
         return escapeHtml(text);
@@ -63,7 +65,7 @@ export default function renderText(
     }
 
     return text;
-  }, [part] as TextPart[]);
+  }, [part] as TextPart[]));
 }
 
 function escapeHtml(textParts: TextPart[]): TextPart[] {

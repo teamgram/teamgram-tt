@@ -12,6 +12,8 @@ export { default as PinMessageModal } from '../components/common/PinMessageModal
 export { default as UnpinAllMessagesModal } from '../components/common/UnpinAllMessagesModal';
 export { default as MessageSelectToolbar } from '../components/middle/MessageSelectToolbar';
 export { default as SeenByModal } from '../components/common/SeenByModal';
+export { default as ReactorListModal } from '../components/middle/ReactorListModal';
+export { default as EmojiInteractionAnimation } from '../components/middle/EmojiInteractionAnimation';
 
 export { default as LeftSearch } from '../components/left/search/LeftSearch';
 export { default as Settings } from '../components/left/settings/Settings';
@@ -40,6 +42,7 @@ export { default as DropArea } from '../components/middle/composer/DropArea';
 export { default as TextFormatter } from '../components/middle/composer/TextFormatter';
 export { default as EmojiTooltip } from '../components/middle/composer/EmojiTooltip';
 export { default as InlineBotTooltip } from '../components/middle/composer/InlineBotTooltip';
+export { default as SendAsMenu } from '../components/middle/composer/SendAsMenu';
 
 export { default as RightSearch } from '../components/right/RightSearch';
 export { default as StickerSearch } from '../components/right/StickerSearch';

@@ -1,29 +1,25 @@
-**Telegram Web Z was updated to version 1.26**
+**Telegram Web Z was updated to version v1.31**
 
 👏 **Harder**
-• Added bot `start` parameter for t.me links.
-• Changed display of service notifications for errors.
+• Hide text with an animation using the crossed-eye icon 👁 in the formatting menu.
+• Quickly add Spoiler formatting with Ctrl + P (⌘ + P on macOS), or || markdown around the text.
+• Admins can manage Join Requests and revoked invites.
+• Promote new admins in your groups and channels via Global Search.
 
 🤩 **Better**
-• Fixed scroll jumps in message history.
-• Improved font for Arabic and Persian languages.
-• Various fixes for RTL languages.
-• Rotating your device will no longer refresh the page during video chats.
-• Various UI improvements.
+• Network stability enhancements.
+• Various improvements and tuning for reactions and interactive emoji.
+• Media Viewer improved for mobile devices.
+• Numerous layout adjustments.
 
 🚀 **Faster**
-• Optimized rendering for context menus.
-• Optimized search in large lists.
+• The app better renders multiple components.
 
 💪 **Stronger**
-• Fixed echo cancellation in calls.
-• Fixed focusing from forwarded channel posts.
-• Fixed keyboard navigation, missing contacts, and auto-focus when forwarding.
-• Fixed markdown parsing inside code and links.
-• Fixed missing UI elements when going back in history stack.
-• Fixed flickering profile photos in Safari.
-• Fixed t.me message links to private chats.
-• Fixed duplicated folders.
-• Fixed missing media due to outdated auth key.
-• Fixed loading default language pack on auth screen.
-• Fixed missing profile pictures in comments.
+• Fixed inline playback for QuickTime videos.
+• Fixes for tooltips – including stickers, emoji, and mentions.
+• Unread counter now correctly reflects values on mobile devices.
+• Emoji now properly copy from message text.
+• Users’ display names now appear in service messages.
+• Fixed collapsing multiple spaces in messages.
+• Reactions and the “Send As” feature are now always available in Discussion Groups.

@@ -2,11 +2,12 @@ import { ChangeEvent } from 'react';
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
 import { ManagementScreens, ManagementProgress } from '../../../types';
-import { ApiChat, ApiChatBannedRights, ApiMediaFormat } from '../../../api/types';
-import { GlobalActions } from '../../../global/types';
+import {
+  ApiChat, ApiChatBannedRights, ApiExportedInvite, ApiMediaFormat,
+} from '../../../api/types';
 
 import { getChatAvatarHash, getHasAdminRight, isChatBasicGroup } from '../../../modules/helpers';
 import useMedia from '../../../hooks/useMedia';
@@ -14,7 +15,6 @@ import useLang from '../../../hooks/useLang';
 import useFlag from '../../../hooks/useFlag';
 import { selectChat } from '../../../modules/selectors';
 import { formatInteger } from '../../../util/textFormat';
-import { pick } from '../../../util/iteratees';
 import renderText from '../../common/helpers/renderText';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 
@@ -42,12 +42,11 @@ type StateProps = {
   hasLinkedChannel: boolean;
   canChangeInfo?: boolean;
   canBanUsers?: boolean;
+  canInvite?: boolean;
+  exportedInvites?: ApiExportedInvite[];
+  lastSyncTime?: number;
+  availableReactionsCount?: number;
 };
-
-type DispatchProps = Pick<GlobalActions, (
-  'togglePreHistoryHidden' | 'updateChat' | 'closeManagement' |
-  'leaveChannel' | 'deleteChannel' | 'deleteChat' | 'openChat'
-)>;
 
 const GROUP_TITLE_EMPTY = 'Group title can\'t be empty';
 
@@ -55,7 +54,7 @@ const GROUP_TITLE_EMPTY = 'Group title can\'t be empty';
 // so we need to define the amount manually
 const TOTAL_PERMISSIONS_COUNT = 8;
 
-const ManageGroup: FC<OwnProps & StateProps & DispatchProps> = ({
+const ManageGroup: FC<OwnProps & StateProps> = ({
   chatId,
   chat,
   progress,
@@ -63,23 +62,32 @@ const ManageGroup: FC<OwnProps & StateProps & DispatchProps> = ({
   hasLinkedChannel,
   canChangeInfo,
   canBanUsers,
+  canInvite,
   onScreenSelect,
-  togglePreHistoryHidden,
-  updateChat,
-  deleteChat,
-  leaveChannel,
-  deleteChannel,
-  closeManagement,
-  openChat,
   onClose,
   isActive,
+  exportedInvites,
+  lastSyncTime,
+  availableReactionsCount,
 }) => {
+  const {
+    togglePreHistoryHidden,
+    updateChat,
+    deleteChat,
+    leaveChannel,
+    deleteChannel,
+    closeManagement,
+    openChat,
+    loadExportedChatInvites,
+    loadChatJoinRequests,
+  } = getDispatch();
+
   const [isDeleteDialogOpen, openDeleteDialog, closeDeleteDialog] = useFlag();
   const currentTitle = chat.title;
   const currentAbout = chat.fullInfo ? (chat.fullInfo.about || '') : '';
 
   const [isProfileFieldsTouched, setIsProfileFieldsTouched] = useState(false);
-  const [title, setTitle] = useState(currentTitle);
+  const [title, setTitle] = useState(currentTitle || '');
   const [about, setAbout] = useState(currentAbout);
   const [photo, setPhoto] = useState<File | undefined>();
   const [error, setError] = useState<string | undefined>();
@@ -88,6 +96,14 @@ const ManageGroup: FC<OwnProps & StateProps & DispatchProps> = ({
   const lang = useLang();
 
   useHistoryBack(isActive, onClose);
+
+  useEffect(() => {
+    if (lastSyncTime && canInvite) {
+      loadExportedChatInvites({ chatId });
+      loadExportedChatInvites({ chatId, isRevoked: true });
+      loadChatJoinRequests({ chatId });
+    }
+  }, [chatId, loadExportedChatInvites, lastSyncTime, canInvite, loadChatJoinRequests]);
 
   useEffect(() => {
     if (progress === ManagementProgress.Complete) {
@@ -104,6 +120,10 @@ const ManageGroup: FC<OwnProps & StateProps & DispatchProps> = ({
     onScreenSelect(ManagementScreens.Discussion);
   }, [onScreenSelect]);
 
+  const handleClickReactions = useCallback(() => {
+    onScreenSelect(ManagementScreens.Reactions);
+  }, [onScreenSelect]);
+
   const handleClickPermissions = useCallback(() => {
     onScreenSelect(ManagementScreens.GroupPermissions);
   }, [onScreenSelect]);
@@ -111,6 +131,14 @@ const ManageGroup: FC<OwnProps & StateProps & DispatchProps> = ({
   const handleClickAdministrators = useCallback(() => {
     onScreenSelect(ManagementScreens.ChatAdministrators);
   }, [onScreenSelect]);
+
+  const handleClickInvites = () => {
+    onScreenSelect(ManagementScreens.Invites);
+  };
+
+  const handleClickRequests = () => {
+    onScreenSelect(ManagementScreens.JoinRequests);
+  };
 
   const handleSetPhoto = useCallback((file: File) => {
     setPhoto(file);
@@ -157,6 +185,8 @@ const ManageGroup: FC<OwnProps & StateProps & DispatchProps> = ({
 
     togglePreHistoryHidden({ chatId: chat.id, isEnabled: !isPreHistoryHidden });
   }, [chat, togglePreHistoryHidden]);
+
+  const enabledReactionsCount = chat.fullInfo?.enabledReactions?.length || 0;
 
   const enabledPermissionsCount = useMemo(() => {
     if (!chat.defaultBannedRights) {
@@ -261,6 +291,18 @@ const ManageGroup: FC<OwnProps & StateProps & DispatchProps> = ({
               {enabledPermissionsCount}/{TOTAL_PERMISSIONS_COUNT}
             </span>
           </ListItem>
+
+          <ListItem
+            icon="reactions"
+            multiline
+            onClick={handleClickReactions}
+            disabled={!canChangeInfo}
+          >
+            <span className="title">{lang('Reactions')}</span>
+            <span className="subtitle" dir="auto">
+              {enabledReactionsCount}/{availableReactionsCount}
+            </span>
+          </ListItem>
           <ListItem
             icon="admin"
             multiline
@@ -269,6 +311,31 @@ const ManageGroup: FC<OwnProps & StateProps & DispatchProps> = ({
             <span className="title">{lang('ChannelAdministrators')}</span>
             <span className="subtitle">{formatInteger(adminsCount)}</span>
           </ListItem>
+          {canInvite && (
+            <ListItem
+              icon="link"
+              onClick={handleClickInvites}
+              multiline
+              disabled={!exportedInvites}
+            >
+              <span className="title">{lang('GroupInfo.InviteLinks')}</span>
+              <span className="subtitle">
+                {exportedInvites ? formatInteger(exportedInvites.length) : lang('Loading')}
+              </span>
+            </ListItem>
+          )}
+          {Boolean(chat.joinRequests?.length) && (
+            <ListItem
+              icon="add-user-filled"
+              onClick={handleClickRequests}
+              multiline
+            >
+              <span className="title">{lang('MemberRequests')}</span>
+              <span className="subtitle">
+                {formatInteger(chat.joinRequests!.length)}
+              </span>
+            </ListItem>
+          )}
         </div>
         <div className="section">
           <ListItem icon="group" multiline onClick={handleClickMembers}>
@@ -328,6 +395,7 @@ export default memo(withGlobal<OwnProps>(
     const { progress } = global.management;
     const hasLinkedChannel = Boolean(chat.fullInfo?.linkedChatId);
     const isBasicGroup = isChatBasicGroup(chat);
+    const { invites } = global.management.byChatId[chatId] || {};
 
     return {
       chat,
@@ -336,10 +404,10 @@ export default memo(withGlobal<OwnProps>(
       hasLinkedChannel,
       canChangeInfo: isBasicGroup ? chat.isCreator : getHasAdminRight(chat, 'changeInfo'),
       canBanUsers: isBasicGroup ? chat.isCreator : getHasAdminRight(chat, 'banUsers'),
+      canInvite: isBasicGroup ? chat.isCreator : getHasAdminRight(chat, 'inviteUsers'),
+      exportedInvites: invites,
+      lastSyncTime: global.lastSyncTime,
+      availableReactionsCount: global.availableReactions?.filter((l) => !l.isInactive).length,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'togglePreHistoryHidden', 'updateChat', 'closeManagement',
-    'leaveChannel', 'deleteChannel', 'deleteChat', 'openChat',
-  ]),
 )(ManageGroup));

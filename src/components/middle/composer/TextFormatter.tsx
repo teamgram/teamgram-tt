@@ -3,11 +3,13 @@ import React, {
 } from '../../../lib/teact/teact';
 
 import { IAnchorPosition } from '../../../types';
+import { ApiMessageEntityTypes } from '../../../api/types';
 
 import { EDITABLE_INPUT_ID } from '../../../config';
 import buildClassName from '../../../util/buildClassName';
 import { ensureProtocol } from '../../../util/ensureProtocol';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
+import getKeyFromEvent from '../../../util/getKeyFromEvent';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useVirtualBackdrop from '../../../hooks/useVirtualBackdrop';
 import useFlag from '../../../hooks/useFlag';
@@ -31,6 +33,7 @@ interface ISelectedTextFormats {
   underline?: boolean;
   strikethrough?: boolean;
   monospace?: boolean;
+  spoiler?: boolean;
 }
 
 const TEXT_FORMAT_BY_TAG_NAME: Record<string, keyof ISelectedTextFormats> = {
@@ -41,6 +44,7 @@ const TEXT_FORMAT_BY_TAG_NAME: Record<string, keyof ISelectedTextFormats> = {
   U: 'underline',
   DEL: 'strikethrough',
   CODE: 'monospace',
+  SPAN: 'spoiler',
 };
 const fragmentEl = document.createElement('div');
 
@@ -176,7 +180,7 @@ const TextFormatter: FC<OwnProps> = ({
 
     if (key === 'monospace' || key === 'strikethrough') {
       if (Object.keys(selectedTextFormats).some(
-        (fKey) => fKey !== key && !!selectedTextFormats[fKey as keyof ISelectedTextFormats],
+        (fKey) => fKey !== key && Boolean(selectedTextFormats[fKey as keyof ISelectedTextFormats]),
       )) {
         return 'disabled';
       }
@@ -187,12 +191,40 @@ const TextFormatter: FC<OwnProps> = ({
     return undefined;
   }
 
+  const handleSpoilerText = useCallback(() => {
+    if (selectedTextFormats.spoiler) {
+      const element = getSelectedElement();
+      if (
+        !selectedRange
+        || !element
+        || element.dataset.entityType !== ApiMessageEntityTypes.Spoiler
+        || !element.textContent
+      ) {
+        return;
+      }
+
+      element.replaceWith(element.textContent);
+      setSelectedTextFormats((selectedFormats) => ({
+        ...selectedFormats,
+        spoiler: false,
+      }));
+
+      return;
+    }
+
+    const text = getSelectedText();
+    document.execCommand(
+      'insertHTML', false, `<span class="spoiler" data-entity-type="${ApiMessageEntityTypes.Spoiler}">${text}</span>`,
+    );
+    onClose();
+  }, [getSelectedElement, getSelectedText, onClose, selectedRange, selectedTextFormats.spoiler]);
+
   const handleBoldText = useCallback(() => {
     setSelectedTextFormats((selectedFormats) => {
       // Somehow re-applying 'bold' command to already bold text doesn't work
       document.execCommand(selectedFormats.bold ? 'removeFormat' : 'bold');
       Object.keys(selectedFormats).forEach((key) => {
-        if ((key === 'italic' || key === 'underline') && !!selectedFormats[key]) {
+        if ((key === 'italic' || key === 'underline') && Boolean(selectedFormats[key])) {
           document.execCommand(key);
         }
       });
@@ -248,8 +280,7 @@ const TextFormatter: FC<OwnProps> = ({
     document.execCommand('insertHTML', false, `<del>${text}</del>`);
     onClose();
   }, [
-    getSelectedElement, getSelectedText, onClose,
-    selectedRange, selectedTextFormats.strikethrough,
+    getSelectedElement, getSelectedText, onClose, selectedRange, selectedTextFormats.strikethrough,
   ]);
 
   const handleMonospaceText = useCallback(() => {
@@ -269,6 +300,7 @@ const TextFormatter: FC<OwnProps> = ({
         ...selectedFormats,
         monospace: false,
       }));
+
       return;
     }
 
@@ -276,8 +308,7 @@ const TextFormatter: FC<OwnProps> = ({
     document.execCommand('insertHTML', false, `<code class="text-entity-code" dir="auto">${text}</code>`);
     onClose();
   }, [
-    getSelectedElement, getSelectedText, onClose,
-    selectedRange, selectedTextFormats.monospace,
+    getSelectedElement, getSelectedText, onClose, selectedRange, selectedTextFormats.monospace,
   ]);
 
   function handleLinkUrlConfirm() {
@@ -292,6 +323,7 @@ const TextFormatter: FC<OwnProps> = ({
       (element as HTMLAnchorElement).href = formattedLinkUrl;
 
       onClose();
+
       return;
     }
 
@@ -306,16 +338,17 @@ const TextFormatter: FC<OwnProps> = ({
   }
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const HANDLERS_BY_KEY_CODE: Record<string, AnyToVoidFunction> = {
-      KeyK: openLinkControl,
-      KeyB: handleBoldText,
-      KeyU: handleUnderlineText,
-      KeyI: handleItalicText,
-      KeyM: handleMonospaceText,
-      KeyS: handleStrikethroughText,
+    const HANDLERS_BY_KEY: Record<string, AnyToVoidFunction> = {
+      k: openLinkControl,
+      b: handleBoldText,
+      u: handleUnderlineText,
+      i: handleItalicText,
+      m: handleMonospaceText,
+      s: handleStrikethroughText,
+      p: handleSpoilerText,
     };
 
-    const handler = HANDLERS_BY_KEY_CODE[e.code];
+    const handler = HANDLERS_BY_KEY[getKeyFromEvent(e)];
 
     if (
       e.altKey
@@ -329,9 +362,8 @@ const TextFormatter: FC<OwnProps> = ({
     e.stopPropagation();
     handler();
   }, [
-    handleBoldText, handleItalicText, handleUnderlineText,
-    handleMonospaceText, handleStrikethroughText,
-    openLinkControl,
+    openLinkControl, handleBoldText, handleUnderlineText, handleItalicText, handleMonospaceText,
+    handleStrikethroughText, handleSpoilerText,
   ]);
 
   useEffect(() => {
@@ -363,7 +395,7 @@ const TextFormatter: FC<OwnProps> = ({
 
   const linkUrlConfirmClassName = buildClassName(
     'TextFormatter-link-url-confirm',
-    !!linkUrl.length && 'shown',
+    Boolean(linkUrl.length) && 'shown',
   );
 
   const style = anchorPosition
@@ -379,6 +411,15 @@ const TextFormatter: FC<OwnProps> = ({
       onKeyDown={handleContainerKeyDown}
     >
       <div className="TextFormatter-buttons">
+        <Button
+          color="translucent"
+          ariaLabel="Spoiler text"
+          className={getFormatButtonClassName('spoiler')}
+          onClick={handleSpoilerText}
+        >
+          <i className="icon-eye-closed" />
+        </Button>
+        <div className="TextFormatter-divider" />
         <Button
           color="translucent"
           ariaLabel="Bold text"

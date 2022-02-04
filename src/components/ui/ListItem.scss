@@ -147,8 +147,6 @@
   }
 
   &.chat-item-clickable {
-    margin: 0 -0.5rem;
-
     body.is-ios &,
     body.is-macos & {
       --color-text-secondary: var(--color-text-secondary-apple);
@@ -287,6 +285,7 @@
       white-space: nowrap;
       text-overflow: ellipsis;
       text-align: left;
+      display: block;
     }
 
     .LastMessageMeta {
@@ -303,6 +302,11 @@
         background: #CAE3F7;
         border-radius: 0.25rem;
         padding: 0 0.125rem;
+        display: inline-block;
+
+        .theme-dark & {
+          --color-text: #000;
+        }
       }
     }
 
@@ -349,6 +353,7 @@
   }
 
   .multiline-item {
+    flex-grow: 1;
     white-space: initial;
     overflow: hidden;
 

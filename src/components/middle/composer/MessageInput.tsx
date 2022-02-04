@@ -2,9 +2,8 @@ import { ChangeEvent } from 'react';
 import React, {
   FC, useEffect, useRef, memo, useState, useCallback,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import { IAnchorPosition, ISettings } from '../../../types';
 
 import { EDITABLE_INPUT_ID } from '../../../config';
@@ -12,7 +11,6 @@ import { selectReplyingToId } from '../../../modules/selectors';
 import { debounce } from '../../../util/schedulers';
 import focusEditableElement from '../../../util/focusEditableElement';
 import buildClassName from '../../../util/buildClassName';
-import { pick } from '../../../util/iteratees';
 import {
   IS_ANDROID, IS_EMOJI_SUPPORTED, IS_IOS, IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV,
 } from '../../../util/environment';
@@ -20,9 +18,10 @@ import captureKeyboardListeners from '../../../util/captureKeyboardListeners';
 import useLayoutEffectWithPrevDeps from '../../../hooks/useLayoutEffectWithPrevDeps';
 import useFlag from '../../../hooks/useFlag';
 import { isHeavyAnimating } from '../../../hooks/useHeavyAnimationCheck';
+import useSendMessageAction from '../../../hooks/useSendMessageAction';
+import useLang from '../../../hooks/useLang';
 import parseEmojiOnlyString from '../../common/helpers/parseEmojiOnlyString';
 import { isSelectionInsideInput } from './helpers/selection';
-import useLang from '../../../hooks/useLang';
 import renderText from '../../common/helpers/renderText';
 
 import TextFormatter from './TextFormatter';
@@ -50,13 +49,10 @@ type OwnProps = {
 };
 
 type StateProps = {
-  chatId?: string;
   replyingToId?: number;
   noTabCapture?: boolean;
   messageSendKeyCombo?: ISettings['messageSendKeyCombo'];
 };
-
-type DispatchProps = Pick<GlobalActions, 'editLastMessage' | 'replyToNextMessage'>;
 
 const MAX_INPUT_HEIGHT = IS_SINGLE_COLUMN_LAYOUT ? 256 : 416;
 const TAB_INDEX_PRIORITY_TIMEOUT = 2000;
@@ -77,9 +73,10 @@ function clearSelection() {
   }
 }
 
-const MessageInput: FC<OwnProps & StateProps & DispatchProps> = ({
+const MessageInput: FC<OwnProps & StateProps> = ({
   id,
   chatId,
+  threadId,
   isAttachmentModalInput,
   editableInputId,
   html,
@@ -88,15 +85,18 @@ const MessageInput: FC<OwnProps & StateProps & DispatchProps> = ({
   canAutoFocus,
   shouldSuppressFocus,
   shouldSuppressTextFormatter,
-  onUpdate,
-  onSuppressedFocus,
-  onSend,
   replyingToId,
   noTabCapture,
   messageSendKeyCombo,
-  editLastMessage,
-  replyToNextMessage,
+  onUpdate,
+  onSuppressedFocus,
+  onSend,
 }) => {
+  const {
+    editLastMessage,
+    replyToNextMessage,
+  } = getDispatch();
+
   // eslint-disable-next-line no-null/no-null
   const inputRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
@@ -107,6 +107,8 @@ const MessageInput: FC<OwnProps & StateProps & DispatchProps> = ({
   const [isTextFormatterOpen, openTextFormatter, closeTextFormatter] = useFlag();
   const [textFormatterAnchorPosition, setTextFormatterAnchorPosition] = useState<IAnchorPosition>();
   const [selectedRange, setSelectedRange] = useState<Range>();
+
+  const sendMessageAction = useSendMessageAction(chatId, threadId);
 
   useEffect(() => {
     if (!isAttachmentModalInput) return;
@@ -281,6 +283,7 @@ const MessageInput: FC<OwnProps & StateProps & DispatchProps> = ({
     const { innerHTML, textContent } = e.currentTarget;
 
     onUpdate(innerHTML === SAFARI_BR ? '' : innerHTML);
+    sendMessageAction({ type: 'typing' });
 
     // Reset focus on the input to remove any active styling when input is cleared
     if (
@@ -420,5 +423,4 @@ export default memo(withGlobal<OwnProps>(
       noTabCapture: global.isPollModalOpen || global.payment.isPaymentModalOpen,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, ['editLastMessage', 'replyToNextMessage']),
 )(MessageInput));

@@ -1,20 +1,19 @@
 import React, {
-  FC, memo, useCallback, useMemo,
+  FC, memo, useCallback, useMemo, useRef,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import { LoadMoreDirection } from '../../../types';
 
 import { SLIDE_TRANSITION_DURATION } from '../../../config';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import { createMapStateToProps, StateProps } from './helpers/createMapStateToProps';
-import { pick } from '../../../util/iteratees';
 import { formatMonthAndYear, toYearMonth } from '../../../util/dateFormat';
 import { getSenderName } from './helpers/getSenderName';
 import { throttle } from '../../../util/schedulers';
 import useAsyncRendering from '../../right/hooks/useAsyncRendering';
 import useLang from '../../../hooks/useLang';
+import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 
 import InfiniteScroll from '../../ui/InfiniteScroll';
 import WebLink from '../../common/WebLink';
@@ -25,12 +24,12 @@ export type OwnProps = {
   searchQuery?: string;
 };
 
-type DispatchProps = Pick<GlobalActions, ('searchMessagesGlobal' | 'focusMessage')>;
-
 const CURRENT_TYPE = 'links';
+const INTERSECTION_THROTTLE = 500;
+
 const runThrottled = throttle((cb) => cb(), 500, true);
 
-const LinkResults: FC<OwnProps & StateProps & DispatchProps> = ({
+const LinkResults: FC<OwnProps & StateProps> = ({
   searchQuery,
   searchChatId,
   isLoading,
@@ -39,10 +38,23 @@ const LinkResults: FC<OwnProps & StateProps & DispatchProps> = ({
   globalMessagesByChatId,
   foundIds,
   lastSyncTime,
-  searchMessagesGlobal,
-  focusMessage,
+  isChatProtected,
 }) => {
+  const {
+    searchMessagesGlobal,
+    focusMessage,
+  } = getDispatch();
+
+  // eslint-disable-next-line no-null/no-null
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const lang = useLang();
+
+  const { observe: observeIntersectionForMedia } = useIntersectionObserver({
+    rootRef: containerRef,
+    throttleMs: INTERSECTION_THROTTLE,
+  });
+
   const handleLoadMore = useCallback(({ direction }: { direction: LoadMoreDirection }) => {
     if (lastSyncTime && direction === LoadMoreDirection.Backwards) {
       runThrottled(() => {
@@ -90,6 +102,8 @@ const LinkResults: FC<OwnProps & StateProps & DispatchProps> = ({
             key={message.id}
             message={message}
             senderTitle={getSenderName(lang, message, chatsById, usersById)}
+            isProtected={isChatProtected || message.isProtected}
+            observeIntersection={observeIntersectionForMedia}
             onMessageClick={handleMessageFocus}
           />
         </div>
@@ -100,7 +114,7 @@ const LinkResults: FC<OwnProps & StateProps & DispatchProps> = ({
   const canRenderContents = useAsyncRendering([searchQuery], SLIDE_TRANSITION_DURATION) && !isLoading;
 
   return (
-    <div className="LeftSearch">
+    <div ref={containerRef} className="LeftSearch">
       <InfiniteScroll
         className="search-content documents-list custom-scroll"
         items={foundMessages}
@@ -122,8 +136,4 @@ const LinkResults: FC<OwnProps & StateProps & DispatchProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   createMapStateToProps(CURRENT_TYPE),
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'searchMessagesGlobal',
-    'focusMessage',
-  ]),
 )(LinkResults));

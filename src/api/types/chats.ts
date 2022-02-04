@@ -1,5 +1,6 @@
 import { ApiMessage, ApiPhoto } from './messages';
 import { ApiBotCommand } from './bots';
+import { ApiChatInviteImporter } from './misc';
 
 type ApiChatType = (
   'chatTypePrivate' | 'chatTypeSecret' |
@@ -31,6 +32,7 @@ export interface ApiChat {
   isSupport?: boolean;
   photos?: ApiPhoto[];
   draftDate?: number;
+  isProtected?: boolean;
 
   // Calls
   isCallActive?: boolean;
@@ -55,12 +57,16 @@ export interface ApiChat {
   fullInfo?: ApiChatFullInfo;
   // Obtained with UpdateUserTyping or UpdateChatUserTyping updates
   typingStatus?: ApiTypingStatus;
+
+  joinRequests?: ApiChatInviteImporter[];
+  sendAsIds?: string[];
 }
 
 export interface ApiTypingStatus {
   userId?: string;
   action: string;
   timestamp: number;
+  emoji?: string;
 }
 
 export interface ApiChatFullInfo {
@@ -83,6 +89,10 @@ export interface ApiChatFullInfo {
   };
   linkedChatId?: string;
   botCommands?: ApiBotCommand[];
+  enabledReactions?: string[];
+  sendAsId?: string;
+  recentRequesterIds?: string[];
+  requestsPending?: number;
 }
 
 export interface ApiChatMember {

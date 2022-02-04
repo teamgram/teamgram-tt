@@ -15,8 +15,8 @@ import {
 import searchWords from '../../../util/searchWords';
 import { selectStickerSet } from '../../selectors';
 
-const ADDED_SETS_THROTTLE = 500;
-const ADDED_SETS_THROTTLE_CHUNK = 50;
+const ADDED_SETS_THROTTLE = 200;
+const ADDED_SETS_THROTTLE_CHUNK = 10;
 
 const searchThrottled = throttle((cb) => cb(), 500, false);
 
@@ -27,13 +27,18 @@ addReducer('loadStickerSets', (global) => {
 
 addReducer('loadAddedStickers', (global, actions) => {
   const { setIds: addedSetIds } = global.stickers.added;
+  const cached = global.stickers.setsById;
   if (!addedSetIds || !addedSetIds.length) {
     return;
   }
 
   (async () => {
     for (let i = 0; i < addedSetIds.length; i++) {
-      actions.loadStickers({ stickerSetId: addedSetIds[i] });
+      const id = addedSetIds[i];
+      if (cached[id].stickers) {
+        continue; // Already loaded
+      }
+      actions.loadStickers({ stickerSetId: id });
 
       if (i % ADDED_SETS_THROTTLE_CHUNK === 0 && i > 0) {
         await pause(ADDED_SETS_THROTTLE);
@@ -100,6 +105,7 @@ addReducer('loadStickers', (global, actions, payload) => {
 
 addReducer('loadAnimatedEmojis', () => {
   void loadAnimatedEmojis();
+  void loadAnimatedEmojiEffects();
 });
 
 addReducer('loadSavedGifs', (global) => {
@@ -289,6 +295,20 @@ async function loadAnimatedEmojis() {
   const { set, stickers } = stickerSet;
 
   setGlobal(replaceAnimatedEmojis(getGlobal(), { ...set, stickers }));
+}
+
+async function loadAnimatedEmojiEffects() {
+  const stickerSet = await callApi('fetchAnimatedEmojiEffects');
+  if (!stickerSet) {
+    return;
+  }
+
+  const { set, stickers } = stickerSet;
+
+  setGlobal({
+    ...getGlobal(),
+    animatedEmojiEffects: { ...set, stickers },
+  });
 }
 
 function unfaveSticker(sticker: ApiSticker) {

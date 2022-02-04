@@ -1,22 +1,23 @@
 import { useCallback, useEffect } from '../../../../lib/teact/teact';
+import { getDispatch } from '../../../../lib/teact/teactn';
 
 import { ApiMessage } from '../../../../api/types';
-import { GlobalActions } from '../../../../global/types';
 
 import { EDITABLE_INPUT_ID } from '../../../../config';
 import parseMessageInput from '../../../../util/parseMessageInput';
-import getMessageTextAsHtml from '../helpers/getMessageTextAsHtml';
 import focusEditableElement from '../../../../util/focusEditableElement';
 import { hasMessageMedia } from '../../../../modules/helpers';
+import { getTextWithEntitiesAsHtml } from '../../../common/helpers/renderTextWithEntities';
 
-export default (
+const useEditing = (
   htmlRef: { current: string },
   setHtml: (html: string) => void,
   editedMessage: ApiMessage | undefined,
   resetComposer: () => void,
   openDeleteModal: () => void,
-  editMessage: GlobalActions['editMessage'],
 ) => {
+  const { editMessage } = getDispatch();
+
   // TODO useOnChange
   // Handle editing message
   useEffect(() => {
@@ -25,7 +26,7 @@ export default (
       return;
     }
 
-    setHtml(getMessageTextAsHtml(editedMessage.content.text));
+    setHtml(getTextWithEntitiesAsHtml(editedMessage.content.text));
 
     requestAnimationFrame(() => {
       const messageInput = document.getElementById(EDITABLE_INPUT_ID)!;
@@ -56,3 +57,5 @@ export default (
 
   return handleEditComplete;
 };
+
+export default useEditing;

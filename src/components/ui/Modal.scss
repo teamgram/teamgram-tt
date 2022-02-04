@@ -139,6 +139,20 @@
     text-align: initial;
   }
 
+  .modal-about {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 5;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  .modal-help {
+    color: var(--color-text-secondary);
+    font-size: 0.9375rem;
+    line-height: 1.3;
+  }
+
   .dialog-buttons {
     display: flex;
     align-items: flex-end;

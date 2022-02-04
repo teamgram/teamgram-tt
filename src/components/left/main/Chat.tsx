@@ -1,11 +1,10 @@
 import React, {
   FC, memo, useCallback, useLayoutEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
 
 import useLang, { LangFn } from '../../../hooks/useLang';
 
-import { GlobalActions } from '../../../global/types';
 import {
   ApiChat, ApiUser, ApiMessage, ApiMessageOutgoingStatus, ApiFormattedText, MAIN_THREAD_ID, ApiUserStatus,
 } from '../../../api/types';
@@ -21,7 +20,6 @@ import {
   getMessageSenderName,
   isChatChannel,
   getMessageMediaHash,
-  getMessageSummaryText,
   getMessageMediaThumbDataUri,
   getMessageVideo,
   getMessageSticker,
@@ -36,12 +34,12 @@ import { renderActionMessageText } from '../../common/helpers/renderActionMessag
 import renderText from '../../common/helpers/renderText';
 import { fastRaf } from '../../../util/schedulers';
 import buildClassName from '../../../util/buildClassName';
-import { pick } from '../../../util/iteratees';
 import useEnsureMessage from '../../../hooks/useEnsureMessage';
 import useChatContextActions from '../../../hooks/useChatContextActions';
 import useFlag from '../../../hooks/useFlag';
 import useMedia from '../../../hooks/useMedia';
 import { ChatAnimationTypes } from './hooks';
+import { renderMessageSummary } from '../../common/helpers/renderMessageText';
 
 import Avatar from '../../common/Avatar';
 import VerifiedIcon from '../../common/VerifiedIcon';
@@ -70,7 +68,6 @@ type StateProps = {
   user?: ApiUser;
   userStatus?: ApiUserStatus;
   actionTargetUserIds?: string[];
-  usersById?: Record<string, ApiUser>;
   actionTargetMessage?: ApiMessage;
   actionTargetChatId?: string;
   lastMessageSender?: ApiUser;
@@ -83,11 +80,9 @@ type StateProps = {
   lastSyncTime?: number;
 };
 
-type DispatchProps = Pick<GlobalActions, 'openChat' | 'focusLastMessage'>;
-
 const ANIMATION_DURATION = 200;
 
-const Chat: FC<OwnProps & StateProps & DispatchProps> = ({
+const Chat: FC<OwnProps & StateProps> = ({
   style,
   chatId,
   folderId,
@@ -99,7 +94,6 @@ const Chat: FC<OwnProps & StateProps & DispatchProps> = ({
   user,
   userStatus,
   actionTargetUserIds,
-  usersById,
   lastMessageSender,
   lastMessageOutgoingStatus,
   actionTargetMessage,
@@ -110,9 +104,12 @@ const Chat: FC<OwnProps & StateProps & DispatchProps> = ({
   canScrollDown,
   canChangeFolder,
   lastSyncTime,
-  openChat,
-  focusLastMessage,
 }) => {
+  const {
+    openChat,
+    focusLastMessage,
+  } = getDispatch();
+
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);
 
@@ -133,10 +130,14 @@ const Chat: FC<OwnProps & StateProps & DispatchProps> = ({
   const isRoundVideo = Boolean(lastMessage && getMessageRoundVideo(lastMessage));
 
   const actionTargetUsers = useMemo(() => {
-    return actionTargetUserIds
-      ? actionTargetUserIds.map((userId) => usersById?.[userId]).filter<ApiUser>(Boolean as any)
-      : undefined;
-  }, [actionTargetUserIds, usersById]);
+    if (!actionTargetUserIds) {
+      return undefined;
+    }
+
+    // No need for expensive global updates on users, so we avoid them
+    const usersById = getGlobal().users.byId;
+    return actionTargetUserIds.map((userId) => usersById[userId]).filter<ApiUser>(Boolean as any);
+  }, [actionTargetUserIds]);
 
   // Sets animation excess values when `orderDiff` changes and then resets excess values to animate.
   useLayoutEffect(() => {
@@ -234,21 +235,20 @@ const Chat: FC<OwnProps & StateProps & DispatchProps> = ({
     }
 
     if (isAction) {
-      const actionOrigin = chat && (isChatChannel(chat) || lastMessage.senderId === lastMessage.chatId)
-        ? chat
-        : lastMessageSender;
+      const isChat = chat && (isChatChannel(chat) || lastMessage.senderId === lastMessage.chatId);
 
       return (
         <p className="last-message" dir={lang.isRtl ? 'auto' : 'ltr'}>
-          {renderText(renderActionMessageText(
+          {renderActionMessageText(
             lang,
             lastMessage,
-            actionOrigin,
+            !isChat ? lastMessageSender : undefined,
+            isChat ? chat : undefined,
             actionTargetUsers,
             actionTargetMessage,
             actionTargetChatId,
-            { asPlain: true },
-          ) as string)}
+            { asTextWithSpoilers: true },
+          )}
         </p>
       );
     }
@@ -263,7 +263,7 @@ const Chat: FC<OwnProps & StateProps & DispatchProps> = ({
             <span className="colon">:</span>
           </>
         )}
-        {renderMessageSummary(lang, lastMessage!, mediaBlobUrl || mediaThumbnail, isRoundVideo)}
+        {renderSummary(lang, lastMessage!, mediaBlobUrl || mediaThumbnail, isRoundVideo)}
       </p>
     );
   }
@@ -332,16 +332,16 @@ const Chat: FC<OwnProps & StateProps & DispatchProps> = ({
   );
 };
 
-function renderMessageSummary(lang: LangFn, message: ApiMessage, blobUrl?: string, isRoundVideo?: boolean) {
+function renderSummary(lang: LangFn, message: ApiMessage, blobUrl?: string, isRoundVideo?: boolean) {
   if (!blobUrl) {
-    return renderText(getMessageSummaryText(lang, message));
+    return renderMessageSummary(lang, message);
   }
 
   return (
     <span className="media-preview">
       <img src={blobUrl} alt="" className={isRoundVideo ? 'round' : undefined} />
       {getMessageVideo(message) && <i className="icon-play" />}
-      {renderText(getMessageSummaryText(lang, message, true))}
+      {renderMessageSummary(lang, message, true)}
     </span>
   );
 }
@@ -361,7 +361,6 @@ export default memo(withGlobal<OwnProps>(
       : undefined;
     const { targetUserIds: actionTargetUserIds, targetChatId: actionTargetChatId } = lastMessageAction || {};
     const privateChatUserId = getPrivateChatUserId(chat);
-    const { byId: usersById } = global.users;
     const {
       chatId: currentChatId,
       threadId: currentThreadId,
@@ -380,18 +379,13 @@ export default memo(withGlobal<OwnProps>(
       animationLevel: global.settings.byKey.animationLevel,
       isSelected,
       canScrollDown: isSelected && messageListType === 'thread',
-      canChangeFolder: Boolean(global.chatFolders.orderedIds),
+      canChangeFolder: Boolean(global.chatFolders.orderedIds?.length),
       lastSyncTime: global.lastSyncTime,
       ...(isOutgoing && { lastMessageOutgoingStatus: selectOutgoingStatus(global, chat.lastMessage) }),
       ...(privateChatUserId && {
         user: selectUser(global, privateChatUserId),
         userStatus: selectUserStatus(global, privateChatUserId),
       }),
-      ...(actionTargetUserIds && { usersById }),
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'openChat',
-    'focusLastMessage',
-  ]),
 )(Chat));

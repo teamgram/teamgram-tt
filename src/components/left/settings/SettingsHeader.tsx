@@ -1,13 +1,11 @@
 import React, {
   FC, memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import { SettingsScreens } from '../../../types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
-import { pick } from '../../../util/iteratees';
 import useLang from '../../../hooks/useLang';
 
 import DropdownMenu from '../../ui/DropdownMenu';
@@ -23,17 +21,18 @@ type OwnProps = {
   onScreenSelect: (screen: SettingsScreens) => void;
 };
 
-type DispatchProps = Pick<GlobalActions, 'signOut' | 'deleteChatFolder'>;
-
-const SettingsHeader: FC<OwnProps & DispatchProps> = ({
+const SettingsHeader: FC<OwnProps> = ({
   currentScreen,
   editedFolderId,
   onReset,
   onSaveFilter,
-  signOut,
-  deleteChatFolder,
   onScreenSelect,
 }) => {
+  const {
+    signOut,
+    deleteChatFolder,
+  } = getDispatch();
+
   const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
   const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] = useState(false);
 
@@ -88,6 +87,8 @@ const SettingsHeader: FC<OwnProps & DispatchProps> = ({
         return <h3>{lang('lng_settings_information')}</h3>;
       case SettingsScreens.General:
         return <h3>{lang('General')}</h3>;
+      case SettingsScreens.QuickReaction:
+        return <h3>{lang('DoubleTapSetting')}</h3>;
       case SettingsScreens.Notifications:
         return <h3>{lang('Notifications')}</h3>;
       case SettingsScreens.DataStorage:
@@ -263,7 +264,4 @@ const SettingsHeader: FC<OwnProps & DispatchProps> = ({
   );
 };
 
-export default memo(withGlobal<OwnProps>(
-  undefined,
-  (setGlobal, actions): DispatchProps => pick(actions, ['signOut', 'deleteChatFolder']),
-)(SettingsHeader));
+export default memo(SettingsHeader);

@@ -131,7 +131,7 @@ export function getUserStatus(
         }
 
         // other
-        return lang('LastSeen.TodayAt', formatTime(wasOnlineDate, lang));
+        return lang('LastSeen.TodayAt', formatTime(lang, wasOnlineDate));
       }
 
       // yesterday
@@ -140,7 +140,7 @@ export function getUserStatus(
       yesterday.setHours(0, 0, 0, 0);
       const serverYesterday = new Date(yesterday.getTime() + serverTimeOffset * 1000);
       if (wasOnlineDate > serverYesterday) {
-        return lang('LastSeen.YesterdayAt', formatTime(wasOnlineDate, lang));
+        return lang('LastSeen.YesterdayAt', formatTime(lang, wasOnlineDate));
       }
 
       return lang('LastSeen.AtDate', formatFullDate(lang, wasOnlineDate));
@@ -232,7 +232,13 @@ export function sortUserIds(
   }, 'desc');
 }
 
-export function filterUsersByName(userIds: string[], usersById: Record<string, ApiUser>, query?: string) {
+export function filterUsersByName(
+  userIds: string[],
+  usersById: Record<string, ApiUser>,
+  query?: string,
+  currentUserId?: string,
+  savedMessagesLang?: string,
+) {
   if (!query) {
     return userIds;
   }
@@ -245,7 +251,7 @@ export function filterUsersByName(userIds: string[], usersById: Record<string, A
       return false;
     }
 
-    const name = getUserFullName(user);
+    const name = id === currentUserId ? savedMessagesLang : getUserFullName(user);
     return (name && searchWords(name)) || searchWords(user.username);
   });
 }

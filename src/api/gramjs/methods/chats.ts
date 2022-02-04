@@ -39,8 +39,9 @@ import {
   buildChatBannedRights,
   buildChatAdminRights,
 } from '../gramjsBuilders';
-import { addEntitiesWithPhotosToLocalDb, addMessageToLocalDb } from '../helpers';
+import { addEntitiesWithPhotosToLocalDb, addMessageToLocalDb, addPhotoToLocalDb } from '../helpers';
 import { buildApiPeerId, getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
+import { buildApiPhoto } from '../apiBuilders/common';
 
 const MAX_INT_32 = 2 ** 31 - 1;
 let onUpdate: OnApiUpdate;
@@ -190,7 +191,7 @@ export async function searchChats({ query }: { query: string }) {
   const allChats = result.chats.concat(result.users)
     .map((user) => buildApiChatFromPreview(user))
     .filter<ApiChat>(Boolean as any);
-  const allUsers = result.users.map(buildApiUser).filter((user) => !!user && !user.isSelf) as ApiUser[];
+  const allUsers = result.users.map(buildApiUser).filter((user) => Boolean(user) && !user.isSelf) as ApiUser[];
 
   return {
     localChats: allChats.filter((r) => localPeerIds.includes(r.id)),
@@ -340,6 +341,9 @@ async function getFullChatInfo(chatId: string): Promise<{
     exportedInvite,
     botInfo,
     call,
+    availableReactions,
+    recentRequesters,
+    requestsPending,
   } = result.fullChat;
 
   const members = buildChatMembers(participants);
@@ -357,6 +361,9 @@ async function getFullChatInfo(chatId: string): Promise<{
         inviteLink: exportedInvite.link,
       }),
       groupCallId: call?.id.toString(),
+      enabledReactions: availableReactions,
+      requestsPending,
+      recentRequesterIds: recentRequesters?.map((userId) => buildApiPeerId(userId, 'user')),
     },
     users: result.users.map(buildApiUser).filter<ApiUser>(Boolean as any),
     groupCall: call ? {
@@ -402,6 +409,10 @@ async function getFullChannelInfo(
     hiddenPrehistory,
     call,
     botInfo,
+    availableReactions,
+    defaultSendAs,
+    requestsPending,
+    recentRequesters,
   } = result.fullChat;
 
   const inviteLink = exportedInvite instanceof GramJs.ChatInviteExported
@@ -452,6 +463,10 @@ async function getFullChannelInfo(
       groupCallId: call ? String(call.id) : undefined,
       linkedChatId: linkedChatId ? buildApiPeerId(linkedChatId, 'chat') : undefined,
       botCommands,
+      enabledReactions: availableReactions,
+      sendAsId: defaultSendAs ? getApiChatIdFromMtpPeer(defaultSendAs) : undefined,
+      requestsPending,
+      recentRequesterIds: recentRequesters?.map((userId) => buildApiPeerId(userId, 'user')),
     },
     users: [...(users || []), ...(bannedUsers || []), ...(adminUsers || [])],
     groupCall: call ? {
@@ -501,7 +516,7 @@ export async function createChannel({
     broadcast: true,
     title,
     about,
-  }), true);
+  }));
 
   // `createChannel` can return a lot of different update types according to docs,
   // but currently channel creation returns only `Updates` type.
@@ -530,7 +545,7 @@ export async function createChannel({
       await invokeRequest(new GramJs.channels.InviteToChannel({
         channel: buildInputEntity(channel.id, channel.accessHash) as GramJs.InputChannel,
         users: users.map(({ id, accessHash }) => buildInputEntity(id, accessHash)) as GramJs.InputUser[],
-      }), true, noErrorUpdate);
+      }), undefined, noErrorUpdate);
     } catch (err) {
       // `noErrorUpdate` will cause an exception which we don't want either
     }
@@ -599,7 +614,7 @@ export async function createGroupChat({
   const result = await invokeRequest(new GramJs.messages.CreateChat({
     title,
     users: users.map(({ id, accessHash }) => buildInputEntity(id, accessHash)) as GramJs.InputUser[],
-  }), true, true);
+  }), undefined, true);
 
   // `createChat` can return a lot of different update types according to docs,
   // but currently chat creation returns only `Updates` type.
@@ -968,12 +983,12 @@ export function setDiscussionGroup({
   return invokeRequest(new GramJs.channels.SetDiscussionGroup({
     broadcast: buildInputPeer(channel.id, channel.accessHash),
     group: chat ? buildInputPeer(chat.id, chat.accessHash) : new GramJs.InputChannelEmpty(),
-  }));
+  }), true);
 }
 
 export async function migrateChat(chat: ApiChat) {
   const result = await invokeRequest(
-    new GramJs.messages.MigrateChat({ chatId: buildInputEntity(chat.id) as BigInt.BigInteger }), true,
+    new GramJs.messages.MigrateChat({ chatId: buildInputEntity(chat.id) as BigInt.BigInteger }),
   );
 
   // `migrateChat` can return a lot of different update types according to docs,
@@ -1003,13 +1018,24 @@ export async function openChatByInvite(hash: string) {
   let chat: ApiChat | undefined;
 
   if (result instanceof GramJs.ChatInvite) {
+    const {
+      photo, participantsCount, title, channel, requestNeeded, about, megagroup,
+    } = result;
+
+    if (photo instanceof GramJs.Photo) {
+      addPhotoToLocalDb(result.photo);
+    }
+
     onUpdate({
       '@type': 'showInvite',
       data: {
-        title: result.title,
+        title,
+        about,
         hash,
-        participantsCount: result.participantsCount,
-        isChannel: result.channel,
+        participantsCount,
+        isChannel: channel && !megagroup,
+        isRequestNeeded: requestNeeded,
+        ...(photo instanceof GramJs.Photo && { photo: buildApiPhoto(photo) }),
       },
     });
   } else {
@@ -1031,16 +1057,16 @@ export async function openChatByInvite(hash: string) {
   return { chatId: chat.id };
 }
 
-export function addChatMembers(chat: ApiChat, users: ApiUser[], noErrorUpdate = false) {
+export async function addChatMembers(chat: ApiChat, users: ApiUser[], noErrorUpdate = false) {
   try {
     if (chat.type === 'chatTypeChannel' || chat.type === 'chatTypeSuperGroup') {
-      return invokeRequest(new GramJs.channels.InviteToChannel({
+      return await invokeRequest(new GramJs.channels.InviteToChannel({
         channel: buildInputEntity(chat.id, chat.accessHash) as GramJs.InputChannel,
         users: users.map((user) => buildInputEntity(user.id, user.accessHash)) as GramJs.InputUser[],
       }), true, noErrorUpdate);
     }
 
-    return Promise.all(users.map((user) => {
+    return await Promise.all(users.map((user) => {
       return invokeRequest(new GramJs.messages.AddChatUser({
         chatId: buildInputEntity(chat.id) as BigInt.BigInteger,
         userId: buildInputEntity(user.id, user.accessHash) as GramJs.InputUser,
@@ -1121,10 +1147,32 @@ function updateLocalDb(result: (
 }
 
 export async function importChatInvite({ hash }: { hash: string }) {
-  const updates = await invokeRequest(new GramJs.messages.ImportChatInvite({ hash }), true);
+  const updates = await invokeRequest(new GramJs.messages.ImportChatInvite({ hash }));
   if (!(updates instanceof GramJs.Updates) || !updates.chats.length) {
     return undefined;
   }
 
   return buildApiChatFromPreview(updates.chats[0]);
+}
+
+export function setChatEnabledReactions({
+  chat, enabledReactions,
+}: {
+  chat: ApiChat; enabledReactions: string[];
+}) {
+  return invokeRequest(new GramJs.messages.SetChatAvailableReactions({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+    availableReactions: enabledReactions,
+  }), true);
+}
+
+export function toggleIsProtected({
+  chat, isProtected,
+}: { chat: ApiChat; isProtected: boolean }) {
+  const { id, accessHash } = chat;
+
+  return invokeRequest(new GramJs.messages.ToggleNoForwards({
+    peer: buildInputPeer(id, accessHash),
+    enabled: isProtected,
+  }), true);
 }

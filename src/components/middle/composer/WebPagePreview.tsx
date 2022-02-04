@@ -1,19 +1,16 @@
-import React, {
-  FC, memo, useEffect, useMemo,
-} from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import React, { FC, memo, useEffect } from '../../../lib/teact/teact';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import { ApiMessage, ApiMessageEntityTypes, ApiWebPage } from '../../../api/types';
 import { ISettings } from '../../../types';
 
 import { RE_LINK_TEMPLATE } from '../../../config';
 import { selectNoWebPage, selectTheme } from '../../../modules/selectors';
-import { pick } from '../../../util/iteratees';
 import parseMessageInput from '../../../util/parseMessageInput';
 import useOnChange from '../../../hooks/useOnChange';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useCurrentOrPrev from '../../../hooks/useCurrentOrPrev';
+import useDebouncedMemo from '../../../hooks/useDebouncedMemo';
 import buildClassName from '../../../util/buildClassName';
 
 import WebPage from '../message/WebPage';
@@ -33,11 +30,11 @@ type StateProps = {
   noWebPage?: boolean;
   theme: ISettings['theme'];
 };
-type DispatchProps = Pick<GlobalActions, 'loadWebPagePreview' | 'clearWebPagePreview' | 'toggleMessageWebPage'>;
 
+const DEBOUNCE_MS = 300;
 const RE_LINK = new RegExp(RE_LINK_TEMPLATE, 'i');
 
-const WebPagePreview: FC<OwnProps & StateProps & DispatchProps> = ({
+const WebPagePreview: FC<OwnProps & StateProps> = ({
   chatId,
   threadId,
   messageText,
@@ -45,11 +42,14 @@ const WebPagePreview: FC<OwnProps & StateProps & DispatchProps> = ({
   webPagePreview,
   noWebPage,
   theme,
-  loadWebPagePreview,
-  clearWebPagePreview,
-  toggleMessageWebPage,
 }) => {
-  const link = useMemo(() => {
+  const {
+    loadWebPagePreview,
+    clearWebPagePreview,
+    toggleMessageWebPage,
+  } = getDispatch();
+
+  const link = useDebouncedMemo(() => {
     const { text, entities } = parseMessageInput(messageText);
 
     const linkEntity = entities && entities.find(({ type }) => type === ApiMessageEntityTypes.TextUrl);
@@ -63,7 +63,7 @@ const WebPagePreview: FC<OwnProps & StateProps & DispatchProps> = ({
     }
 
     return undefined;
-  }, [messageText]);
+  }, DEBOUNCE_MS, [messageText]);
 
   useEffect(() => {
     if (link) {
@@ -121,7 +121,4 @@ export default memo(withGlobal<OwnProps>(
       noWebPage,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'loadWebPagePreview', 'clearWebPagePreview', 'toggleMessageWebPage',
-  ]),
 )(WebPagePreview));

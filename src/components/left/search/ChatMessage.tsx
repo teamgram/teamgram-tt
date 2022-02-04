@@ -1,9 +1,8 @@
 import React, {
   FC, memo, useCallback,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import {
   ApiChat, ApiUser, ApiMessage, ApiMessageOutgoingStatus,
 } from '../../../api/types';
@@ -13,18 +12,17 @@ import {
   getChatTitle,
   getPrivateChatUserId,
   getMessageMediaHash,
-  getMessageSummaryText,
   getMessageMediaThumbDataUri,
   getMessageVideo,
   getMessageRoundVideo,
 } from '../../../modules/helpers';
 import { selectChat, selectUser } from '../../../modules/selectors';
 import renderText from '../../common/helpers/renderText';
-import { pick } from '../../../util/iteratees';
 import useMedia from '../../../hooks/useMedia';
 import { formatPastTimeShort } from '../../../util/dateFormat';
 import useLang, { LangFn } from '../../../hooks/useLang';
 import useSelectWithEnter from '../../../hooks/useSelectWithEnter';
+import { renderMessageSummary } from '../../common/helpers/renderMessageText';
 
 import Avatar from '../../common/Avatar';
 import VerifiedIcon from '../../common/VerifiedIcon';
@@ -46,17 +44,16 @@ type StateProps = {
   lastSyncTime?: number;
 };
 
-type DispatchProps = Pick<GlobalActions, 'focusMessage'>;
-
-const ChatMessage: FC<OwnProps & StateProps & DispatchProps> = ({
+const ChatMessage: FC<OwnProps & StateProps> = ({
   message,
   searchQuery,
   chatId,
   chat,
   privateChatUser,
-  focusMessage,
   lastSyncTime,
 }) => {
+  const { focusMessage } = getDispatch();
+
   const mediaThumbnail = getMessageMediaThumbDataUri(message);
   const mediaBlobUrl = useMedia(getMessageMediaHash(message, 'micro'));
   const isRoundVideo = Boolean(getMessageRoundVideo(message));
@@ -101,7 +98,7 @@ const ChatMessage: FC<OwnProps & StateProps & DispatchProps> = ({
         </div>
         <div className="subtitle">
           <div className="message" dir="auto">
-            {renderMessageSummary(lang, message, mediaBlobUrl || mediaThumbnail, searchQuery, isRoundVideo)}
+            {renderSummary(lang, message, mediaBlobUrl || mediaThumbnail, searchQuery, isRoundVideo)}
           </div>
         </div>
       </div>
@@ -109,18 +106,18 @@ const ChatMessage: FC<OwnProps & StateProps & DispatchProps> = ({
   );
 };
 
-function renderMessageSummary(
+function renderSummary(
   lang: LangFn, message: ApiMessage, blobUrl?: string, searchQuery?: string, isRoundVideo?: boolean,
 ) {
   if (!blobUrl) {
-    return renderText(getMessageSummaryText(lang, message));
+    return renderMessageSummary(lang, message, undefined, searchQuery);
   }
 
   return (
     <span className="media-preview">
       <img src={blobUrl} alt="" className={isRoundVideo ? 'round' : undefined} />
       {getMessageVideo(message) && <i className="icon-play" />}
-      {renderText(getMessageSummaryText(lang, message, true), ['emoji', 'highlight'], { highlight: searchQuery })}
+      {renderMessageSummary(lang, message, true, searchQuery)}
     </span>
   );
 }
@@ -140,7 +137,4 @@ export default memo(withGlobal<OwnProps>(
       ...(privateChatUserId && { privateChatUser: selectUser(global, privateChatUserId) }),
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'focusMessage',
-  ]),
 )(ChatMessage));

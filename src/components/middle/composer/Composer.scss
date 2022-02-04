@@ -33,6 +33,18 @@
     --border-width: 0;
   }
 
+  @keyframes show-send-as-button {
+    from {
+      width: 1rem;
+      transform: scale(0);
+    }
+
+    to {
+      width: 3.5rem;
+      transform: scale(1);
+    }
+  }
+
   > .Button {
     flex-shrink: 0;
     margin-left: .5rem;
@@ -47,6 +59,7 @@
     }
 
     .icon-send,
+    .icon-schedule,
     .icon-microphone-alt,
     .icon-check {
       position: absolute;
@@ -54,6 +67,7 @@
 
     &:not(:active):not(:focus):not(:hover) {
       .icon-send,
+      .icon-schedule,
       .icon-check {
         color: var(--color-primary);
       }
@@ -80,7 +94,20 @@
       }
 
       .icon-microphone-alt,
-      .icon-check {
+      .icon-check,
+      .icon-schedule {
+        animation: hide-icon .4s forwards ease-out;
+      }
+    }
+
+    &.schedule {
+      .icon-schedule {
+        animation: grow-icon .4s ease-out;
+      }
+
+      .icon-microphone-alt,
+      .icon-check,
+      .icon-send {
         animation: hide-icon .4s forwards ease-out;
       }
     }
@@ -91,19 +118,21 @@
       }
 
       .icon-send,
-      .icon-check {
+      .icon-check,
+      .icon-schedule {
         animation: hide-icon .4s forwards ease-out;
       }
     }
 
     &.edit {
-      .icon-send,
-      .icon-microphone-alt {
-        animation: hide-icon .4s forwards ease-out;
-      }
-
       .icon-check {
         animation: grow-icon .4s ease-out;
+      }
+
+      .icon-send,
+      .icon-microphone-alt,
+      .icon-schedule {
+        animation: hide-icon .4s forwards ease-out;
       }
     }
 
@@ -112,10 +141,18 @@
     }
 
     body.animation-level-0 &, body.animation-level-1 & {
-      .icon-send, .icon-microphone-alt, .icon-check {
+      .icon-send, .icon-microphone-alt, .icon-check, .icon-schedule {
         animation-duration: 0ms !important;
       }
     }
+  }
+
+  .send-as-button {
+    z-index: 1;
+  }
+
+  body:not(.animation-level-0) & .send-as-button.appear-animation {
+    animation: 0.25s ease-in-out forwards show-send-as-button;
   }
 
   .mobile-symbol-menu-button {
@@ -297,7 +334,7 @@
   position: relative;
 
   .form-control {
-    padding: calc((3.25rem - var(--composer-text-size, 1rem) * 1.375) / 2 - var(--border-width, 0) * 2)  calc(.9rem - var(--border-width));
+    padding: calc((3.25rem - var(--composer-text-size, 1rem) * 1.375) / 2 - var(--border-width, 0) * 2) calc(.9rem - var(--border-width));
     overflow: hidden;
     line-height: 1.375;
     font-family: Roboto, -apple-system, "Apple Color Emoji", "Helvetica Neue", sans-serif;
@@ -360,6 +397,18 @@
     &:hover, &:active, &:visited {
       text-decoration: underline !important;
     }
+  }
+
+  .spoiler {
+    background-image: url('../../../assets/spoiler-dots-black.png');
+    background-size: auto min(100%, 1.125rem);
+    border-radius: 0.5rem;
+    padding: 0 0.3125rem 0.125rem 0.3125rem;
+    text-shadow: -2px -2px 0 var(--color-background), 2px -2px 0 var(--color-background), -2px 2px 0 var(--color-background), 2px 2px 0 var(--color-background);
+  }
+
+  html.theme-dark & .spoiler {
+    background-image: url('../../../assets/spoiler-dots-white.png');
   }
 
   .clone {

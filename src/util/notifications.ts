@@ -213,7 +213,7 @@ export async function subscribe() {
     await callApi('registerDevice', deviceToken);
     getDispatch()
       .setDeviceToken(deviceToken);
-  } catch (error) {
+  } catch (error: any) {
     if (Notification.permission === 'denied' as NotificationPermission) {
       // The user denied the notification permission which
       // means we failed to subscribe and the user will need
@@ -277,17 +277,17 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage) {
   let body: string;
   if (selectShouldShowMessagePreview(chat, selectNotifySettings(global), selectNotifyExceptions(global))) {
     if (isActionMessage(message)) {
-      const actionOrigin = chat && (isChatChannel(chat) || message.senderId === message.chatId)
-        ? chat
-        : messageSender;
+      const isChat = chat && (isChatChannel(chat) || message.senderId === message.chatId);
+
       body = renderActionMessageText(
         getTranslation,
         message,
-        actionOrigin,
+        !isChat ? messageSender : undefined,
+        isChat ? chat : undefined,
         actionTargetUsers,
         actionTargetMessage,
         actionTargetChatId,
-        { asPlain: true },
+        { asPlainText: true },
       ) as string;
     } else {
       const senderName = getMessageSenderName(getTranslation, chat.id, messageSender);
@@ -308,10 +308,10 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage) {
 async function getAvatar(chat: ApiChat) {
   const imageHash = getChatAvatarHash(chat);
   if (!imageHash) return undefined;
-  let mediaData = mediaLoader.getFromMemory<ApiMediaFormat.BlobUrl>(imageHash);
+  let mediaData = mediaLoader.getFromMemory(imageHash);
   if (!mediaData) {
     await mediaLoader.fetch(imageHash, ApiMediaFormat.BlobUrl);
-    mediaData = mediaLoader.getFromMemory<ApiMediaFormat.BlobUrl>(imageHash);
+    mediaData = mediaLoader.getFromMemory(imageHash);
   }
   return mediaData;
 }

@@ -1,20 +1,18 @@
 import React, {
   FC, memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions, GlobalState } from '../../../global/types';
-import { ApiChat } from '../../../api/types';
+import { GlobalState } from '../../../global/types';
 import { ApiPrivacySettings, SettingsScreens } from '../../../types';
 
+import { ALL_FOLDER_ID, ARCHIVED_FOLDER_ID } from '../../../config';
+import { unique } from '../../../util/iteratees';
+import { filterChatsByName, isChatGroup, isUserId } from '../../../modules/helpers';
 import useLang from '../../../hooks/useLang';
-import { pick } from '../../../util/iteratees';
-import searchWords from '../../../util/searchWords';
-import { getPrivacyKey } from './helper/privacy';
-import {
-  getChatTitle, isChatGroup, isUserId, prepareChatList,
-} from '../../../modules/helpers';
 import useHistoryBack from '../../../hooks/useHistoryBack';
+import { useFolderManagerForOrderedIds } from '../../../hooks/useFolderManager';
+import { getPrivacyKey } from './helper/privacy';
 
 import Picker from '../../common/Picker';
 import FloatingActionButton from '../../ui/FloatingActionButton';
@@ -29,31 +27,20 @@ export type OwnProps = {
 
 type StateProps = {
   currentUserId?: string;
-  chatsById: Record<string, ApiChat>;
-  listIds?: string[];
-  orderedPinnedIds?: string[];
-  archivedListIds?: string[];
-  archivedPinnedIds?: string[];
   settings?: ApiPrivacySettings;
 };
 
-type DispatchProps = Pick<GlobalActions, 'setPrivacySettings'>;
-
-const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps & DispatchProps> = ({
-  currentUserId,
+const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps> = ({
   isAllowList,
   screen,
-  settings,
-  chatsById,
-  listIds,
-  orderedPinnedIds,
-  archivedListIds,
-  archivedPinnedIds,
-  setPrivacySettings,
   isActive,
   onScreenSelect,
   onReset,
+  currentUserId,
+  settings,
 }) => {
+  const { setPrivacySettings } = getDispatch();
+
   const lang = useLang();
 
   const selectedContactIds = useMemo(() => {
@@ -71,46 +58,23 @@ const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps & Dispatc
   const [isSubmitShown, setIsSubmitShown] = useState<boolean>(false);
   const [newSelectedContactIds, setNewSelectedContactIds] = useState<string[]>(selectedContactIds);
 
-  const chats = useMemo(() => {
-    const activeChatArrays = listIds
-      ? prepareChatList(chatsById, listIds, orderedPinnedIds, 'all')
-      : undefined;
-    const archivedChatArrays = archivedListIds
-      ? prepareChatList(chatsById, archivedListIds, archivedPinnedIds, 'archived')
-      : undefined;
-
-    if (!activeChatArrays && !archivedChatArrays) {
-      return undefined;
-    }
-
-    return [
-      ...(activeChatArrays
-        ? [
-          ...activeChatArrays.pinnedChats,
-          ...activeChatArrays.otherChats,
-        ]
-        : []
-      ),
-      ...(archivedChatArrays ? archivedChatArrays.otherChats : []),
-    ];
-  }, [chatsById, listIds, orderedPinnedIds, archivedListIds, archivedPinnedIds]);
-
+  const folderAllOrderedIds = useFolderManagerForOrderedIds(ALL_FOLDER_ID);
+  const folderArchivedOrderedIds = useFolderManagerForOrderedIds(ARCHIVED_FOLDER_ID);
   const displayedIds = useMemo(() => {
-    if (!chats) {
-      return undefined;
-    }
+    // No need for expensive global updates on chats, so we avoid them
+    const chatsById = getGlobal().chats.byId;
 
-    return chats
-      .filter((chat) => (
-        ((isUserId(chat.id) && chat.id !== currentUserId) || isChatGroup(chat))
-        && (
-          !searchQuery
-        || searchWords(getChatTitle(lang, chat), searchQuery)
-        || selectedContactIds.includes(chat.id)
-        )
-      ))
-      .map(({ id }) => id);
-  }, [chats, currentUserId, lang, searchQuery, selectedContactIds]);
+    const chatIds = unique([...folderAllOrderedIds || [], ...folderArchivedOrderedIds || []])
+      .filter((chatId) => {
+        const chat = chatsById[chatId];
+        return chat && ((isUserId(chat.id) && chat.id !== currentUserId) || isChatGroup(chat));
+      });
+
+    return unique([
+      ...selectedContactIds,
+      ...filterChatsByName(lang, chatIds, chatsById, searchQuery),
+    ]);
+  }, [folderAllOrderedIds, folderArchivedOrderedIds, selectedContactIds, lang, searchQuery, currentUserId]);
 
   const handleSelectedContactIdsChange = useCallback((value: string[]) => {
     setNewSelectedContactIds(value);
@@ -177,24 +141,9 @@ function getCurrentPrivacySettings(global: GlobalState, screen: SettingsScreens)
 
 export default memo(withGlobal<OwnProps>(
   (global, { screen }): StateProps => {
-    const {
-      chats: {
-        byId: chatsById,
-        listIds,
-        orderedPinnedIds,
-      },
-      currentUserId,
-    } = global;
-
     return {
-      currentUserId,
-      chatsById,
-      listIds: listIds.active,
-      orderedPinnedIds: orderedPinnedIds.active,
-      archivedPinnedIds: orderedPinnedIds.archived,
-      archivedListIds: listIds.archived,
+      currentUserId: global.currentUserId,
       settings: getCurrentPrivacySettings(global, screen),
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, ['setPrivacySettings']),
 )(SettingsPrivacyVisibilityExceptionList));

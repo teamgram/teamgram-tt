@@ -1,16 +1,15 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
-import { withGlobal } from '../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../lib/teact/teactn';
 
-import { GlobalActions } from '../../global/types';
 import {
   ApiChat, ApiDimensions, ApiMediaFormat, ApiMessage, ApiUser,
 } from '../../api/types';
 import { MediaViewerOrigin } from '../../types';
 
 import { ANIMATION_END_DELAY } from '../../config';
-
+import { IS_IOS, IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../util/environment';
 import useBlurSync from '../../hooks/useBlurSync';
 import useForceUpdate from '../../hooks/useForceUpdate';
 import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
@@ -50,8 +49,6 @@ import {
 import { stopCurrentAudio } from '../../util/audioPlayer';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import { captureEvents } from '../../util/captureEvents';
-import { IS_IOS, IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../util/environment';
-import { pick } from '../../util/iteratees';
 import windowSize from '../../util/windowSize';
 import { AVATAR_FULL_DIMENSIONS, MEDIA_VIEWER_MEDIA_QUERY } from '../common/helpers/mediaDimensions';
 import { renderMessageText } from '../common/helpers/renderMessageText';
@@ -83,11 +80,9 @@ type StateProps = {
   animationLevel: 0 | 1 | 2;
 };
 
-type DispatchProps = Pick<GlobalActions, 'openMediaViewer' | 'closeMediaViewer' | 'openForwardMenu' | 'focusMessage'>;
-
 const ANIMATION_DURATION = 350;
 
-const MediaViewer: FC<StateProps & DispatchProps> = ({
+const MediaViewer: FC<StateProps> = ({
   chatId,
   threadId,
   messageId,
@@ -98,12 +93,16 @@ const MediaViewer: FC<StateProps & DispatchProps> = ({
   message,
   chatMessages,
   collectionIds,
-  openMediaViewer,
-  closeMediaViewer,
-  openForwardMenu,
-  focusMessage,
   animationLevel,
 }) => {
+  const {
+    openMediaViewer,
+    closeMediaViewer,
+    openForwardMenu,
+    focusMessage,
+    toggleChatInfo,
+  } = getDispatch();
+
   const isOpen = Boolean(avatarOwner || messageId);
 
   const isFromSharedMedia = origin === MediaViewerOrigin.SharedMedia;
@@ -122,12 +121,13 @@ const MediaViewer: FC<StateProps & DispatchProps> = ({
   const isAvatar = Boolean(avatarOwner);
 
   /* Navigation */
-  const isSingleSlide = Boolean(webPagePhoto || webPageVideo);
+  const singleMessageId = webPagePhoto || webPageVideo ? messageId : undefined;
+
   const messageIds = useMemo(() => {
-    return isSingleSlide && messageId
-      ? [messageId]
+    return singleMessageId
+      ? [singleMessageId]
       : getChatMediaMessageIds(chatMessages || {}, collectionIds || [], isFromSharedMedia);
-  }, [isSingleSlide, messageId, chatMessages, collectionIds, isFromSharedMedia]);
+  }, [singleMessageId, chatMessages, collectionIds, isFromSharedMedia]);
 
   const selectedMediaMessageIndex = messageId ? messageIds.indexOf(messageId) : -1;
   const isFirst = selectedMediaMessageIndex === 0 || selectedMediaMessageIndex === -1;
@@ -313,12 +313,16 @@ const MediaViewer: FC<StateProps & DispatchProps> = ({
 
   const handleFooterClick = useCallback(() => {
     close();
-    focusMessage({
-      chatId,
-      threadId,
-      messageId,
-    });
-  }, [close, chatId, threadId, focusMessage, messageId]);
+
+    if (IS_SINGLE_COLUMN_LAYOUT) {
+      setTimeout(() => {
+        toggleChatInfo(false, { forceSyncOnIOs: true });
+        focusMessage({ chatId, threadId, messageId });
+      }, ANIMATION_DURATION);
+    } else {
+      focusMessage({ chatId, threadId, messageId });
+    }
+  }, [close, chatId, threadId, focusMessage, toggleChatInfo, messageId]);
 
   const handleForward = useCallback(() => {
     openForwardMenu({
@@ -430,7 +434,7 @@ const MediaViewer: FC<StateProps & DispatchProps> = ({
 
     return captureEvents(element, {
       // eslint-disable-next-line max-len
-      excludedClosestSelector: `.backdrop, .navigation, .media-viewer-head, .media-viewer-footer${!shouldCloseOnVideo ? ', .VideoPlayer' : ''}`,
+      excludedClosestSelector: `.backdrop, .navigation, .media-viewer-head, .Spoiler, .media-viewer-footer${!shouldCloseOnVideo ? ', .VideoPlayer' : ''}`,
       onClick: close,
     });
   }, [close, isGif, isZoomed, messageId]);
@@ -514,6 +518,7 @@ const MediaViewer: FC<StateProps & DispatchProps> = ({
                   hasFooter={hasFooter}
                   isZoomed={isZoomed}
                   isActive={isActive}
+                  isVideo={isVideo}
                   animationLevel={animationLevel}
                   onClose={close}
                   selectMessage={selectMessage}
@@ -641,7 +646,4 @@ export default memo(withGlobal(
       animationLevel,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'openMediaViewer', 'closeMediaViewer', 'openForwardMenu', 'focusMessage',
-  ]),
 )(MediaViewer));

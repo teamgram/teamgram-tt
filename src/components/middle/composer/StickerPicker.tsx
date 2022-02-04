@@ -1,9 +1,8 @@
 import React, {
   FC, useState, useEffect, memo, useRef, useMemo, useCallback,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import { ApiStickerSet, ApiSticker } from '../../../api/types';
 import { StickerSetOrRecent } from '../../../types';
 
@@ -12,12 +11,12 @@ import { IS_TOUCH_ENV } from '../../../util/environment';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import fastSmoothScroll from '../../../util/fastSmoothScroll';
 import buildClassName from '../../../util/buildClassName';
-import { pick } from '../../../util/iteratees';
 import fastSmoothScrollHorizontal from '../../../util/fastSmoothScrollHorizontal';
 import useAsyncRendering from '../../right/hooks/useAsyncRendering';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 import useHorizontalScroll from '../../../hooks/useHorizontalScroll';
 import useLang from '../../../hooks/useLang';
+import useSendMessageAction from '../../../hooks/useSendMessageAction';
 
 import Loading from '../../ui/Loading';
 import Button from '../../ui/Button';
@@ -29,6 +28,8 @@ import StickerSetCoverAnimated from './StickerSetCoverAnimated';
 import './StickerPicker.scss';
 
 type OwnProps = {
+  chatId: string;
+  threadId?: number;
   className: string;
   loadAndPlay: boolean;
   canSendStickers: boolean;
@@ -43,18 +44,15 @@ type StateProps = {
   shouldPlay?: boolean;
 };
 
-type DispatchProps = Pick<GlobalActions, (
-  'loadStickerSets' | 'loadRecentStickers' | 'loadFavoriteStickers' |
-  'addRecentSticker' | 'loadAddedStickers' | 'unfaveSticker'
-)>;
-
 const SMOOTH_SCROLL_DISTANCE = 500;
 const HEADER_BUTTON_WIDTH = 52; // px (including margin)
 const STICKER_INTERSECTION_THROTTLE = 200;
 
 const stickerSetIntersections: boolean[] = [];
 
-const StickerPicker: FC<OwnProps & StateProps & DispatchProps> = ({
+const StickerPicker: FC<OwnProps & StateProps> = ({
+  chatId,
+  threadId,
   className,
   loadAndPlay,
   canSendStickers,
@@ -64,18 +62,19 @@ const StickerPicker: FC<OwnProps & StateProps & DispatchProps> = ({
   stickerSetsById,
   shouldPlay,
   onStickerSelect,
-  loadStickerSets,
-  loadRecentStickers,
-  loadFavoriteStickers,
-  loadAddedStickers,
-  addRecentSticker,
-  unfaveSticker,
 }) => {
+  const {
+    loadRecentStickers,
+    addRecentSticker,
+    unfaveSticker,
+  } = getDispatch();
+
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
   const headerRef = useRef<HTMLDivElement>(null);
   const [activeSetIndex, setActiveSetIndex] = useState<number>(0);
+  const sendMessageAction = useSendMessageAction(chatId, threadId);
 
   const { observe: observeIntersection } = useIntersectionObserver({
     rootRef: containerRef,
@@ -136,17 +135,10 @@ const StickerPicker: FC<OwnProps & StateProps & DispatchProps> = ({
 
   useEffect(() => {
     if (loadAndPlay) {
-      loadStickerSets();
       loadRecentStickers();
-      loadFavoriteStickers();
+      sendMessageAction({ type: 'chooseSticker' });
     }
-  }, [loadAndPlay, loadFavoriteStickers, loadRecentStickers, loadStickerSets]);
-
-  useEffect(() => {
-    if (addedSetIds?.length) {
-      loadAddedStickers();
-    }
-  }, [addedSetIds, loadAddedStickers]);
+  }, [loadAndPlay, loadRecentStickers, sendMessageAction]);
 
   useHorizontalScroll(headerRef.current);
 
@@ -181,6 +173,10 @@ const StickerPicker: FC<OwnProps & StateProps & DispatchProps> = ({
     unfaveSticker({ sticker });
   }, [unfaveSticker]);
 
+  const handleMouseMove = useCallback(() => {
+    sendMessageAction({ type: 'chooseSticker' });
+  }, [sendMessageAction]);
+
   const canRenderContents = useAsyncRendering([], SLIDE_TRANSITION_DURATION);
 
   function renderCover(stickerSet: StickerSetOrRecent, index: number) {
@@ -205,7 +201,7 @@ const StickerPicker: FC<OwnProps & StateProps & DispatchProps> = ({
             <i className="icon-recent" />
           ) : stickerSet.id === 'favorite' ? (
             <i className="icon-favorite" />
-          ) : stickerSet.isAnimated ? (
+          ) : stickerSet.isLottie ? (
             <StickerSetCoverAnimated
               stickerSet={stickerSet as ApiStickerSet}
               observeIntersection={observeIntersectionForCovers}
@@ -260,6 +256,7 @@ const StickerPicker: FC<OwnProps & StateProps & DispatchProps> = ({
       </div>
       <div
         ref={containerRef}
+        onMouseMove={handleMouseMove}
         className={buildClassName('StickerPicker-main no-selection', IS_TOUCH_ENV ? 'no-scrollbar' : 'custom-scroll')}
       >
         {allSets.map((stickerSet, i) => (
@@ -296,12 +293,4 @@ export default memo(withGlobal<OwnProps>(
       shouldPlay: global.settings.byKey.shouldLoopStickers,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'loadStickerSets',
-    'loadRecentStickers',
-    'loadFavoriteStickers',
-    'loadAddedStickers',
-    'addRecentSticker',
-    'unfaveSticker',
-  ]),
 )(StickerPicker));

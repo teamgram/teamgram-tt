@@ -1,14 +1,12 @@
 import React, {
   FC, memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import { ApiChat } from '../../../api/types';
 import { ManagementProgress } from '../../../types';
 
 import { selectChat, selectManagement } from '../../../modules/selectors';
-import { pick } from '../../../util/iteratees';
 import { isChatChannel } from '../../../modules/helpers';
 import useFlag from '../../../hooks/useFlag';
 import useLang from '../../../hooks/useLang';
@@ -36,23 +34,25 @@ type StateProps = {
   isChannel: boolean;
   progress?: ManagementProgress;
   isUsernameAvailable?: boolean;
+  isProtected?: boolean;
 };
 
-type DispatchProps = Pick<GlobalActions, (
-  'checkPublicLink' | 'updatePublicLink' | 'updatePrivateLink'
-)>;
-
-const ManageChatPrivacyType: FC<OwnProps & StateProps & DispatchProps> = ({
+const ManageChatPrivacyType: FC<OwnProps & StateProps> = ({
   chat,
   onClose,
   isActive,
   isChannel,
   progress,
   isUsernameAvailable,
-  checkPublicLink,
-  updatePublicLink,
-  updatePrivateLink,
+  isProtected,
 }) => {
+  const {
+    checkPublicLink,
+    updatePublicLink,
+    updatePrivateLink,
+    toggleIsProtected,
+  } = getDispatch();
+
   const isPublic = Boolean(chat.username);
   const privateLink = chat.fullInfo?.inviteLink;
 
@@ -77,6 +77,13 @@ const ManageChatPrivacyType: FC<OwnProps & StateProps & DispatchProps> = ({
     setPrivacyType(value as PrivacyType);
   }, []);
 
+  const handleForwardingOptionChange = useCallback((value: string) => {
+    toggleIsProtected({
+      chatId: chat.id,
+      isProtected: value === 'protected',
+    });
+  }, [chat.id, toggleIsProtected]);
+
   const handleSave = useCallback(() => {
     updatePublicLink({ username: privacyType === 'public' ? username : '' });
   }, [privacyType, updatePublicLink, username]);
@@ -94,6 +101,14 @@ const ManageChatPrivacyType: FC<OwnProps & StateProps & DispatchProps> = ({
     { value: 'private', label: lang(`${langPrefix1}Private`), subLabel: lang(`${langPrefix1}PrivateInfo`) },
     { value: 'public', label: lang(`${langPrefix1}Public`), subLabel: lang(`${langPrefix1}PublicInfo`) },
   ];
+
+  const forwardingOptions = [{
+    value: 'allowed',
+    label: lang('ChannelVisibility.Forwarding.Enabled'),
+  }, {
+    value: 'protected',
+    label: lang('ChannelVisibility.Forwarding.Disabled'),
+  }];
 
   const isLoading = progress === ManagementProgress.InProgress;
 
@@ -149,6 +164,22 @@ const ManageChatPrivacyType: FC<OwnProps & StateProps & DispatchProps> = ({
             </p>
           </div>
         )}
+        <div className="section" dir={lang.isRtl ? 'rtl' : undefined}>
+          <h3 className="section-heading">
+            {lang(isChannel ? 'ChannelVisibility.Forwarding.ChannelTitle' : 'ChannelVisibility.Forwarding.GroupTitle')}
+          </h3>
+          <RadioGroup
+            selected={isProtected ? 'protected' : 'allowed'}
+            name="channel-type"
+            options={forwardingOptions}
+            onChange={handleForwardingOptionChange}
+          />
+          <p className="section-info">
+            {isChannel
+              ? lang('ChannelVisibility.Forwarding.ChannelInfo')
+              : lang('ChannelVisibility.Forwarding.GroupInfo')}
+          </p>
+        </div>
       </div>
       <FloatingActionButton
         isShown={canUpdate}
@@ -176,9 +207,7 @@ export default memo(withGlobal<OwnProps>(
       isChannel: isChatChannel(chat),
       progress: global.management.progress,
       isUsernameAvailable,
+      isProtected: chat?.isProtected,
     };
   },
-  (setGlobal, actions) => pick(actions, [
-    'checkPublicLink', 'updatePublicLink', 'updatePrivateLink',
-  ]),
 )(ManageChatPrivacyType));

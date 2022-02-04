@@ -2,17 +2,18 @@ import { ChangeEvent } from 'react';
 import React, {
   FC, memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import { ManagementScreens, ManagementProgress } from '../../../types';
-import { ApiChat, ApiMediaFormat } from '../../../api/types';
+import { ApiChat, ApiExportedInvite, ApiMediaFormat } from '../../../api/types';
 
-import { pick } from '../../../util/iteratees';
 import { getChatAvatarHash, getHasAdminRight } from '../../../modules/helpers';
 import useMedia from '../../../hooks/useMedia';
 import useLang from '../../../hooks/useLang';
 import { selectChat } from '../../../modules/selectors';
+import useFlag from '../../../hooks/useFlag';
+import useHistoryBack from '../../../hooks/useHistoryBack';
+import { formatInteger } from '../../../util/textFormat';
 
 import AvatarEditable from '../../ui/AvatarEditable';
 import InputText from '../../ui/InputText';
@@ -21,8 +22,6 @@ import Checkbox from '../../ui/Checkbox';
 import Spinner from '../../ui/Spinner';
 import FloatingActionButton from '../../ui/FloatingActionButton';
 import ConfirmDialog from '../../ui/ConfirmDialog';
-import useFlag from '../../../hooks/useFlag';
-import useHistoryBack from '../../../hooks/useHistoryBack';
 
 import './Management.scss';
 
@@ -38,30 +37,39 @@ type StateProps = {
   progress?: ManagementProgress;
   isSignaturesShown: boolean;
   canChangeInfo?: boolean;
+  canInvite?: boolean;
+  exportedInvites?: ApiExportedInvite[];
+  lastSyncTime?: number;
+  availableReactionsCount?: number;
 };
-
-type DispatchProps = Pick<GlobalActions, (
-  'toggleSignatures' | 'updateChat' | 'closeManagement' | 'leaveChannel' | 'deleteChannel' | 'openChat'
-)>;
 
 const CHANNEL_TITLE_EMPTY = 'Channel title can\'t be empty';
 
-const ManageChannel: FC<OwnProps & StateProps & DispatchProps> = ({
+const ManageChannel: FC<OwnProps & StateProps> = ({
   chatId,
   chat,
   progress,
   isSignaturesShown,
   canChangeInfo,
+  canInvite,
+  exportedInvites,
+  lastSyncTime,
+  availableReactionsCount,
   onScreenSelect,
-  updateChat,
-  toggleSignatures,
-  closeManagement,
-  leaveChannel,
-  deleteChannel,
-  openChat,
   onClose,
   isActive,
 }) => {
+  const {
+    updateChat,
+    toggleSignatures,
+    closeManagement,
+    leaveChannel,
+    deleteChannel,
+    openChat,
+    loadExportedChatInvites,
+    loadChatJoinRequests,
+  } = getDispatch();
+
   const currentTitle = chat ? (chat.title || '') : '';
   const currentAbout = chat?.fullInfo ? (chat.fullInfo.about || '') : '';
   const hasLinkedChat = chat?.fullInfo?.linkedChatId;
@@ -77,6 +85,14 @@ const ManageChannel: FC<OwnProps & StateProps & DispatchProps> = ({
   const lang = useLang();
 
   useHistoryBack(isActive, onClose);
+
+  useEffect(() => {
+    if (lastSyncTime) {
+      loadExportedChatInvites({ chatId });
+      loadExportedChatInvites({ chatId, isRevoked: true });
+      loadChatJoinRequests({ chatId });
+    }
+  }, [chatId, loadExportedChatInvites, lastSyncTime, loadChatJoinRequests]);
 
   useEffect(() => {
     if (progress === ManagementProgress.Complete) {
@@ -95,9 +111,21 @@ const ManageChannel: FC<OwnProps & StateProps & DispatchProps> = ({
     onScreenSelect(ManagementScreens.Discussion);
   }, [onScreenSelect]);
 
+  const handleClickReactions = useCallback(() => {
+    onScreenSelect(ManagementScreens.Reactions);
+  }, [onScreenSelect]);
+
   const handleClickAdministrators = useCallback(() => {
     onScreenSelect(ManagementScreens.ChatAdministrators);
   }, [onScreenSelect]);
+
+  const handleClickInvites = () => {
+    onScreenSelect(ManagementScreens.Invites);
+  };
+
+  const handleClickRequests = () => {
+    onScreenSelect(ManagementScreens.JoinRequests);
+  };
 
   const handleSetPhoto = useCallback((file: File) => {
     setPhoto(file);
@@ -150,6 +178,8 @@ const ManageChannel: FC<OwnProps & StateProps & DispatchProps> = ({
     closeManagement();
     openChat({ id: undefined });
   }, [chat.isCreator, chat.id, closeDeleteDialog, closeManagement, leaveChannel, deleteChannel, openChat]);
+
+  const enabledReactionsCount = chat.fullInfo?.enabledReactions?.length || 0;
 
   if (chat.isRestricted) {
     return undefined;
@@ -205,6 +235,42 @@ const ManageChannel: FC<OwnProps & StateProps & DispatchProps> = ({
             <span className="title">{lang('ChannelAdministrators')}</span>
             <span className="subtitle">{adminsCount}</span>
           </ListItem>
+          {canInvite && (
+            <ListItem
+              icon="link"
+              onClick={handleClickInvites}
+              multiline
+              disabled={!exportedInvites}
+            >
+              <span className="title">{lang('GroupInfo.InviteLinks')}</span>
+              <span className="subtitle">
+                {exportedInvites ? formatInteger(exportedInvites.length) : lang('Loading')}
+              </span>
+            </ListItem>
+          )}
+          {Boolean(chat.joinRequests?.length) && (
+            <ListItem
+              icon="add-user-filled"
+              onClick={handleClickRequests}
+              multiline
+            >
+              <span className="title">{lang('SubscribeRequests')}</span>
+              <span className="subtitle">
+                {formatInteger(chat.joinRequests!.length)}
+              </span>
+            </ListItem>
+          )}
+          <ListItem
+            icon="reactions"
+            multiline
+            onClick={handleClickReactions}
+            disabled={!canChangeInfo}
+          >
+            <span className="title">{lang('Reactions')}</span>
+            <span className="subtitle" dir="auto">
+              {enabledReactionsCount}/{availableReactionsCount}
+            </span>
+          </ListItem>
           <div className="ListItem no-selection narrow">
             <Checkbox
               checked={isSignaturesShown}
@@ -258,15 +324,17 @@ export default memo(withGlobal<OwnProps>(
     const chat = selectChat(global, chatId)!;
     const { progress } = global.management;
     const isSignaturesShown = Boolean(chat?.isSignaturesShown);
+    const { invites } = global.management.byChatId[chatId] || {};
 
     return {
       chat,
       progress,
       isSignaturesShown,
       canChangeInfo: getHasAdminRight(chat, 'changeInfo'),
+      canInvite: getHasAdminRight(chat, 'inviteUsers'),
+      lastSyncTime: global.lastSyncTime,
+      exportedInvites: invites,
+      availableReactionsCount: global.availableReactions?.filter((l) => !l.isInactive).length,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'toggleSignatures', 'updateChat', 'closeManagement', 'leaveChannel', 'deleteChannel', 'openChat',
-  ]),
 )(ManageChannel));

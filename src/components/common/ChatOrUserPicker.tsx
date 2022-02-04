@@ -3,6 +3,7 @@ import React, {
   FC, memo, useRef, useCallback,
 } from '../../lib/teact/teact';
 
+import { CHAT_HEIGHT_PX } from '../../config';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll';
 import useLang from '../../hooks/useLang';
 import useKeyboardListNavigation from '../../hooks/useKeyboardListNavigation';
@@ -27,10 +28,11 @@ export type OwnProps = {
   filterRef: RefObject<HTMLInputElement>;
   filterPlaceholder: string;
   filter: string;
-  onFilterChange: (filter: string) => void;
   loadMore: NoneToVoidFunction;
+  onFilterChange: (filter: string) => void;
   onSelectChatOrUser: (chatOrUserId: string) => void;
   onClose: NoneToVoidFunction;
+  onCloseAnimationEnd?: NoneToVoidFunction;
 };
 
 const ChatOrUserPicker: FC<OwnProps> = ({
@@ -40,10 +42,11 @@ const ChatOrUserPicker: FC<OwnProps> = ({
   filterRef,
   filter,
   filterPlaceholder,
-  onFilterChange,
-  onClose,
   loadMore,
+  onFilterChange,
   onSelectChatOrUser,
+  onClose,
+  onCloseAnimationEnd,
 }) => {
   const lang = useLang();
   const [viewportIds, getMore] = useInfiniteScroll(loadMore, chatOrUserIds, Boolean(filter));
@@ -85,26 +88,31 @@ const ChatOrUserPicker: FC<OwnProps> = ({
     </div>
   );
 
+  const viewportOffset = chatOrUserIds!.indexOf(viewportIds![0]);
+
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
       className="ChatOrUserPicker"
       header={modalHeader}
+      onClose={onClose}
+      onCloseAnimationEnd={onCloseAnimationEnd}
     >
       {viewportIds?.length ? (
         <InfiniteScroll
+          ref={containerRef}
           className="picker-list custom-scroll"
           items={viewportIds}
           onLoadMore={getMore}
-          noScrollRestore={Boolean(filter)}
-          ref={containerRef}
+          withAbsolutePositioning
+          maxHeight={chatOrUserIds!.length * CHAT_HEIGHT_PX}
           onKeyDown={handleKeyDown}
         >
-          {viewportIds.map((id) => (
+          {viewportIds.map((id, i) => (
             <ListItem
               key={id}
               className="chat-item-clickable force-rounded-corners"
+              style={`top: ${(viewportOffset + i) * CHAT_HEIGHT_PX}px;`}
               onClick={() => onSelectChatOrUser(id)}
             >
               {isUserId(id) ? (

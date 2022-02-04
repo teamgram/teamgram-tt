@@ -1,7 +1,7 @@
 import React, {
   FC, useCallback, useEffect, useMemo, useRef, useState, memo,
 } from '../../lib/teact/teact';
-import { withGlobal } from '../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../lib/teact/teactn';
 
 import {
   MAIN_THREAD_ID,
@@ -11,7 +11,6 @@ import {
   ApiUser,
   ApiUserStatus,
 } from '../../api/types';
-import { GlobalActions } from '../../global/types';
 import {
   NewChatMembersProgress, ISettings, MediaViewerOrigin, ProfileState, ProfileTabType, SharedMediaType, AudioOrigin,
 } from '../../types';
@@ -35,7 +34,6 @@ import {
   selectActiveDownloadIds,
   selectUser,
 } from '../../modules/selectors';
-import { pick } from '../../util/iteratees';
 import { captureEvents, SwipeDirection } from '../../util/captureEvents';
 import { getSenderName } from '../left/search/helpers/getSenderName';
 import useCacheBuster from '../../hooks/useCacheBuster';
@@ -63,6 +61,7 @@ import DeleteMemberModal from './DeleteMemberModal';
 import GroupChatInfo from '../common/GroupChatInfo';
 
 import './Profile.scss';
+import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 
 type OwnProps = {
   chatId: string;
@@ -94,13 +93,8 @@ type StateProps = {
   lastSyncTime?: number;
   serverTimeOffset: number;
   activeDownloadIds: number[];
+  isChatProtected?: boolean;
 };
-
-type DispatchProps = Pick<GlobalActions, (
-  'setLocalMediaSearchType' | 'loadMoreMembers' | 'searchMediaMessagesLocal' | 'openMediaViewer' | 'loadCommonChats' |
-  'openAudioPlayer' | 'openUserInfo' | 'focusMessage' | 'loadProfilePhotos' | 'setNewChatMembersDialogState' |
-  'openChat'
-)>;
 
 const TABS = [
   { type: 'media', title: 'SharedMediaTab2' },
@@ -111,8 +105,9 @@ const TABS = [
 ];
 
 const HIDDEN_RENDER_DELAY = 1000;
+const INTERSECTION_THROTTLE = 500;
 
-const Profile: FC<OwnProps & StateProps & DispatchProps> = ({
+const Profile: FC<OwnProps & StateProps> = ({
   chatId,
   profileState,
   onProfileStateChange,
@@ -138,18 +133,22 @@ const Profile: FC<OwnProps & StateProps & DispatchProps> = ({
   lastSyncTime,
   activeDownloadIds,
   serverTimeOffset,
-  setLocalMediaSearchType,
-  loadMoreMembers,
-  loadCommonChats,
-  openChat,
-  searchMediaMessagesLocal,
-  openMediaViewer,
-  openAudioPlayer,
-  openUserInfo,
-  focusMessage,
-  loadProfilePhotos,
-  setNewChatMembersDialogState,
+  isChatProtected,
 }) => {
+  const {
+    setLocalMediaSearchType,
+    loadMoreMembers,
+    loadCommonChats,
+    openChat,
+    searchMediaMessagesLocal,
+    openMediaViewer,
+    openAudioPlayer,
+    openUserInfo,
+    focusMessage,
+    loadProfilePhotos,
+    setNewChatMembersDialogState,
+  } = getDispatch();
+
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
@@ -181,6 +180,11 @@ const Profile: FC<OwnProps & StateProps & DispatchProps> = ({
   const { applyTransitionFix, releaseTransitionFix } = useTransitionFixes(containerRef);
 
   const [cacheBuster, resetCacheBuster] = useCacheBuster();
+
+  const { observe: observeIntersectionForMedia } = useIntersectionObserver({
+    rootRef: containerRef,
+    throttleMs: INTERSECTION_THROTTLE,
+  });
 
   const handleTransitionStop = useCallback(() => {
     releaseTransitionFix();
@@ -327,6 +331,8 @@ const Profile: FC<OwnProps & StateProps & DispatchProps> = ({
             <Media
               key={id}
               message={chatMessages[id]}
+              isProtected={isChatProtected || chatMessages[id].isProtected}
+              observeIntersection={observeIntersectionForMedia}
               onClick={handleSelectMedia}
             />
           ))
@@ -338,8 +344,9 @@ const Profile: FC<OwnProps & StateProps & DispatchProps> = ({
               withDate
               smaller
               className="scroll-item"
-              onDateClick={handleMessageFocus}
               isDownloading={activeDownloadIds.includes(id)}
+              observeIntersection={observeIntersectionForMedia}
+              onDateClick={handleMessageFocus}
             />
           ))
         ) : resultType === 'links' ? (
@@ -347,6 +354,8 @@ const Profile: FC<OwnProps & StateProps & DispatchProps> = ({
             <WebLink
               key={id}
               message={chatMessages[id]}
+              isProtected={isChatProtected || chatMessages[id].isProtected}
+              observeIntersection={observeIntersectionForMedia}
               onMessageClick={handleMessageFocus}
             />
           ))
@@ -538,21 +547,9 @@ export default memo(withGlobal<OwnProps>(
       usersById,
       userStatusesById,
       chatsById,
+      isChatProtected: chat?.isProtected,
       ...(hasMembersTab && members && { members }),
       ...(hasCommonChatsTab && user && { commonChatIds: user.commonChats?.ids }),
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'setLocalMediaSearchType',
-    'loadMoreMembers',
-    'searchMediaMessagesLocal',
-    'openMediaViewer',
-    'openAudioPlayer',
-    'openUserInfo',
-    'focusMessage',
-    'loadProfilePhotos',
-    'setNewChatMembersDialogState',
-    'loadCommonChats',
-    'openChat',
-  ]),
 )(Profile));

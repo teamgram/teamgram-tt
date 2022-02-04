@@ -1,22 +1,33 @@
 import { useState, useEffect } from '../lib/teact/teact';
 import { IAnchorPosition } from '../types';
 
+interface Layout {
+  extraPaddingX?: number;
+  extraTopPadding?: number;
+  marginSides?: number;
+  extraMarginTop?: number;
+}
+
 const MENU_POSITION_VISUAL_COMFORT_SPACE_PX = 16;
 const MENU_POSITION_BOTTOM_MARGIN = 12;
+const EMPTY_RECT = {
+  width: 0, left: 0, height: 0, top: 0,
+};
 
-export default (
+export default function useContextMenuPosition(
   anchor: IAnchorPosition | undefined,
   getTriggerElement: () => HTMLElement | null,
   getRootElement: () => HTMLElement | null,
   getMenuElement: () => HTMLElement | null,
-  extraPaddingX = 0,
-  extraTopPadding = 0,
-) => {
+  getLayout?: () => Layout,
+) {
   const [positionX, setPositionX] = useState<'right' | 'left'>('right');
   const [positionY, setPositionY] = useState<'top' | 'bottom'>('bottom');
+  const [transformOriginX, setTransformOriginX] = useState<number>();
+  const [transformOriginY, setTransformOriginY] = useState<number>();
   const [withScroll, setWithScroll] = useState(false);
   const [style, setStyle] = useState('');
-  const [menuStyle, setMenuStyle] = useState('');
+  const [menuStyle, setMenuStyle] = useState('opacity: 0;');
 
   useEffect(() => {
     const triggerEl = getTriggerElement();
@@ -25,62 +36,94 @@ export default (
     }
 
     let { x, y } = anchor;
-    const emptyRect = {
-      width: 0, left: 0, height: 0, top: 0,
-    };
+    const anchorX = x;
+    const anchorY = y;
 
     const menuEl = getMenuElement();
     const rootEl = getRootElement();
 
-    const triggerRect = triggerEl.getBoundingClientRect();
-    const menuRect = menuEl ? { width: menuEl.offsetWidth, height: menuEl.offsetHeight } : emptyRect;
-    const rootRect = rootEl ? rootEl.getBoundingClientRect() : emptyRect;
+    const {
+      extraPaddingX = 0,
+      extraTopPadding = 0,
+      marginSides = 0,
+      extraMarginTop = 0,
+    } = getLayout?.() || {};
 
-    let horizontalPostition: 'left' | 'right';
+    const marginTop = menuEl ? parseInt(getComputedStyle(menuEl).marginTop, 10) + extraMarginTop : undefined;
+
+    const menuRect = menuEl ? {
+      width: menuEl.offsetWidth,
+      height: menuEl.offsetHeight + marginTop!,
+    } : EMPTY_RECT;
+
+    const rootRect = rootEl ? rootEl.getBoundingClientRect() : EMPTY_RECT;
+
+    let horizontalPosition: 'left' | 'right';
+    let verticalPosition: 'top' | 'bottom';
     if (x + menuRect.width + extraPaddingX < rootRect.width + rootRect.left) {
       x += 3;
-      horizontalPostition = 'left';
+      horizontalPosition = 'left';
     } else if (x - menuRect.width > 0) {
-      horizontalPostition = 'right';
+      horizontalPosition = 'right';
       x -= 3;
     } else {
-      horizontalPostition = 'left';
+      horizontalPosition = 'left';
       x = 16;
     }
-    setPositionX(horizontalPostition);
+    setPositionX(horizontalPosition);
+
+    if (marginSides
+      && horizontalPosition === 'right' && (x + extraPaddingX + marginSides >= rootRect.width + rootRect.left)) {
+      x -= marginSides;
+    }
+
+    if (marginSides && horizontalPosition === 'left') {
+      if (x + extraPaddingX + marginSides + menuRect.width >= rootRect.width + rootRect.left) {
+        x -= marginSides;
+      } else if (x - marginSides <= 0) {
+        x += marginSides;
+      }
+    }
 
     if (y + menuRect.height < rootRect.height + rootRect.top) {
-      setPositionY('top');
+      verticalPosition = 'top';
     } else {
-      setPositionY('bottom');
+      verticalPosition = 'bottom';
 
       if (y - menuRect.height < rootRect.top + extraTopPadding) {
         y = rootRect.top + rootRect.height;
       }
     }
+    setPositionY(verticalPosition);
 
-    const left = horizontalPostition === 'left'
+    const triggerRect = triggerEl.getBoundingClientRect();
+    const left = horizontalPosition === 'left'
       ? Math.min(x - triggerRect.left, rootRect.width - menuRect.width - MENU_POSITION_VISUAL_COMFORT_SPACE_PX)
       : Math.max((x - triggerRect.left), menuRect.width + MENU_POSITION_VISUAL_COMFORT_SPACE_PX);
     const top = Math.min(
-      rootRect.height - triggerRect.top + triggerRect.height - MENU_POSITION_BOTTOM_MARGIN,
+      rootRect.height - triggerRect.top + triggerRect.height - MENU_POSITION_BOTTOM_MARGIN + (marginTop || 0),
       y - triggerRect.top,
     );
-    const menuMaxHeight = rootRect.height - MENU_POSITION_BOTTOM_MARGIN;
+    const menuMaxHeight = rootRect.height - MENU_POSITION_BOTTOM_MARGIN - (marginTop || 0);
 
     setWithScroll(menuMaxHeight < menuRect.height);
     setMenuStyle(`max-height: ${menuMaxHeight}px;`);
     setStyle(`left: ${left}px; top: ${top}px`);
+    const offsetX = (anchorX - triggerRect.left) - left;
+    const offsetY = (anchorY - triggerRect.top) - top - (marginTop || 0);
+    setTransformOriginX(horizontalPosition === 'left' ? offsetX : menuRect.width + offsetX);
+    setTransformOriginY(verticalPosition === 'bottom' ? menuRect.height + offsetY : offsetY);
   }, [
-    anchor, extraPaddingX, extraTopPadding,
-    getMenuElement, getRootElement, getTriggerElement,
+    anchor, getMenuElement, getRootElement, getTriggerElement, getLayout,
   ]);
 
   return {
     positionX,
     positionY,
+    transformOriginX,
+    transformOriginY,
     style,
     menuStyle,
     withScroll,
   };
-};
+}

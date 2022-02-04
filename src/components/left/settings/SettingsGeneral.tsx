@@ -1,9 +1,8 @@
 import React, {
-  FC, useCallback, memo, useEffect, useRef, useState,
+  FC, useCallback, memo, useRef, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
 
-import { GlobalActions } from '../../../global/types';
 import { SettingsScreens, ISettings, TimeFormat } from '../../../types';
 import { ApiSticker, ApiStickerSet } from '../../../api/types';
 
@@ -21,6 +20,7 @@ import Checkbox from '../../ui/Checkbox';
 import RadioGroup, { IRadioOption } from '../../ui/RadioGroup';
 import SettingsStickerSet from './SettingsStickerSet';
 import StickerSetModal from '../../common/StickerSetModal.async';
+import ReactionStaticEmoji from '../../common/ReactionStaticEmoji';
 
 type OwnProps = {
   isActive?: boolean;
@@ -28,21 +28,19 @@ type OwnProps = {
   onReset: () => void;
 };
 
-type StateProps = Pick<ISettings, (
-  'messageTextSize' |
-  'animationLevel' |
-  'messageSendKeyCombo' |
-  'shouldSuggestStickers' |
-  'shouldLoopStickers' |
-  'timeFormat'
-)> & {
-  stickerSetIds?: string[];
-  stickerSetsById?: Record<string, ApiStickerSet>;
-};
-
-type DispatchProps = Pick<GlobalActions, (
-  'setSettingOption' | 'loadStickerSets' | 'loadAddedStickers'
-)>;
+type StateProps =
+  Pick<ISettings, (
+    'messageTextSize' |
+    'animationLevel' |
+    'messageSendKeyCombo' |
+    'shouldSuggestStickers' |
+    'shouldLoopStickers' |
+    'timeFormat'
+  )> & {
+    stickerSetIds?: string[];
+    stickerSetsById?: Record<string, ApiStickerSet>;
+    defaultReaction?: string;
+  };
 
 const ANIMATION_LEVEL_OPTIONS = [
   'Solid and Steady',
@@ -58,22 +56,24 @@ const TIME_FORMAT_OPTIONS: IRadioOption[] = [{
   value: '24h',
 }];
 
-const SettingsGeneral: FC<OwnProps & StateProps & DispatchProps> = ({
+const SettingsGeneral: FC<OwnProps & StateProps> = ({
   isActive,
   onScreenSelect,
   onReset,
   stickerSetIds,
   stickerSetsById,
+  defaultReaction,
   messageTextSize,
   animationLevel,
   messageSendKeyCombo,
   shouldSuggestStickers,
   shouldLoopStickers,
   timeFormat,
-  setSettingOption,
-  loadStickerSets,
-  loadAddedStickers,
 }) => {
+  const {
+    setSettingOption,
+  } = getDispatch();
+
   // eslint-disable-next-line no-null/no-null
   const stickerSettingsRef = useRef<HTMLDivElement>(null);
   const { observe: observeIntersectionForCovers } = useIntersectionObserver({ rootRef: stickerSettingsRef });
@@ -90,16 +90,6 @@ const SettingsGeneral: FC<OwnProps & StateProps & DispatchProps> = ({
       subLabel: 'New line by Enter',
     },
   ] : undefined;
-
-  useEffect(() => {
-    loadStickerSets();
-  }, [loadStickerSets]);
-
-  useEffect(() => {
-    if (stickerSetIds?.length) {
-      loadAddedStickers();
-    }
-  }, [stickerSetIds, loadAddedStickers]);
 
   const handleAnimationLevelChange = useCallback((newLevel: number) => {
     ANIMATION_LEVEL_OPTIONS.forEach((_, i) => {
@@ -202,6 +192,16 @@ const SettingsGeneral: FC<OwnProps & StateProps & DispatchProps> = ({
       <div className="settings-item">
         <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>{lang('AccDescrStickers')}</h4>
 
+        {defaultReaction && (
+          <ListItem
+            className="SettingsDefaultReaction"
+            onClick={() => onScreenSelect(SettingsScreens.QuickReaction)}
+          >
+            <ReactionStaticEmoji reaction={defaultReaction} />
+            <div className="title">{lang('DoubleTapSetting')}</div>
+          </ListItem>
+        )}
+
         <Checkbox
           label={lang('SuggestStickers')}
           checked={shouldSuggestStickers}
@@ -250,9 +250,7 @@ export default memo(withGlobal<OwnProps>(
       ]),
       stickerSetIds: global.stickers.added.setIds,
       stickerSetsById: global.stickers.setsById,
+      defaultReaction: global.appConfig?.defaultReaction,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'setSettingOption', 'loadStickerSets', 'loadAddedStickers',
-  ]),
 )(SettingsGeneral));

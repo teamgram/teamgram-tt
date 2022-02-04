@@ -19,7 +19,9 @@ type OwnProps = {
   isOpen: boolean;
   className?: string;
   style?: string;
-  menuStyle?: string;
+  bubbleStyle?: string;
+  transformOriginX?: number;
+  transformOriginY?: number;
   positionX?: 'left' | 'right';
   positionY?: 'top' | 'bottom';
   autoClose?: boolean;
@@ -42,8 +44,10 @@ const Menu: FC<OwnProps> = ({
   isOpen,
   className,
   style,
-  menuStyle,
+  bubbleStyle,
   children,
+  transformOriginX,
+  transformOriginY,
   positionX = 'left',
   positionY = 'top',
   autoClose = false,
@@ -80,7 +84,7 @@ const Menu: FC<OwnProps> = ({
   useHistoryBack(isOpen, onClose, undefined, undefined, autoClose);
 
   useEffectWithPrevDeps(([prevIsOpen]) => {
-    if (prevIsOpen !== undefined) {
+    if (isOpen || (!isOpen && prevIsOpen === true)) {
       dispatchHeavyAnimationEvent(ANIMATION_DURATION);
     }
   }, [isOpen]);
@@ -101,6 +105,9 @@ const Menu: FC<OwnProps> = ({
     transitionClassNames,
   );
 
+  const transformOriginYStyle = transformOriginY !== undefined ? `${transformOriginY}px` : undefined;
+  const transformOriginXStyle = transformOriginX !== undefined ? `${transformOriginX}px` : undefined;
+
   return (
     <div
       className={buildClassName('Menu no-selection', className)}
@@ -118,7 +125,8 @@ const Menu: FC<OwnProps> = ({
         ref={menuRef}
         className={bubbleClassName}
         // @ts-ignore teact feature
-        style={`transform-origin: ${positionY} ${positionX};${menuStyle || ''}`}
+        style={`transform-origin: ${transformOriginXStyle || positionX} ${transformOriginYStyle || positionY};${
+          bubbleStyle || ''}`}
         onClick={autoClose ? onClose : undefined}
       >
         {children}

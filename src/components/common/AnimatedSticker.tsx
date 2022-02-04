@@ -10,7 +10,7 @@ import useBackgroundMode from '../../hooks/useBackgroundMode';
 type OwnProps = {
   className?: string;
   id: string;
-  animationData: AnyLiteral;
+  animationData?: string;
   play?: boolean | string;
   playSegment?: [number, number];
   speed?: number;
@@ -19,7 +19,9 @@ type OwnProps = {
   quality?: number;
   isLowPriority?: boolean;
   onLoad?: NoneToVoidFunction;
+  forceOnHeavyAnimation?: boolean;
   color?: [number, number, number];
+  onEnded?: NoneToVoidFunction;
 };
 
 type RLottieClass = typeof import('../../lib/rlottie/RLottie').default;
@@ -52,8 +54,10 @@ const AnimatedSticker: FC<OwnProps> = ({
   size,
   quality,
   isLowPriority,
-  onLoad,
   color,
+  forceOnHeavyAnimation,
+  onLoad,
+  onEnded,
 }) => {
   const [animation, setAnimation] = useState<RLottieInstance>();
   // eslint-disable-next-line no-null/no-null
@@ -89,6 +93,7 @@ const AnimatedSticker: FC<OwnProps> = ({
         },
         onLoad,
         color,
+        onEnded,
       );
 
       if (speed) {
@@ -109,7 +114,7 @@ const AnimatedSticker: FC<OwnProps> = ({
         });
       });
     }
-  }, [color, animation, animationData, id, isLowPriority, noLoop, onLoad, quality, size, speed]);
+  }, [color, animation, animationData, id, isLowPriority, noLoop, onLoad, quality, size, speed, onEnded]);
 
   useEffect(() => {
     if (!animation) return;
@@ -197,14 +202,14 @@ const AnimatedSticker: FC<OwnProps> = ({
     if (animation) {
       if (isFirstRender.current) {
         isFirstRender.current = false;
-      } else {
+      } else if (animationData) {
         animation.changeData(animationData);
         playAnimation();
       }
     }
   }, [playAnimation, animation, animationData]);
 
-  useHeavyAnimationCheck(freezeAnimation, unfreezeAnimation);
+  useHeavyAnimationCheck(freezeAnimation, unfreezeAnimation, forceOnHeavyAnimation);
   // Pausing frame may not happen in background
   // so we need to make sure it happens right after focusing,
   // then we can play again.

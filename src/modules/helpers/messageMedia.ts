@@ -140,7 +140,8 @@ export function getMessageMediaHash(
     return undefined;
   }
 
-  const base = getMessageKey(message);
+  const mediaId = (messagePhoto || messageVideo || sticker || audio || voice || document)!.id;
+  const base = `${getMessageKey(message)}${mediaId ? `:${mediaId}` : ''}`;
 
   if (messageVideo) {
     switch (target) {
@@ -244,10 +245,6 @@ export function getAudioHasCover(media: ApiAudio) {
 
 export function getMessageMediaFormat(
   message: ApiMessage, target: Target,
-): Exclude<ApiMediaFormat, ApiMediaFormat.Lottie>;
-export function getMessageMediaFormat(message: ApiMessage, target: Target, canBeLottie: true): ApiMediaFormat;
-export function getMessageMediaFormat(
-  message: ApiMessage, target: Target,
 ): ApiMediaFormat {
   const {
     sticker, video, audio, voice,
@@ -255,7 +252,7 @@ export function getMessageMediaFormat(
 
   const fullVideo = video || getMessageWebPageVideo(message);
 
-  if (sticker && target === 'inline' && sticker.isAnimated) {
+  if (sticker && target === 'inline' && sticker.isLottie) {
     return ApiMediaFormat.Lottie;
   } else if (fullVideo && IS_PROGRESSIVE_SUPPORTED && (
     target === 'viewerFull' || target === 'inline'
@@ -306,9 +303,7 @@ export function hasMessageLocalBlobUrl(message: ApiMessage) {
 export function getChatMediaMessageIds(
   messages: Record<number, ApiMessage>, listedIds: number[], isFromSharedMedia = false,
 ) {
-  const ids = getMessageContentIds(messages, listedIds, isFromSharedMedia ? 'media' : 'inlineMedia');
-
-  return isFromSharedMedia ? ids.reverse() : ids;
+  return getMessageContentIds(messages, listedIds, isFromSharedMedia ? 'media' : 'inlineMedia');
 }
 
 export function getPhotoFullDimensions(photo: ApiPhoto): ApiDimensions | undefined {

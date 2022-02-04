@@ -10,10 +10,10 @@ import generateIdFor from '../../../util/generateIdFor';
 
 const MAX_STORED_EMOJIS = 18; // Represents two rows of recent emojis
 
-addReducer('toggleChatInfo', (global) => {
+addReducer('toggleChatInfo', (global, action, payload) => {
   return {
     ...global,
-    isChatInfoShown: !global.isChatInfoShown,
+    isChatInfoShown: payload !== undefined ? payload : !global.isChatInfoShown,
   };
 });
 
@@ -48,6 +48,29 @@ addReducer('toggleManagement', (global): GlobalState | undefined => {
         [chatId]: {
           ...global.management.byChatId[chatId],
           isActive: !(global.management.byChatId[chatId] || {}).isActive,
+        },
+      },
+    },
+  };
+});
+
+addReducer('requestNextManagementScreen', (global, actions, payload): GlobalState | undefined => {
+  const { screen } = payload || {};
+  const { chatId } = selectCurrentMessageList(global) || {};
+
+  if (!chatId) {
+    return undefined;
+  }
+
+  return {
+    ...global,
+    management: {
+      byChatId: {
+        ...global.management.byChatId,
+        [chatId]: {
+          ...global.management.byChatId[chatId],
+          isActive: true,
+          nextScreen: screen,
         },
       },
     },

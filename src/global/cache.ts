@@ -124,6 +124,7 @@ function readCache(initialState: GlobalState): GlobalState {
 }
 
 function migrateCache(cached: GlobalState, initialState: GlobalState) {
+  // Migrate from legacy setting names
   if ('shouldAutoDownloadMediaFromContacts' in cached.settings.byKey) {
     const {
       shouldAutoDownloadMediaFromContacts,
@@ -150,6 +151,7 @@ function migrateCache(cached: GlobalState, initialState: GlobalState) {
     };
   }
 
+  // Pre-fill settings with defaults
   cached.settings.byKey = {
     ...initialState.settings.byKey,
     ...cached.settings.byKey,
@@ -193,6 +195,14 @@ function migrateCache(cached: GlobalState, initialState: GlobalState) {
 
   if (!cached.users.statusesById) {
     cached.users.statusesById = {};
+  }
+
+  if (!cached.messages.sponsoredByChatId) {
+    cached.messages.sponsoredByChatId = {};
+  }
+
+  if (!cached.activeReactions) {
+    cached.activeReactions = {};
   }
 }
 
@@ -239,6 +249,7 @@ function updateCache() {
     settings: reduceSettings(global),
     chatFolders: reduceChatFolders(global),
     groupCalls: reduceGroupCalls(global),
+    availableReactions: reduceAvailableReactions(global),
   };
 
   const json = JSON.stringify(reducedGlobal);
@@ -311,6 +322,7 @@ function reduceMessages(global: GlobalState): GlobalState['messages'] {
   return {
     byChatId,
     messageLists: [],
+    sponsoredByChatId: {},
   };
 }
 
@@ -340,4 +352,9 @@ function reduceGroupCalls(global: GlobalState): GlobalState['groupCalls'] {
     isGroupCallPanelHidden: undefined,
     isFallbackConfirmOpen: undefined,
   };
+}
+
+function reduceAvailableReactions(global: GlobalState): GlobalState['availableReactions'] {
+  return global.availableReactions
+    ?.map((r) => pick(r, ['reaction', 'staticIcon', 'title', 'isInactive']));
 }

@@ -1,13 +1,12 @@
 import React, { FC, useCallback } from '../../../lib/teact/teact';
 
-import { GlobalActions, GlobalState } from '../../../global/types';
+import { GlobalState } from '../../../global/types';
 import { ApiMessage } from '../../../api/types';
 import { IAlbum, ISettings } from '../../../types';
 import { AlbumRectPart, IAlbumLayout } from './helpers/calculateAlbumLayout';
 
 import { getMessageContent } from '../../../modules/helpers';
-import { getGlobal, withGlobal } from '../../../lib/teact/teactn';
-import { pick } from '../../../util/iteratees';
+import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
 import withSelectControl from './hocs/withSelectControl';
 import { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import {
@@ -31,6 +30,7 @@ type OwnProps = {
   hasCustomAppendix?: boolean;
   lastSyncTime?: number;
   isOwn: boolean;
+  isProtected?: boolean;
   albumLayout: IAlbumLayout;
   onMediaClick: (messageId: number) => void;
 };
@@ -41,21 +41,21 @@ type StateProps = {
   activeDownloadIds: number[];
 };
 
-type DispatchProps = Pick<GlobalActions, 'cancelSendingMessage'>;
-
-const Album: FC<OwnProps & StateProps & DispatchProps> = ({
+const Album: FC<OwnProps & StateProps> = ({
   album,
   observeIntersection,
   hasCustomAppendix,
   lastSyncTime,
   isOwn,
+  isProtected,
   albumLayout,
   onMediaClick,
   uploadsById,
   activeDownloadIds,
   theme,
-  cancelSendingMessage,
 }) => {
+  const { cancelSendingMessage } = getDispatch();
+
   const mediaCount = album.messages.length;
 
   const handleCancelUpload = useCallback((message: ApiMessage) => {
@@ -87,6 +87,7 @@ const Album: FC<OwnProps & StateProps & DispatchProps> = ({
           shouldAffectAppendix={shouldAffectAppendix}
           uploadProgress={uploadProgress}
           dimensions={dimensions}
+          isProtected={isProtected}
           onClick={onMediaClick}
           onCancelUpload={handleCancelUpload}
           isDownloading={activeDownloadIds.includes(message.id)}
@@ -104,6 +105,7 @@ const Album: FC<OwnProps & StateProps & DispatchProps> = ({
           uploadProgress={uploadProgress}
           lastSyncTime={lastSyncTime}
           dimensions={dimensions}
+          isProtected={isProtected}
           onClick={onMediaClick}
           onCancelUpload={handleCancelUpload}
           isDownloading={activeDownloadIds.includes(message.id)}
@@ -139,7 +141,4 @@ export default withGlobal<OwnProps>(
       activeDownloadIds,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'cancelSendingMessage',
-  ]),
 )(Album);

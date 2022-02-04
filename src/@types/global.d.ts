@@ -11,12 +11,13 @@ declare namespace React {
     teactOrderKey?: number;
   }
 
-  interface ImgHTMLAttributes<T> extends HTMLAttributes<T> {
-    loading?: 'auto' | 'eager' | 'lazy';
-  }
-
   interface VideoHTMLAttributes {
     srcObject?: MediaStream;
+  }
+
+  interface MouseEvent {
+    offsetX: number;
+    offsetY: number;
   }
 }
 
@@ -45,12 +46,11 @@ type EmojiWithSkins = Record<number, Emoji>;
 type AllEmojis = Record<string, Emoji | EmojiWithSkins>;
 
 declare module '*.png';
+declare module '*.tgs';
 
 declare module 'pako/dist/pako_inflate' {
   function inflate(...args: any[]): string;
 }
-
-type WindowWithPerf = typeof window & { perf: AnyLiteral };
 
 interface TEncodedImage {
   result: Uint8ClampedArray;
@@ -62,13 +62,6 @@ interface IWebpWorker extends Worker {
   wasmReady?: boolean;
   requests: Map<string, (value: PromiseLike<TEncodedImage>) => void>;
 }
-
-interface Window {
-  ClipboardItem?: any;
-  requestIdleCallback: (cb: AnyToVoidFunction, options:{ timeout?: number }) => void;
-}
-
-interface Clipboard { write?: any }
 
 interface Document {
   mozFullScreenElement: any;
@@ -87,4 +80,21 @@ interface HTMLElement {
 interface Navigator {
   // PWA badging extensions https://w3c.github.io/badging/
   setAppBadge?(count: number): Promise<void>;
+}
+
+// Fix to make Boolean() work as !!
+// https://github.com/microsoft/TypeScript/issues/16655
+type Falsy = false | 0 | '' | null | undefined;
+
+interface BooleanConstructor {
+  new<T>(value: T | Falsy): value is T;
+  <T>(value: T | Falsy): value is T;
+  readonly prototype: Boolean;
+}
+
+interface Array<T> {
+  filter<S extends T>(predicate: BooleanConstructor, thisArg?: any): Exclude<S, Falsy>[];
+}
+interface ReadonlyArray<T> {
+  filter<S extends T>(predicate: BooleanConstructor, thisArg?: any): Exclude<S, Falsy>[];
 }

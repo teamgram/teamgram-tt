@@ -9,11 +9,16 @@ let isAnimating = false;
 // Make sure to end even if end callback was not called (which was some hardly-reproducible bug)
 const AUTO_END_TIMEOUT = 1000;
 
-export default (
+const useHeavyAnimationCheck = (
   handleAnimationStart: AnyToVoidFunction,
   handleAnimationEnd: AnyToVoidFunction,
+  isDisabled = false,
 ) => {
   useEffect(() => {
+    if (isDisabled) {
+      return undefined;
+    }
+
     if (isAnimating) {
       handleAnimationStart();
     }
@@ -25,7 +30,7 @@ export default (
       document.removeEventListener(ANIMATION_END_EVENT, handleAnimationEnd);
       document.removeEventListener(ANIMATION_START_EVENT, handleAnimationStart);
     };
-  }, [handleAnimationEnd, handleAnimationStart]);
+  }, [isDisabled, handleAnimationEnd, handleAnimationStart]);
 };
 
 export function isHeavyAnimating() {
@@ -58,3 +63,5 @@ export function dispatchHeavyAnimationEvent(duration = AUTO_END_TIMEOUT) {
 
   return onEnd;
 }
+
+export default useHeavyAnimationCheck;

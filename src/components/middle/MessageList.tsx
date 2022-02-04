@@ -1,12 +1,12 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
-import { getGlobal, withGlobal } from '../../lib/teact/teactn';
+import { getDispatch, getGlobal, withGlobal } from '../../lib/teact/teactn';
 
 import {
   ApiMessage, ApiRestrictionReason, MAIN_THREAD_ID,
 } from '../../api/types';
-import { GlobalActions, MessageListType } from '../../global/types';
+import { MessageListType } from '../../global/types';
 import { LoadMoreDirection } from '../../types';
 
 import { ANIMATION_END_DELAY, LOCAL_MESSAGE_ID_BASE, MESSAGE_LIST_SLICE } from '../../config';
@@ -32,7 +32,7 @@ import {
   isChatWithRepliesBot,
   isChatGroup,
 } from '../../modules/helpers';
-import { orderBy, pick } from '../../util/iteratees';
+import { orderBy } from '../../util/iteratees';
 import { fastRaf, debounce, onTickEnd } from '../../util/schedulers';
 import useLayoutEffectWithPrevDeps from '../../hooks/useLayoutEffectWithPrevDeps';
 import useEffectWithPrevDeps from '../../hooks/useEffectWithPrevDeps';
@@ -47,6 +47,7 @@ import fastSmoothScroll, { isAnimatingScroll } from '../../util/fastSmoothScroll
 import renderText from '../common/helpers/renderText';
 import useLang from '../../hooks/useLang';
 import useWindowSize from '../../hooks/useWindowSize';
+import useInterval from '../../hooks/useInterval';
 
 import Loading from '../ui/Loading';
 import MessageListContent from './MessageListContent';
@@ -89,10 +90,10 @@ type StateProps = {
   threadTopMessageId?: number;
   threadFirstMessageId?: number;
   hasLinkedChat?: boolean;
+  lastSyncTime?: number;
 };
 
-type DispatchProps = Pick<GlobalActions, 'loadViewportMessages' | 'setScrollOffset' | 'openHistoryCalendar'>;
-
+const MESSAGE_REACTIONS_POLLING_INTERVAL = 15 * 1000;
 const BOTTOM_THRESHOLD = 20;
 const UNREAD_DIVIDER_TOP = 10;
 const UNREAD_DIVIDER_TOP_WITH_TOOLS = 60;
@@ -104,7 +105,7 @@ const UNREAD_DIVIDER_CLASS = 'unread-divider';
 
 const runDebouncedForScroll = debounce((cb) => cb(), SCROLL_DEBOUNCE, false);
 
-const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
+const MessageList: FC<OwnProps & StateProps> = ({
   chatId,
   threadId,
   type,
@@ -129,15 +130,17 @@ const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
   restrictionReason,
   focusingId,
   isSelectModeActive,
-  loadViewportMessages,
-  setScrollOffset,
   lastMessage,
   botDescription,
   threadTopMessageId,
   hasLinkedChat,
+  lastSyncTime,
   withBottomShift,
-  openHistoryCalendar,
 }) => {
+  const {
+    loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions,
+  } = getDispatch();
+
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -171,6 +174,12 @@ const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
     memoFirstUnreadIdRef.current = firstUnreadId;
   }, [firstUnreadId]);
 
+  useOnChange(() => {
+    if (isChannelChat && isReady && lastSyncTime) {
+      loadSponsoredMessages({ chatId });
+    }
+  }, [chatId, isReady, isChannelChat, lastSyncTime]);
+
   // Updated only once when messages are loaded (as we want the unread divider to keep its position)
   useOnChange(() => {
     if (areMessagesLoaded) {
@@ -198,6 +207,17 @@ const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
     const listedMessages = viewportIds.map((id) => messagesById[id]).filter(Boolean);
     return groupMessages(orderBy(listedMessages, ['date', 'id']), memoUnreadDividerBeforeIdRef.current);
   }, [messageIds, messagesById, threadFirstMessageId, threadTopMessageId]);
+
+  useInterval(() => {
+    if (!messageIds || !messagesById) {
+      return;
+    }
+    const ids = messageIds.filter((l) => messagesById[l]?.reactions);
+
+    if (!ids.length) return;
+
+    loadMessageReactions({ chatId, ids });
+  }, MESSAGE_REACTIONS_POLLING_INTERVAL);
 
   const loadMoreAround = useMemo(() => {
     if (type !== 'thread') {
@@ -270,10 +290,8 @@ const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
   const { height: windowHeight } = useWindowSize();
 
   useEffect(() => {
-    if (isReady) {
-      containerRef.current!.dataset.normalHeight = String(containerRef.current!.offsetHeight);
-    }
-  }, [windowHeight, isReady, canPost]);
+    containerRef.current!.dataset.normalHeight = String(containerRef.current!.offsetHeight);
+  }, [windowHeight, canPost]);
 
   // Initial message loading
   useEffect(() => {
@@ -299,7 +317,7 @@ const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
 
   // Remember scroll position before repositioning it
   useOnChange(() => {
-    if (!messageIds || !listItemElementsRef.current || !isReady) {
+    if (!messageIds || !listItemElementsRef.current) {
       return;
     }
 
@@ -316,7 +334,7 @@ const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
     anchorIdRef.current = anchor.id;
     anchorTopRef.current = anchor.getBoundingClientRect().top;
     // This should match deps for `useLayoutEffectWithPrevDeps` below
-  }, [messageIds, isViewportNewest, containerHeight, hasTools, isReady]);
+  }, [messageIds, isViewportNewest, containerHeight, hasTools]);
 
   // Handles updated message list, takes care of scroll repositioning
   useLayoutEffectWithPrevDeps(([
@@ -509,11 +527,13 @@ const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
         />
       ) : ((messageIds && messageGroups) || lastMessage) ? (
         <MessageListContent
+          chatId={chatId}
           messageIds={messageIds || [lastMessage!.id]}
           messageGroups={messageGroups || groupMessages([lastMessage!])}
           isViewportNewest={Boolean(isViewportNewest)}
           isUnread={Boolean(firstUnreadId)}
           withUsers={withUsers}
+          areReactionsInMeta={isPrivate}
           noAvatars={noAvatars}
           containerRef={containerRef}
           anchorIdRef={anchorIdRef}
@@ -530,10 +550,9 @@ const MessageList: FC<OwnProps & StateProps & DispatchProps> = ({
           noAppearanceAnimation={!messageGroups || !shouldAnimateAppearanceRef.current}
           onFabToggle={onFabToggle}
           onNotchToggle={onNotchToggle}
-          openHistoryCalendar={openHistoryCalendar}
         />
       ) : (
-        <Loading color="white" />
+        <Loading color="white" backgroundColor="dark" />
       )}
     </div>
   );
@@ -599,12 +618,8 @@ export default memo(withGlobal<OwnProps>(
       hasLinkedChat: chat.fullInfo && ('linkedChatId' in chat.fullInfo)
         ? Boolean(chat.fullInfo.linkedChatId)
         : undefined,
+      lastSyncTime: global.lastSyncTime,
       ...(withLastMessageWhenPreloading && { lastMessage }),
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'loadViewportMessages',
-    'setScrollOffset',
-    'openHistoryCalendar',
-  ]),
 )(MessageList));

@@ -5,7 +5,7 @@ import React, {
 import { DEBUG, DEBUG_MORE } from '../../config';
 import useForceUpdate from '../../hooks/useForceUpdate';
 import generateIdFor from '../../util/generateIdFor';
-import { throttleWithRaf } from '../../util/schedulers';
+import { fastRaf, throttleWithTickEnd } from '../../util/schedulers';
 import arePropsShallowEqual, { getUnequalProps } from '../../util/arePropsShallowEqual';
 import { orderBy } from '../../util/iteratees';
 import {
@@ -24,8 +24,7 @@ type Reducer = (
   payload: any,
 ) => GlobalState | void;
 
-type MapStateToProps<OwnProps = undefined> = ((global: GlobalState, ownProps: OwnProps) => AnyLiteral | null);
-type MapActionsToProps = ((setGlobal: Function, actions: GlobalActions) => Partial<GlobalActions> | null);
+type MapStateToProps<OwnProps = undefined> = ((global: GlobalState, ownProps: OwnProps) => AnyLiteral);
 
 let currentGlobal = {} as GlobalState;
 
@@ -34,7 +33,6 @@ const callbacks: Function[] = [updateContainers];
 const actions = {} as GlobalActions;
 const containers = new Map<string, {
   mapStateToProps: MapStateToProps<any>;
-  mapReducersToProps: MapActionsToProps;
   ownProps: Props;
   mappedProps?: Props;
   forceUpdate: Function;
@@ -43,11 +41,11 @@ const containers = new Map<string, {
   DEBUG_componentName: string;
 }>();
 
-const runCallbacksThrottled = throttleWithRaf(runCallbacks);
+const runCallbacksThrottled = throttleWithTickEnd(runCallbacks);
 
 function runCallbacks(forceOnHeavyAnimation = false) {
   if (!forceOnHeavyAnimation && isHeavyAnimating()) {
-    runCallbacksThrottled();
+    fastRaf(runCallbacksThrottled);
     return;
   }
 
@@ -94,17 +92,14 @@ function updateContainers() {
   // eslint-disable-next-line no-restricted-syntax
   for (const container of containers.values()) {
     const {
-      mapStateToProps, mapReducersToProps, ownProps, mappedProps, forceUpdate,
+      mapStateToProps, ownProps, mappedProps, forceUpdate,
     } = container;
 
     let newMappedProps;
 
     try {
-      newMappedProps = {
-        ...mapStateToProps(currentGlobal, ownProps),
-        ...mapReducersToProps(setGlobal, actions),
-      };
-    } catch (err) {
+      newMappedProps = mapStateToProps(currentGlobal, ownProps);
+    } catch (err: any) {
       handleError(err);
 
       return;
@@ -173,7 +168,6 @@ export function removeCallback(cb: Function) {
 
 export function withGlobal<OwnProps>(
   mapStateToProps: MapStateToProps<OwnProps> = () => ({}),
-  mapReducersToProps: MapActionsToProps = () => ({}),
 ) {
   return (Component: FC) => {
     return function TeactNContainer(props: OwnProps) {
@@ -192,7 +186,6 @@ export function withGlobal<OwnProps>(
       if (!container) {
         container = {
           mapStateToProps,
-          mapReducersToProps,
           ownProps: props,
           areMappedPropsChanged: false,
           forceUpdate,
@@ -211,11 +204,8 @@ export function withGlobal<OwnProps>(
         container.ownProps = props;
 
         try {
-          container.mappedProps = {
-            ...mapStateToProps(currentGlobal, props),
-            ...mapReducersToProps(setGlobal, actions),
-          };
-        } catch (err) {
+          container.mappedProps = mapStateToProps(currentGlobal, props);
+        } catch (err: any) {
           handleError(err);
         }
       }
@@ -231,7 +221,7 @@ if (DEBUG) {
 
   document.addEventListener('dblclick', () => {
     // eslint-disable-next-line no-console
-    console.log(
+    console.warn(
       'GLOBAL CONTAINERS',
       orderBy(
         Array.from(containers.values())

@@ -44,12 +44,18 @@
 
   img {
     -webkit-touch-callout: none;
-    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  .emoji {
+    -webkit-user-drag: none;
+    user-select: text;
   }
 
   .text-content {
     margin: 0;
     word-break: break-word;
+    white-space: pre-wrap;
     line-height: 1.3125;
     text-align: initial;
     display: flow-root;
@@ -104,6 +110,40 @@
     }
   }
 
+  .MessageMeta.reactions-offset {
+    position: relative;
+    top: .375rem;
+    bottom: auto !important;
+    float: right;
+    line-height: 1;
+    height: calc(var(--message-meta-height, 1rem));
+    margin-left: auto;
+    margin-right: -.5rem;
+    align-self: flex-end;
+
+    .MessageOutgoingStatus .Transition {
+      max-height: calc(var(--message-meta-height, 1rem));
+      overflow: hidden;
+    }
+
+    html[data-message-text-size="12"] & {
+      top: .25rem;
+    }
+
+    html[data-message-text-size="17"] & {
+      top: .4375rem;
+    }
+
+    html[data-message-text-size="18"] &,
+    html[data-message-text-size="19"] & {
+      top: .5rem;
+    }
+
+    html[data-message-text-size="20"] & {
+      top: .5625rem;
+    }
+  }
+
   &.document:not(.text) {
     &::after {
       content: "";
@@ -145,9 +185,14 @@
   }
 
   .matching-text-highlight {
+    color: var(--color-text);
     background: #CAE3F7;
     border-radius: 0.25rem;
     padding: 0 0.125rem;
+
+    .theme-dark & {
+      --color-text: #000;
+    }
   }
 
   .message-title {
@@ -451,6 +496,10 @@
     }
   }
 
+  &:not(.text) .RoundVideo {
+    margin-bottom: 0;
+  }
+
   // Moved below .is-reply to overwrite its styles
   &.text .media-inner,
   &.text .Album {
@@ -537,7 +586,6 @@
 
 .message-content.custom-shape {
   line-height: 1.2;
-  font-size: 10rem;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -649,6 +697,9 @@
     font-size: 4rem;
     margin-top: .5rem;
     min-width: 10rem;
+    @media (max-width: 600px) {
+      margin-top: .375rem;
+    }
 
     &.has-comments {
       margin-top: 1.25rem;

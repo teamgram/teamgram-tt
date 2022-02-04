@@ -1,61 +1,52 @@
 import React, {
-  FC, useCallback, useMemo, memo, useEffect, useRef, useState,
+  FC, memo, useCallback, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
-import { getGlobal, withGlobal } from '../../lib/teact/teactn';
+import { getDispatch, withGlobal } from '../../lib/teact/teactn';
 import cycleRestrict from '../../util/cycleRestrict';
 
-import { GlobalActions, MessageListType } from '../../global/types';
+import { GlobalState, MessageListType } from '../../global/types';
 import {
-  ApiMessage,
-  ApiChat,
-  ApiUser,
-  ApiTypingStatus,
-  MAIN_THREAD_ID, ApiUpdateConnectionStateType,
+  ApiChat, ApiMessage, ApiTypingStatus, ApiUser, MAIN_THREAD_ID,
 } from '../../api/types';
 
 import {
-  MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN,
-  MOBILE_SCREEN_MAX_WIDTH,
   EDITABLE_INPUT_ID,
+  MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN,
   MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN,
-  SAFE_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN,
+  MOBILE_SCREEN_MAX_WIDTH,
   SAFE_SCREEN_WIDTH_FOR_CHAT_INFO,
+  SAFE_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN,
 } from '../../config';
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TABLET_COLUMN_LAYOUT } from '../../util/environment';
 import {
-  isUserId,
-  getMessageKey,
-  getChatTitle,
-  getSenderTitle,
+  getChatTitle, getMessageKey, getSenderTitle, isUserId,
 } from '../../modules/helpers';
 import {
+  selectAllowedMessageActions,
   selectChat,
   selectChatMessage,
-  selectAllowedMessageActions,
-  selectIsRightColumnShown,
-  selectThreadTopMessageId,
-  selectThreadInfo,
   selectChatMessages,
-  selectPinnedIds,
-  selectIsChatWithSelf,
   selectForwardedSender,
-  selectScheduledIds,
-  selectIsInSelectMode,
   selectIsChatWithBot,
-  selectCountNotMutedUnread,
+  selectIsChatWithSelf,
+  selectIsInSelectMode,
+  selectIsRightColumnShown,
+  selectPinnedIds,
+  selectScheduledIds,
+  selectThreadInfo,
+  selectThreadTopMessageId,
 } from '../../modules/selectors';
 import useEnsureMessage from '../../hooks/useEnsureMessage';
 import useWindowSize from '../../hooks/useWindowSize';
 import useShowTransition from '../../hooks/useShowTransition';
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
-import { pick } from '../../util/iteratees';
-import { formatIntegerCompact } from '../../util/textFormat';
 import buildClassName from '../../util/buildClassName';
 import useLang from '../../hooks/useLang';
-import useBrowserOnline from '../../hooks/useBrowserOnline';
+import useConnectionStatus from '../../hooks/useConnectionStatus';
 
 import PrivateChatInfo from '../common/PrivateChatInfo';
 import GroupChatInfo from '../common/GroupChatInfo';
+import UnreadCounter from '../common/UnreadCounter';
 import Transition from '../ui/Transition';
 import Button from '../ui/Button';
 import HeaderActions from './HeaderActions';
@@ -86,22 +77,17 @@ type StateProps = {
   isLeftColumnShown?: boolean;
   isRightColumnShown?: boolean;
   audioMessage?: ApiMessage;
-  chatsById?: Record<string, ApiChat>;
   messagesCount?: number;
   isChatWithSelf?: boolean;
   isChatWithBot?: boolean;
   lastSyncTime?: number;
   shouldSkipHistoryAnimations?: boolean;
   currentTransitionKey: number;
-  connectionState?: ApiUpdateConnectionStateType;
+  connectionState?: GlobalState['connectionState'];
+  isSyncing?: GlobalState['isSyncing'];
 };
 
-type DispatchProps = Pick<GlobalActions, (
-  'openChatWithInfo' | 'pinMessage' | 'focusMessage' | 'openChat' | 'openPreviousChat' | 'loadPinnedMessages' |
-  'toggleLeftColumn' | 'exitMessageSelectMode'
-)>;
-
-const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
+const MiddleHeader: FC<OwnProps & StateProps> = ({
   chatId,
   threadId,
   messageListType,
@@ -116,7 +102,6 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
   isRightColumnShown,
   audioMessage,
   chat,
-  chatsById,
   messagesCount,
   isChatWithSelf,
   isChatWithBot,
@@ -124,15 +109,19 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
   shouldSkipHistoryAnimations,
   currentTransitionKey,
   connectionState,
-  openChatWithInfo,
-  pinMessage,
-  focusMessage,
-  openChat,
-  openPreviousChat,
-  loadPinnedMessages,
-  toggleLeftColumn,
-  exitMessageSelectMode,
+  isSyncing,
 }) => {
+  const {
+    openChatWithInfo,
+    pinMessage,
+    focusMessage,
+    openChat,
+    openPreviousChat,
+    loadPinnedMessages,
+    toggleLeftColumn,
+    exitMessageSelectMode,
+  } = getDispatch();
+
   const lang = useLang();
   const isBackButtonActive = useRef(true);
 
@@ -231,14 +220,6 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
     openChat, toggleLeftColumn, exitMessageSelectMode, setBackButtonActive,
   ]);
 
-  const unreadCount = useMemo(() => {
-    if (!isLeftColumnHideable || !chatsById) {
-      return undefined;
-    }
-
-    return selectCountNotMutedUnread(getGlobal()) || undefined;
-  }, [isLeftColumnHideable, chatsById]);
-
   const canToolsCollideWithChatInfo = (
     windowWidth >= MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN
     && windowWidth < SAFE_SCREEN_WIDTH_FOR_CHAT_INFO
@@ -257,7 +238,7 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
     transitionClassNames: audioPlayerClassNames,
   } = useShowTransition(Boolean(audioMessage));
 
-  const renderingAudioMessage = useCurrentOrPrev(audioMessage);
+  const renderingAudioMessage = useCurrentOrPrev(audioMessage, true);
 
   const {
     shouldRender: shouldRenderPinnedMessage,
@@ -301,21 +282,9 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
     }
   }, [shouldUseStackedToolsClass, canRevealTools, canToolsCollideWithChatInfo, isRightColumnShown]);
 
-  const isBrowserOnline = useBrowserOnline();
-  const isConnecting = (!isBrowserOnline || connectionState === 'connectionStateConnecting')
-    && (IS_SINGLE_COLUMN_LAYOUT || (IS_TABLET_COLUMN_LAYOUT && !shouldShowCloseButton));
+  const { connectionStatusText } = useConnectionStatus(lang, connectionState, isSyncing, true);
 
   function renderInfo() {
-    if (isConnecting) {
-      return (
-        <>
-          {renderBackButton()}
-          <h3>
-            {lang('WaitingForNetwork')}
-          </h3>
-        </>
-      );
-    }
     return (
       messageListType === 'thread' && threadId === MAIN_THREAD_ID ? (
         renderMainThreadInfo()
@@ -353,6 +322,8 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
             <PrivateChatInfo
               userId={chatId}
               typingStatus={typingStatus}
+              status={connectionStatusText}
+              withDots={Boolean(connectionStatusText)}
               withFullInfo={isChatWithBot}
               withMediaViewer
               withUpdatingStatus
@@ -362,10 +333,12 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
             <GroupChatInfo
               chatId={chatId}
               typingStatus={typingStatus}
-              noRtl
+              status={connectionStatusText}
+              withDots={Boolean(connectionStatusText)}
               withMediaViewer
               withFullInfo
               withUpdatingStatus
+              noRtl
             />
           )}
         </div>
@@ -373,7 +346,7 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
     );
   }
 
-  function renderBackButton(asClose = false, withUnreadCount = false) {
+  function renderBackButton(asClose = false, withUnreadCounter = false) {
     return (
       <div className="back-button">
         <Button
@@ -385,11 +358,7 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
         >
           <div className={buildClassName('animated-close-icon', !asClose && 'state-back')} />
         </Button>
-        {withUnreadCount && unreadCount && (
-          <div className="unread-count active">
-            {formatIntegerCompact(unreadCount)}
-          </div>
-        )}
+        {withUnreadCounter && <UnreadCounter />}
       </div>
     );
   }
@@ -400,15 +369,15 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
     <div className="MiddleHeader" ref={componentRef}>
       <Transition
         name={shouldSkipHistoryAnimations ? 'none' : 'slide-fade'}
-        activeKey={isConnecting ? Infinity : currentTransitionKey}
+        activeKey={currentTransitionKey}
       >
         {renderInfo}
       </Transition>
 
       <GroupCallTopPane
         hasPinnedOffset={
-          (shouldRenderPinnedMessage && !!renderingPinnedMessage)
-          || (shouldRenderAudioPlayer && !!renderingAudioMessage)
+          (shouldRenderPinnedMessage && Boolean(renderingPinnedMessage))
+          || (shouldRenderAudioPlayer && Boolean(renderingAudioMessage))
         }
         chatId={chatId}
       />
@@ -448,7 +417,6 @@ const MiddleHeader: FC<OwnProps & StateProps & DispatchProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global, { chatId, threadId, messageListType }): StateProps => {
     const { isLeftColumnShown, lastSyncTime, shouldSkipHistoryAnimations } = global;
-    const { byId: chatsById } = global.chats;
     const chat = selectChat(global, chatId);
 
     const { typingStatus } = chat || {};
@@ -477,7 +445,6 @@ export default memo(withGlobal<OwnProps>(
       isSelectModeActive: selectIsInSelectMode(global),
       audioMessage,
       chat,
-      chatsById,
       messagesCount,
       isChatWithSelf: selectIsChatWithSelf(global, chatId),
       isChatWithBot: chat && selectIsChatWithBot(global, chat),
@@ -485,6 +452,7 @@ export default memo(withGlobal<OwnProps>(
       shouldSkipHistoryAnimations,
       currentTransitionKey: Math.max(0, global.messages.messageLists.length - 1),
       connectionState: global.connectionState,
+      isSyncing: global.isSyncing,
     };
 
     const messagesById = selectChatMessages(global, chatId);
@@ -523,14 +491,4 @@ export default memo(withGlobal<OwnProps>(
 
     return state;
   },
-  (setGlobal, actions): DispatchProps => pick(actions, [
-    'openChatWithInfo',
-    'pinMessage',
-    'focusMessage',
-    'openChat',
-    'openPreviousChat',
-    'loadPinnedMessages',
-    'toggleLeftColumn',
-    'exitMessageSelectMode',
-  ]),
 )(MiddleHeader));

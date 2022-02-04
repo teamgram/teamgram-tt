@@ -43,6 +43,7 @@ export const INITIAL_STATE: GlobalState = {
   messages: {
     byChatId: {},
     messageLists: [],
+    sponsoredByChatId: {},
   },
 
   groupCalls: {
@@ -167,6 +168,7 @@ export const INITIAL_STATE: GlobalState = {
       language: 'en',
       timeFormat: '24h',
       wasTimeFormatSetManually: false,
+      isConnectionStatusMinimized: true,
     },
     themes: {
       light: {
@@ -183,6 +185,7 @@ export const INITIAL_STATE: GlobalState = {
   },
 
   twoFaSettings: {},
+  activeReactions: {},
 
   shouldShowContextMenuHint: true,
 

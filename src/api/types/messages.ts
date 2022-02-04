@@ -25,7 +25,8 @@ export interface ApiSticker {
   stickerSetId: string;
   stickerSetAccessHash?: string;
   emoji?: string;
-  isAnimated: boolean;
+  isLottie: boolean;
+  isGif: boolean;
   width?: number;
   height?: number;
   thumbnail?: ApiThumbnail;
@@ -34,7 +35,8 @@ export interface ApiSticker {
 
 export interface ApiStickerSet {
   archived?: true;
-  isAnimated?: true;
+  isLottie?: true;
+  isGifs?: true;
   installedDate?: number;
   id: string;
   accessHash: string;
@@ -63,6 +65,7 @@ export interface ApiVideo {
 }
 
 export interface ApiAudio {
+  id: string;
   size: number;
   mimeType: string;
   fileName: string;
@@ -73,6 +76,7 @@ export interface ApiAudio {
 }
 
 export interface ApiVoice {
+  id: string;
   duration: number;
   waveform?: number[];
 }
@@ -175,6 +179,7 @@ export interface ApiWebPage {
 }
 
 export interface ApiMessageForwardInfo {
+  date: number;
   isChannelPost: boolean;
   channelPostId?: number;
   isLinkedChannelPost?: boolean;
@@ -210,6 +215,7 @@ export enum ApiMessageEntityTypes {
   TextUrl = 'MessageEntityTextUrl',
   Url = 'MessageEntityUrl',
   Underline = 'MessageEntityUnderline',
+  Spoiler = 'MessageEntitySpoiler',
   Unknown = 'MessageEntityUnknown',
 }
 
@@ -247,6 +253,7 @@ export interface ApiMessage {
   previousLocalId?: number;
   views?: number;
   isEdited?: boolean;
+  editDate?: number;
   isMentioned?: boolean;
   isMediaUnread?: boolean;
   groupedId?: string;
@@ -263,6 +270,40 @@ export interface ApiMessage {
   shouldHideKeyboardButtons?: boolean;
   isFromScheduled?: boolean;
   seenByUserIds?: string[];
+  isProtected?: boolean;
+  reactors?: {
+    nextOffset?: string;
+    count: number;
+    reactions: ApiUserReaction[];
+  };
+  reactions?: ApiReactions;
+}
+
+export interface ApiReactions {
+  canSeeList?: boolean;
+  results: ApiReactionCount[];
+  recentReactions?: ApiUserReaction[];
+}
+
+export interface ApiUserReaction {
+  userId: string;
+  reaction: string;
+}
+
+export interface ApiReactionCount {
+  isChosen?: boolean;
+  count: number;
+  reaction: string;
+}
+
+export interface ApiAvailableReaction {
+  selectAnimation?: ApiDocument;
+  staticIcon?: ApiDocument;
+  centerIcon?: ApiDocument;
+  aroundAnimation?: ApiDocument;
+  reaction: string;
+  title: string;
+  isInactive?: boolean;
 }
 
 export interface ApiThreadInfo {
@@ -278,8 +319,20 @@ export interface ApiThreadInfo {
 
 export type ApiMessageOutgoingStatus = 'read' | 'succeeded' | 'pending' | 'failed';
 
+export type ApiSponsoredMessage = {
+  chatId?: string;
+  randomId: string;
+  isBot?: boolean;
+  channelPostId?: number;
+  startParam?: string;
+  chatInviteHash?: string;
+  chatInviteTitle?: string;
+  text: ApiFormattedText;
+  expiresAt: number;
+};
+
 export interface ApiKeyboardButton {
-  type: 'command' | 'url' | 'callback' | 'requestPoll' | 'buy' | 'NOT_SUPPORTED';
+  type: 'command' | 'url' | 'callback' | 'requestPoll' | 'requestSelfContact' | 'buy' | 'NOT_SUPPORTED';
   text: string;
   messageId: number;
   value?: string;
@@ -298,6 +351,10 @@ export type ApiGlobalMessageSearchType = 'text' | 'media' | 'documents' | 'links
 
 export type ApiReportReason = 'spam' | 'violence' | 'pornography' | 'childAbuse'
 | 'copyright' | 'geoIrrelevant' | 'fake' | 'other';
+
+export type ApiSendMessageAction = {
+  type: 'cancel' | 'typing' | 'recordAudio' | 'chooseSticker';
+};
 
 export const MAIN_THREAD_ID = -1;
 

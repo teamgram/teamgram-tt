@@ -1,13 +1,11 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
 
 import { ApiChat, ApiChatAdminRights, ApiUser } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
-import { GlobalActions } from '../../../global/types';
 
-import { pick } from '../../../util/iteratees';
 import { selectChat } from '../../../modules/selectors';
 import { getUserFullName, isChatBasicGroup, isChatChannel } from '../../../modules/helpers';
 import useLang from '../../../hooks/useLang';
@@ -24,8 +22,9 @@ import InputText from '../../ui/InputText';
 
 type OwnProps = {
   chatId: string;
-  selectedChatMemberId?: string;
+  selectedUserId?: string;
   isPromotedByCurrentUser?: boolean;
+  isNewAdmin?: boolean;
   onScreenSelect: (screen: ManagementScreens) => void;
   onClose: NoneToVoidFunction;
   isActive: boolean;
@@ -37,26 +36,28 @@ type StateProps = {
   currentUserId?: string;
   isChannel: boolean;
   isFormFullyDisabled: boolean;
+  defaultRights?: ApiChatAdminRights;
 };
-
-type DispatchProps = Pick<GlobalActions, 'updateChatAdmin'>;
 
 const CUSTOM_TITLE_MAX_LENGTH = 16;
 
-const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
-  selectedChatMemberId,
+const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
+  isNewAdmin,
+  selectedUserId,
+  defaultRights,
   onScreenSelect,
   chat,
   usersById,
   currentUserId,
   isChannel,
   isFormFullyDisabled,
-  updateChatAdmin,
   onClose,
   isActive,
 }) => {
+  const { updateChatAdmin } = getDispatch();
+
   const [permissions, setPermissions] = useState<ApiChatAdminRights>({});
-  const [isTouched, setIsTouched] = useState(false);
+  const [isTouched, setIsTouched] = useState(Boolean(isNewAdmin));
   const [isLoading, setIsLoading] = useState(false);
   const [isDismissConfirmationDialogOpen, openDismissConfirmationDialog, closeDismissConfirmationDialog] = useFlag();
   const [customTitle, setCustomTitle] = useState('');
@@ -65,25 +66,41 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
   useHistoryBack(isActive, onClose);
 
   const selectedChatMember = useMemo(() => {
-    if (!chat.fullInfo || !chat.fullInfo.adminMembers) {
+    const selectedAdminMember = chat.fullInfo?.adminMembers?.find(({ userId }) => userId === selectedUserId);
+
+    // If `selectedAdminMember` variable is filled with a value, then we have already saved the administrator,
+    // so now we need to return to the list of administrators
+    if (isNewAdmin && (selectedAdminMember || !selectedUserId)) {
       return undefined;
     }
 
-    return chat.fullInfo.adminMembers.find(({ userId }) => userId === selectedChatMemberId);
-  }, [chat, selectedChatMemberId]);
+    if (isNewAdmin) {
+      const user = getGlobal().users.byId[selectedUserId!];
+
+      return user ? {
+        userId: user.id,
+        adminRights: defaultRights,
+        customTitle: lang('ChannelAdmin'),
+        isOwner: false,
+        promotedByUserId: undefined,
+      } : undefined;
+    }
+
+    return selectedAdminMember;
+  }, [chat.fullInfo?.adminMembers, defaultRights, isNewAdmin, lang, selectedUserId]);
 
   useEffect(() => {
-    if (chat?.fullInfo && selectedChatMemberId && !selectedChatMember) {
+    if (chat?.fullInfo && selectedUserId && !selectedChatMember) {
       onScreenSelect(ManagementScreens.ChatAdministrators);
     }
-  }, [chat, onScreenSelect, selectedChatMember, selectedChatMemberId]);
+  }, [chat, onScreenSelect, selectedChatMember, selectedUserId]);
 
   useEffect(() => {
-    setPermissions((selectedChatMember?.adminRights) || {});
-    setCustomTitle(((selectedChatMember?.customTitle) || '').substr(0, CUSTOM_TITLE_MAX_LENGTH));
-    setIsTouched(false);
+    setPermissions(selectedChatMember?.adminRights || {});
+    setCustomTitle((selectedChatMember?.customTitle || '').substr(0, CUSTOM_TITLE_MAX_LENGTH));
+    setIsTouched(Boolean(isNewAdmin));
     setIsLoading(false);
-  }, [selectedChatMember]);
+  }, [defaultRights, isNewAdmin, selectedChatMember]);
 
   const handlePermissionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { name } = e.target;
@@ -100,31 +117,31 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
   }, []);
 
   const handleSavePermissions = useCallback(() => {
-    if (!selectedChatMemberId) {
+    if (!selectedUserId) {
       return;
     }
 
     setIsLoading(true);
     updateChatAdmin({
       chatId: chat.id,
-      userId: selectedChatMemberId,
+      userId: selectedUserId,
       adminRights: permissions,
       customTitle,
     });
-  }, [chat, selectedChatMemberId, permissions, customTitle, updateChatAdmin]);
+  }, [selectedUserId, updateChatAdmin, chat.id, permissions, customTitle]);
 
   const handleDismissAdmin = useCallback(() => {
-    if (!selectedChatMemberId) {
+    if (!selectedUserId) {
       return;
     }
 
     updateChatAdmin({
       chatId: chat.id,
-      userId: selectedChatMemberId,
+      userId: selectedUserId,
       adminRights: {},
     });
     closeDismissConfirmationDialog();
-  }, [chat.id, closeDismissConfirmationDialog, selectedChatMemberId, updateChatAdmin]);
+  }, [chat.id, closeDismissConfirmationDialog, selectedUserId, updateChatAdmin]);
 
   const getControlIsDisabled = useCallback((key: keyof ApiChatAdminRights) => {
     if (isChatBasicGroup(chat)) {
@@ -139,7 +156,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
   }, [chat, isFormFullyDisabled]);
 
   const memberStatus = useMemo(() => {
-    if (!selectedChatMember) {
+    if (isNewAdmin || !selectedChatMember) {
       return undefined;
     }
 
@@ -156,7 +173,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
     }
 
     return lang('ChannelAdmin');
-  }, [selectedChatMember, usersById, lang]);
+  }, [isNewAdmin, selectedChatMember, usersById, lang]);
 
   const handleCustomTitleChange = useCallback((e) => {
     const { value } = e.target;
@@ -185,7 +202,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
           <div className="ListItem no-selection">
             <Checkbox
               name="changeInfo"
-              checked={!!permissions.changeInfo}
+              checked={Boolean(permissions.changeInfo)}
               label={lang(isChannel ? 'EditAdminChangeChannelInfo' : 'EditAdminChangeGroupInfo')}
               blocking
               disabled={getControlIsDisabled('changeInfo')}
@@ -196,7 +213,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
             <div className="ListItem no-selection">
               <Checkbox
                 name="postMessages"
-                checked={!!permissions.postMessages}
+                checked={Boolean(permissions.postMessages)}
                 label={lang('EditAdminPostMessages')}
                 blocking
                 disabled={getControlIsDisabled('postMessages')}
@@ -208,7 +225,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
             <div className="ListItem no-selection">
               <Checkbox
                 name="editMessages"
-                checked={!!permissions.editMessages}
+                checked={Boolean(permissions.editMessages)}
                 label={lang('EditAdminEditMessages')}
                 blocking
                 disabled={getControlIsDisabled('editMessages')}
@@ -219,7 +236,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
           <div className="ListItem no-selection">
             <Checkbox
               name="deleteMessages"
-              checked={!!permissions.deleteMessages}
+              checked={Boolean(permissions.deleteMessages)}
               label={lang(isChannel ? 'EditAdminDeleteMessages' : 'EditAdminGroupDeleteMessages')}
               blocking
               disabled={getControlIsDisabled('deleteMessages')}
@@ -230,7 +247,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
             <div className="ListItem no-selection">
               <Checkbox
                 name="banUsers"
-                checked={!!permissions.banUsers}
+                checked={Boolean(permissions.banUsers)}
                 label={lang('EditAdminBanUsers')}
                 blocking
                 disabled={getControlIsDisabled('banUsers')}
@@ -241,7 +258,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
           <div className="ListItem no-selection">
             <Checkbox
               name="inviteUsers"
-              checked={!!permissions.inviteUsers}
+              checked={Boolean(permissions.inviteUsers)}
               label={lang('EditAdminAddUsers')}
               blocking
               disabled={getControlIsDisabled('inviteUsers')}
@@ -252,7 +269,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
             <div className="ListItem no-selection">
               <Checkbox
                 name="pinMessages"
-                checked={!!permissions.pinMessages}
+                checked={Boolean(permissions.pinMessages)}
                 label={lang('EditAdminPinMessages')}
                 blocking
                 disabled={getControlIsDisabled('pinMessages')}
@@ -263,7 +280,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
           <div className="ListItem no-selection">
             <Checkbox
               name="addAdmins"
-              checked={!!permissions.addAdmins}
+              checked={Boolean(permissions.addAdmins)}
               label={lang('EditAdminAddAdmins')}
               blocking
               disabled={getControlIsDisabled('addAdmins')}
@@ -273,7 +290,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
           <div className="ListItem no-selection">
             <Checkbox
               name="manageCall"
-              checked={!!permissions.manageCall}
+              checked={Boolean(permissions.manageCall)}
               label={lang('StartVoipChatPermission')}
               blocking
               disabled={getControlIsDisabled('manageCall')}
@@ -284,7 +301,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
             <div className="ListItem no-selection">
               <Checkbox
                 name="anonymous"
-                checked={!!permissions.anonymous}
+                checked={Boolean(permissions.anonymous)}
                 label={lang('EditAdminSendAnonymously')}
                 blocking
                 disabled={getControlIsDisabled('anonymous')}
@@ -310,7 +327,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
             />
           )}
 
-          {currentUserId !== selectedChatMemberId && !isFormFullyDisabled && (
+          {currentUserId !== selectedUserId && !isFormFullyDisabled && !isNewAdmin && (
             <ListItem icon="delete" ripple destructive onClick={openDismissConfirmationDialog}>
               {lang('EditAdminRemoveAdmin')}
             </ListItem>
@@ -331,14 +348,16 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps & DispatchProps> = ({
         )}
       </FloatingActionButton>
 
-      <ConfirmDialog
-        isOpen={isDismissConfirmationDialogOpen}
-        onClose={closeDismissConfirmationDialog}
-        text="Are you sure you want to dismiss this admin?"
-        confirmLabel="Dismiss"
-        confirmHandler={handleDismissAdmin}
-        confirmIsDestructive
-      />
+      {!isNewAdmin && (
+        <ConfirmDialog
+          isOpen={isDismissConfirmationDialogOpen}
+          onClose={closeDismissConfirmationDialog}
+          text="Are you sure you want to dismiss this admin?"
+          confirmLabel={lang('Channel.Admin.Dismiss')}
+          confirmHandler={handleDismissAdmin}
+          confirmIsDestructive
+        />
+      )}
     </div>
   );
 };
@@ -357,7 +376,7 @@ export default memo(withGlobal<OwnProps>(
       currentUserId,
       isChannel,
       isFormFullyDisabled,
+      defaultRights: chat.adminRights,
     };
   },
-  (setGlobal, actions): DispatchProps => pick(actions, ['updateChatAdmin']),
 )(ManageGroupAdminRights));
