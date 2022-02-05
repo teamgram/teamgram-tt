@@ -10,3 +10,6 @@ src/lib/gramjs/tl/schemaTl.js
 src/lib/gramjs/tl/apiTl.full.js
 src/lib/gramjs/tl/schemaTl.full.js
 src/lib/gramjs/tl/generateModules.js
+src/api/gramjs/methods/users.ts
+src/lib/gramjs/Utils.js
+src/lib/gramjs/client/TelegramClient.js
