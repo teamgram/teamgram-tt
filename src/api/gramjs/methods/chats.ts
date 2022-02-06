@@ -115,7 +115,11 @@ export async function fetchChats({
       return;
     }
 
-    const peerEntity = peersByKey[getPeerKey(dialog.peer)];
+    const k2 = getPeerKey(dialog.peer);
+    const peerEntity = peersByKey[k2];
+    if (!peerEntity) {
+      return;
+    }
     const chat = buildApiChatFromDialog(dialog, peerEntity, serverTimeOffset);
 
     if (
