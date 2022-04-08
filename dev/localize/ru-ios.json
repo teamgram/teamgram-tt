@@ -17,11 +17,11 @@
   },
   "AccessDenied.CallMicrophone": {
     "key": "AccessDenied.CallMicrophone",
-    "value": "Чтобы Вы могли пользоваться звонками, Telegram требуется доступ к микрофону.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Микрофон."
+    "value": "Чтобы Вы могли пользоваться звонками, Teamgram требуется доступ к микрофону.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Микрофон."
   },
   "AccessDenied.Camera": {
     "key": "AccessDenied.Camera",
-    "value": "Чтобы Вы могли снимать фотографии и видео, Telegram нужен доступ к камере.\n\nПожалуйста, разрешите доступ для Telegram в настройках устройства > Конфиденциальность > Камера."
+    "value": "Чтобы Вы могли снимать фотографии и видео, Teamgram нужен доступ к камере.\n\nПожалуйста, разрешите доступ для Teamgram в настройках устройства > Конфиденциальность > Камера."
   },
   "AccessDenied.CameraDisabled": {
     "key": "AccessDenied.CameraDisabled",
@@ -29,43 +29,43 @@
   },
   "AccessDenied.CameraRestricted": {
     "key": "AccessDenied.CameraRestricted",
-    "value": "Нет доступа к камере.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Камера."
+    "value": "Нет доступа к камере.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Камера."
   },
   "AccessDenied.Contacts": {
     "key": "AccessDenied.Contacts",
-    "value": "Для переписки через Telegram используется Ваш список контактов.\n\nПожалуйста, разрешите доступ для Telegram в настройках устройства > Конфиденциальность > Контакты."
+    "value": "Для переписки через Teamgram используется Ваш список контактов.\n\nПожалуйста, разрешите доступ для Teamgram в настройках устройства > Конфиденциальность > Контакты."
   },
   "AccessDenied.LocationAlwaysDenied": {
     "key": "AccessDenied.LocationAlwaysDenied",
-    "value": "Если Вы хотите транслировать свою геопозицию в чаты, у Telegram должен быть к ней доступ при работе в фоновом режиме.\n\nЗайдите в Настройки > Конфиденциальность > Службы геолокации и выберите для Telegram пункт «Всегда»"
+    "value": "Если Вы хотите транслировать свою геопозицию в чаты, у Teamgram должен быть к ней доступ при работе в фоновом режиме.\n\nЗайдите в Настройки > Конфиденциальность > Службы геолокации и выберите для Teamgram пункт «Всегда»"
   },
   "AccessDenied.LocationDenied": {
     "key": "AccessDenied.LocationDenied",
-    "value": "Для отправки Вашего местоположения Telegram нужен доступ к геолокации.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Службы геолокации."
+    "value": "Для отправки Вашего местоположения Teamgram нужен доступ к геолокации.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Службы геолокации."
   },
   "AccessDenied.LocationDisabled": {
     "key": "AccessDenied.LocationDisabled",
-    "value": "Для отправки вашего местоположения Telegram нужен доступ к геолокации.\n\nПожалуйста, включите его в настройках устройства > Конфиденциальность > Службы геолокации."
+    "value": "Для отправки вашего местоположения Teamgram нужен доступ к геолокации.\n\nПожалуйста, включите его в настройках устройства > Конфиденциальность > Службы геолокации."
   },
   "AccessDenied.LocationTracking": {
     "key": "AccessDenied.LocationTracking",
-    "value": "Чтобы Вы могли отправлять свои координаты друзьям, Telegram нужен доступ к геолокации.\n\nПожалуйста, включите его в настройках устройства > Конфиденциальность > Службы геолокации."
+    "value": "Чтобы Вы могли отправлять свои координаты друзьям, Teamgram нужен доступ к геолокации.\n\nПожалуйста, включите его в настройках устройства > Конфиденциальность > Службы геолокации."
   },
   "AccessDenied.MicrophoneRestricted": {
     "key": "AccessDenied.MicrophoneRestricted",
-    "value": "Нет доступа к микрофону.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Микрофон."
+    "value": "Нет доступа к микрофону.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Микрофон."
   },
   "AccessDenied.PhotosAndVideos": {
     "key": "AccessDenied.PhotosAndVideos",
-    "value": "Чтобы Вы могли отправлять фотографии и видео, Telegram нужен доступ к галерее.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Фотографии."
+    "value": "Чтобы Вы могли отправлять фотографии и видео, Teamgram нужен доступ к галерее.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Фотографии."
   },
   "AccessDenied.PhotosRestricted": {
     "key": "AccessDenied.PhotosRestricted",
-    "value": "Нет доступа к фотографиям.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Основные > Ограничения > Фотографии."
+    "value": "Нет доступа к фотографиям.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Основные > Ограничения > Фотографии."
   },
   "AccessDenied.SaveMedia": {
     "key": "AccessDenied.SaveMedia",
-    "value": "Чтобы Вы могли сохранять фотографии и видео, Telegram нужен доступ к галерее.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Фотографии."
+    "value": "Чтобы Вы могли сохранять фотографии и видео, Teamgram нужен доступ к галерее.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Фотографии."
   },
   "AccessDenied.Settings": {
     "key": "AccessDenied.Settings",
@@ -77,27 +77,27 @@
   },
   "AccessDenied.VideoCallCamera": {
     "key": "AccessDenied.VideoCallCamera",
-    "value": "Чтобы Вы могли совершать видеозвонки, Telegram нужен доступ к камере.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Камера."
+    "value": "Чтобы Вы могли совершать видеозвонки, Teamgram нужен доступ к камере.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Камера."
   },
   "AccessDenied.VideoMessageCamera": {
     "key": "AccessDenied.VideoMessageCamera",
-    "value": "Чтобы Вы могли отправлять видеосообщения, Telegram нужен доступ к камере.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Камера."
+    "value": "Чтобы Вы могли отправлять видеосообщения, Teamgram нужен доступ к камере.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Камера."
   },
   "AccessDenied.VideoMessageMicrophone": {
     "key": "AccessDenied.VideoMessageMicrophone",
-    "value": "Чтобы Вы могли отправлять видеосообщения, Telegram нужен доступ к микрофону.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Камера."
+    "value": "Чтобы Вы могли отправлять видеосообщения, Teamgram нужен доступ к микрофону.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Камера."
   },
   "AccessDenied.VideoMicrophone": {
     "key": "AccessDenied.VideoMicrophone",
-    "value": "Чтобы Вы могли записывать видео со звуком, Telegram нужен доступ к микрофону.\n\nПожалуйста, разрешите доступ для Telegram в настройках устройства > Конфиденциальность > Микрофон."
+    "value": "Чтобы Вы могли записывать видео со звуком, Teamgram нужен доступ к микрофону.\n\nПожалуйста, разрешите доступ для Teamgram в настройках устройства > Конфиденциальность > Микрофон."
   },
   "AccessDenied.VoiceMicrophone": {
     "key": "AccessDenied.VoiceMicrophone",
-    "value": "Чтобы Вы могли отправлять голосовые сообщения, Telegram нужен доступ к микрофону.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Микрофон."
+    "value": "Чтобы Вы могли отправлять голосовые сообщения, Teamgram нужен доступ к микрофону.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Микрофон."
   },
   "AccessDenied.Wallpapers": {
     "key": "AccessDenied.Wallpapers",
-    "value": "Приложению требуется доступ к галерее, чтобы установить обои.\n\nПожалуйста, включите доступ для Telegram в настройках устройства > Конфиденциальность > Фото."
+    "value": "Приложению требуется доступ к галерее, чтобы установить обои.\n\nПожалуйста, включите доступ для Teamgram в настройках устройства > Конфиденциальность > Фото."
   },
   "Activity.PlayingGame": {
     "key": "Activity.PlayingGame",
@@ -469,7 +469,7 @@
   },
   "Application.Name": {
     "key": "Application.Name",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "Application.Update": {
     "key": "Application.Update",
@@ -509,7 +509,7 @@
   },
   "ApplyLanguage.UnsufficientDataText": {
     "key": "ApplyLanguage.UnsufficientDataText",
-    "value": "К сожалению, в этом неофициальном переводе (%1$@) нет текстов приложения Telegram для iOS. Вы можете использовать [платформу переводов](), чтобы помочь с переводом приложения."
+    "value": "К сожалению, в этом неофициальном переводе (%1$@) нет текстов приложения Teamgram для iOS. Вы можете использовать [платформу переводов](), чтобы помочь с переводом приложения."
   },
   "ApplyLanguage.UnsufficientDataTitle": {
     "key": "ApplyLanguage.UnsufficientDataTitle",
@@ -757,11 +757,11 @@
   },
   "AuthSessions.AddDeviceIntro.Text1": {
     "key": "AuthSessions.AddDeviceIntro.Text1",
-    "value": "Установите Telegram для компьютера по ссылке [desktop.telegram.org]()"
+    "value": "Установите Teamgram для компьютера по ссылке [desktop.telegram.org]()"
   },
   "AuthSessions.AddDeviceIntro.Text2": {
     "key": "AuthSessions.AddDeviceIntro.Text2",
-    "value": "Запустите Telegram на компьютере, чтобы получить QR-код"
+    "value": "Запустите Teamgram на компьютере, чтобы получить QR-код"
   },
   "AuthSessions.AddDeviceIntro.Text3": {
     "key": "AuthSessions.AddDeviceIntro.Text3",
@@ -793,7 +793,7 @@
   },
   "AuthSessions.EmptyText": {
     "key": "AuthSessions.EmptyText",
-    "value": "Вы можете войти в Telegram с другого смартфона, планшета или компьютера, используя тот же номер телефона. Все Ваши данные будут мгновенно синхронизированы."
+    "value": "Вы можете войти в Teamgram с другого смартфона, планшета или компьютера, используя тот же номер телефона. Все Ваши данные будут мгновенно синхронизированы."
   },
   "AuthSessions.EmptyTitle": {
     "key": "AuthSessions.EmptyTitle",
@@ -833,7 +833,7 @@
   },
   "AuthSessions.OtherDevices": {
     "key": "AuthSessions.OtherDevices",
-    "value": "Официальные приложения Telegram доступны для iPhone, iPad, Android, macOS, Windows и Linux. [Подробнее]()"
+    "value": "Официальные приложения Teamgram доступны для iPhone, iPad, Android, macOS, Windows и Linux. [Подробнее]()"
   },
   "AuthSessions.OtherSessions": {
     "key": "AuthSessions.OtherSessions",
@@ -1617,11 +1617,11 @@
   },
   "CONTACT_JOINED": {
     "key": "CONTACT_JOINED",
-    "value": "%1$@ теперь в Telegram"
+    "value": "%1$@ теперь в Teamgram"
   },
   "CONTACT_JOINED_SEPARATED": {
     "key": "CONTACT_JOINED_SEPARATED",
-    "value": "%1$@|теперь в Telegram!"
+    "value": "%1$@|теперь в Teamgram!"
   },
   "Cache.ByPeerHeader": {
     "key": "Cache.ByPeerHeader",
@@ -1657,7 +1657,7 @@
   },
   "Cache.Indexing": {
     "key": "Cache.Indexing",
-    "value": "Telegram считает размер кэша.\nЭто может занять пару минут."
+    "value": "Teamgram считает размер кэша.\nЭто может занять пару минут."
   },
   "Cache.KeepMedia": {
     "key": "Cache.KeepMedia",
@@ -1967,7 +1967,7 @@
   },
   "Call.StatusOngoing": {
     "key": "Call.StatusOngoing",
-    "value": "Звонок Telegram %@"
+    "value": "Звонок Teamgram %@"
   },
   "Call.StatusRequesting": {
     "key": "Call.StatusRequesting",
@@ -2247,7 +2247,7 @@
   },
   "CancelResetAccount.TextSMS": {
     "key": "CancelResetAccount.TextSMS",
-    "value": "Кто-то с доступом к %@ запросил удаление Вашего аккаунта Telegram и сброс пароля двухэтапной аутентификации.\n\nЕсли это были не Вы, пожалуйста, введите код из SMS, только что отправленного на Ваш номер. Чтобы отменить удаление, Вы также можете **изменить номер телефона** на актуальный."
+    "value": "Кто-то с доступом к %@ запросил удаление Вашего аккаунта Teamgram и сброс пароля двухэтапной аутентификации.\n\nЕсли это были не Вы, пожалуйста, введите код из SMS, только что отправленного на Ваш номер. Чтобы отменить удаление, Вы также можете **изменить номер телефона** на актуальный."
   },
   "CancelResetAccount.Title": {
     "key": "CancelResetAccount.Title",
@@ -2259,11 +2259,11 @@
   },
   "ChangePhoneNumberCode.CallTimer": {
     "key": "ChangePhoneNumberCode.CallTimer",
-    "value": "Telegram позвонит Вам через %@"
+    "value": "Teamgram позвонит Вам через %@"
   },
   "ChangePhoneNumberCode.Called": {
     "key": "ChangePhoneNumberCode.Called",
-    "value": "Telegram набирает Ваш номер"
+    "value": "Teamgram набирает Ваш номер"
   },
   "ChangePhoneNumberCode.Code": {
     "key": "ChangePhoneNumberCode.Code",
@@ -3391,7 +3391,7 @@
   },
   "Channel.Username.LinkHint": {
     "key": "Channel.Username.LinkHint",
-    "value": "Эта ссылка откроет Ваш канал в Telegram:[\nhttps://t.me/%@]"
+    "value": "Эта ссылка откроет Ваш канал в Teamgram:[\nhttps://t.me/%@]"
   },
   "Channel.Username.RevokeExistingUsernamesInfo": {
     "key": "Channel.Username.RevokeExistingUsernamesInfo",
@@ -3714,7 +3714,7 @@
   },
   "ChatImportActivity.OpenApp": {
     "key": "ChatImportActivity.OpenApp",
-    "value": "Открыть Telegram"
+    "value": "Открыть Teamgram"
   },
   "ChatImportActivity.Retry": {
     "key": "ChatImportActivity.Retry",
@@ -4582,7 +4582,7 @@
   },
   "Checkout.LiabilityAlert": {
     "key": "Checkout.LiabilityAlert",
-    "value": "Ни Telegram, ни %1$@ не будут иметь доступа к Вашей платёжной информации. Все реквизиты карт обрабатываются только платёжной системой, %2$@.\n\nОплата осуществляется напрямую разработчику %1$@. Telegram не может предоставить никаких гарантий. В случае любых проблем, пожалуйста, свяжитесь с разработчиком %1$@ или своим банком."
+    "value": "Ни Telegram, ни %1$@ не будут иметь доступа к Вашей платёжной информации. Все реквизиты карт обрабатываются только платёжной системой, %2$@.\n\nОплата осуществляется напрямую разработчику %1$@. Teamgram не может предоставить никаких гарантий. В случае любых проблем, пожалуйста, свяжитесь с разработчиком %1$@ или своим банком."
   },
   "Checkout.LiabilityAlertTitle": {
     "key": "Checkout.LiabilityAlertTitle",
@@ -4842,7 +4842,7 @@
   },
   "ClearCache.ClearCache": {
     "key": "ClearCache.ClearCache",
-    "value": "Очистить кэш Telegram"
+    "value": "Очистить кэш Teamgram"
   },
   "ClearCache.Description": {
     "key": "ClearCache.Description",
@@ -4862,7 +4862,7 @@
   },
   "ClearCache.StorageCache": {
     "key": "ClearCache.StorageCache",
-    "value": "Кэш Telegram"
+    "value": "Кэш Teamgram"
   },
   "ClearCache.StorageFree": {
     "key": "ClearCache.StorageFree",
@@ -4874,7 +4874,7 @@
   },
   "ClearCache.StorageServiceFiles": {
     "key": "ClearCache.StorageServiceFiles",
-    "value": "Служебные файлы Telegram"
+    "value": "Служебные файлы Teamgram"
   },
   "ClearCache.StorageTitle": {
     "key": "ClearCache.StorageTitle",
@@ -5143,11 +5143,11 @@
   "Contacts.ImportersCount": {
     "key": "Contacts.ImportersCount",
     "zeroValue": null,
-    "oneValue": "%@ контакт в Telegram",
+    "oneValue": "%@ контакт в Teamgram",
     "twoValue": null,
-    "fewValue": "%@ контакта в Telegram",
-    "manyValue": "%@ контактов в Telegram",
-    "otherValue": "%@ контактов в Telegram"
+    "fewValue": "%@ контакта в Teamgram",
+    "manyValue": "%@ контактов в Teamgram",
+    "otherValue": "%@ контактов в Teamgram"
   },
   "Contacts.InviteContacts": {
     "key": "Contacts.InviteContacts",
@@ -5168,7 +5168,7 @@
   },
   "Contacts.InviteToTelegram": {
     "key": "Contacts.InviteToTelegram",
-    "value": "Пригласить в Telegram"
+    "value": "Пригласить в Teamgram"
   },
   "Contacts.MemberSearchSectionTitleGroup": {
     "key": "Contacts.MemberSearchSectionTitleGroup",
@@ -5196,7 +5196,7 @@
   },
   "Contacts.PermissionsSuppressWarningText": {
     "key": "Contacts.PermissionsSuppressWarningText",
-    "value": "Вы не увидите, что кто-то из друзей начал пользоваться Telegram и теперь ему можно написать. Рекомендуем разрешить доступ к контактам в системных настройках."
+    "value": "Вы не увидите, что кто-то из друзей начал пользоваться Teamgram и теперь ему можно написать. Рекомендуем разрешить доступ к контактам в системных настройках."
   },
   "Contacts.PermissionsSuppressWarningTitle": {
     "key": "Contacts.PermissionsSuppressWarningTitle",
@@ -5228,7 +5228,7 @@
   },
   "Contacts.ShareTelegram": {
     "key": "Contacts.ShareTelegram",
-    "value": "Пригласить в Telegram"
+    "value": "Пригласить в Teamgram"
   },
   "Contacts.SortBy": {
     "key": "Contacts.SortBy",
@@ -5373,7 +5373,7 @@
   },
   "Conversation.BotInteractiveUrlAlert": {
     "key": "Conversation.BotInteractiveUrlAlert",
-    "value": "Разрешить боту %@ передавать Ваше имя и id в Telegram (не номер телефона) сайтам, которые Вы откроете с его помощью?"
+    "value": "Разрешить боту %@ передавать Ваше имя и id в Teamgram (не номер телефона) сайтам, которые Вы откроете с его помощью?"
   },
   "Conversation.Bytes": {
     "key": "Conversation.Bytes",
@@ -7201,7 +7201,7 @@
   },
   "EnterPasscode.EnterTitle": {
     "key": "EnterPasscode.EnterTitle",
-    "value": "Введите код-пароль от Telegram"
+    "value": "Введите код-пароль от Teamgram"
   },
   "EnterPasscode.RepeatNewPasscode": {
     "key": "EnterPasscode.RepeatNewPasscode",
@@ -7209,7 +7209,7 @@
   },
   "EnterPasscode.TouchId": {
     "key": "EnterPasscode.TouchId",
-    "value": "Разблокировка Telegram"
+    "value": "Разблокировка Teamgram"
   },
   "Exceptions.AddToExceptions": {
     "key": "Exceptions.AddToExceptions",
@@ -7257,7 +7257,7 @@
   },
   "FastTwoStepSetup.PasswordHelp": {
     "key": "FastTwoStepSetup.PasswordHelp",
-    "value": "Пожалуйста, установите пароль, чтобы защитить вашу платёжную информацию. Этот же пароль необходимо будет вводить, чтобы войти в Telegram с нового устройства."
+    "value": "Пожалуйста, установите пароль, чтобы защитить вашу платёжную информацию. Этот же пароль необходимо будет вводить, чтобы войти в Teamgram с нового устройства."
   },
   "FastTwoStepSetup.PasswordPlaceholder": {
     "key": "FastTwoStepSetup.PasswordPlaceholder",
@@ -7839,7 +7839,7 @@
   },
   "GroupInfo.InviteLink.Help": {
     "key": "GroupInfo.InviteLink.Help",
-    "value": "Любой пользователь Telegram сможет присоединиться к группе при помощи этой ссылки."
+    "value": "Любой пользователь Teamgram сможет присоединиться к группе при помощи этой ссылки."
   },
   "GroupInfo.InviteLink.LinkSection": {
     "key": "GroupInfo.InviteLink.LinkSection",
@@ -8157,7 +8157,7 @@
   },
   "InfoPlist.NSLocationWhenInUseUsageDescription": {
     "key": "InfoPlist.NSLocationWhenInUseUsageDescription",
-    "value": "Когда Вы отправляете друзьям геопозицию, Telegram нужно разрешение, чтобы показать им карту."
+    "value": "Когда Вы отправляете друзьям геопозицию, Teamgram нужно разрешение, чтобы показать им карту."
   },
   "InfoPlist.NSMicrophoneUsageDescription": {
     "key": "InfoPlist.NSMicrophoneUsageDescription",
@@ -8214,7 +8214,7 @@
   },
   "Intents.ErrorLockedText": {
     "key": "Intents.ErrorLockedText",
-    "value": "Для настройки виджета откройте Telegram и разблокируйте приложение."
+    "value": "Для настройки виджета откройте Teamgram и разблокируйте приложение."
   },
   "Intents.ErrorLockedTitle": {
     "key": "Intents.ErrorLockedTitle",
@@ -8395,11 +8395,11 @@
   },
   "InviteLink.CreatePrivateLinkHelp": {
     "key": "InviteLink.CreatePrivateLinkHelp",
-    "value": "Любой пользователь Telegram сможет вступить в Вашу группу, перейдя по этой ссылке."
+    "value": "Любой пользователь Teamgram сможет вступить в Вашу группу, перейдя по этой ссылке."
   },
   "InviteLink.CreatePrivateLinkHelpChannel": {
     "key": "InviteLink.CreatePrivateLinkHelpChannel",
-    "value": "Любой пользователь Telegram сможет подписаться на канал при помощи этой ссылки."
+    "value": "Любой пользователь Teamgram сможет подписаться на канал при помощи этой ссылки."
   },
   "InviteLink.CreatedBy": {
     "key": "InviteLink.CreatedBy",
@@ -8577,24 +8577,24 @@
   "InviteText.ContactsCount": {
     "key": "InviteText.ContactsCount",
     "zeroValue": null,
-    "oneValue": "Привет, я использую Telegram для переписки. Присоединяйся! Скачать можно здесь: %@",
+    "oneValue": "Привет, я использую Teamgram для переписки. Присоединяйся! Скачать можно здесь: %@",
     "twoValue": null,
-    "fewValue": "Привет, я использую Telegram для переписки — как и ещё %@ наших контакта. Присоединяйся! Скачать можно здесь: %@",
-    "manyValue": "Привет, я использую Telegram для переписки — как и ещё %@ наших контактов. Присоединяйся! Скачать можно здесь: %@",
-    "otherValue": "Привет, я использую Telegram для переписки — как и ещё %@ наших контактов. Присоединяйся! Скачать можно здесь: %@"
+    "fewValue": "Привет, я использую Teamgram для переписки — как и ещё %@ наших контакта. Присоединяйся! Скачать можно здесь: %@",
+    "manyValue": "Привет, я использую Teamgram для переписки — как и ещё %@ наших контактов. Присоединяйся! Скачать можно здесь: %@",
+    "otherValue": "Привет, я использую Teamgram для переписки — как и ещё %@ наших контактов. Присоединяйся! Скачать можно здесь: %@"
   },
   "InviteText.ContactsCountText": {
     "key": "InviteText.ContactsCountText",
     "zeroValue": null,
-    "oneValue": "Привет, я использую Telegram для переписки. Присоединяйся! Скачать можно здесь: {url}",
+    "oneValue": "Привет, я использую Teamgram для переписки. Присоединяйся! Скачать можно здесь: {url}",
     "twoValue": null,
-    "fewValue": "Привет, я использую Telegram для переписки — как и ещё %@ наших контакта. Присоединяйся! Скачать можно здесь: {url}",
-    "manyValue": "Привет, я использую Telegram для переписки — как и ещё %@ наших контактов. Присоединяйся! Скачать можно здесь: {url}",
-    "otherValue": "Привет, я использую Telegram для переписки — как и ещё %@ наших контактов. Присоединяйся! Скачать можно здесь: {url}"
+    "fewValue": "Привет, я использую Teamgram для переписки — как и ещё %@ наших контакта. Присоединяйся! Скачать можно здесь: {url}",
+    "manyValue": "Привет, я использую Teamgram для переписки — как и ещё %@ наших контактов. Присоединяйся! Скачать можно здесь: {url}",
+    "otherValue": "Привет, я использую Teamgram для переписки — как и ещё %@ наших контактов. Присоединяйся! Скачать можно здесь: {url}"
   },
   "InviteText.SingleContact": {
     "key": "InviteText.SingleContact",
-    "value": "Привет, я использую Telegram для переписки. Присоединяйся! Скачать его можно здесь: %@"
+    "value": "Привет, я использую Teamgram для переписки. Присоединяйся! Скачать его можно здесь: %@"
   },
   "InviteText.URL": {
     "key": "InviteText.URL",
@@ -8846,7 +8846,7 @@
   },
   "Login.BannedPhoneBody": {
     "key": "Login.BannedPhoneBody",
-    "value": "Я пытаюсь использовать свой мобильный номер: %@\nНо Telegram говорит, что он заблокирован. Пожалуйста, помогите."
+    "value": "Я пытаюсь использовать свой мобильный номер: %@\nНо Teamgram говорит, что он заблокирован. Пожалуйста, помогите."
   },
   "Login.BannedPhoneSubject": {
     "key": "Login.BannedPhoneSubject",
@@ -8854,7 +8854,7 @@
   },
   "Login.CallRequestState1": {
     "key": "Login.CallRequestState1",
-    "value": "Telegram позвонит Вам через %d:%.2d"
+    "value": "Teamgram позвонит Вам через %d:%.2d"
   },
   "Login.CallRequestState2": {
     "key": "Login.CallRequestState2",
@@ -8862,7 +8862,7 @@
   },
   "Login.CallRequestState3": {
     "key": "Login.CallRequestState3",
-    "value": "Telegram набрал Ваш номер\n[Не получили код?]"
+    "value": "Teamgram набрал Ваш номер\n[Не получили код?]"
   },
   "Login.CancelPhoneVerification": {
     "key": "Login.CancelPhoneVerification",
@@ -8934,7 +8934,7 @@
   },
   "Login.EmailPhoneBody": {
     "key": "Login.EmailPhoneBody",
-    "value": "Я пытаюсь использовать свой мобильный номер: %@\nНо Telegram говорит, что он некорректный. Пожалуйста, помогите.\nДополнительная информация: %@, %@."
+    "value": "Я пытаюсь использовать свой мобильный номер: %@\nНо Teamgram говорит, что он некорректный. Пожалуйста, помогите.\nДополнительная информация: %@, %@."
   },
   "Login.EmailPhoneSubject": {
     "key": "Login.EmailPhoneSubject",
@@ -8990,7 +8990,7 @@
   },
   "Login.InvalidPhoneEmailBody": {
     "key": "Login.InvalidPhoneEmailBody",
-    "value": "Я пытаюсь использовать свой мобильный номер: %1$@.\nНо Telegram говорит, что он некорректный. Пожалуйста, помогите.\n\nВерсия приложения: %2$@\nВерсия OS: %3$@\nЛокаль: %4$@\nОператор: %5$@"
+    "value": "Я пытаюсь использовать свой мобильный номер: %1$@.\nНо Teamgram говорит, что он некорректный. Пожалуйста, помогите.\n\nВерсия приложения: %2$@\nВерсия OS: %3$@\nЛокаль: %4$@\nОператор: %5$@"
   },
   "Login.InvalidPhoneEmailSubject": {
     "key": "Login.InvalidPhoneEmailSubject",
@@ -9010,7 +9010,7 @@
   },
   "Login.PadPhoneHelp": {
     "key": "Login.PadPhoneHelp",
-    "value": "Используйте основной номер телефона для входа в Telegram на любом устройстве. Номер SIM-карты iPad не подойдёт, поскольку Вам необходимо получить SMS. \n\nНомер указан верно?\n{number}"
+    "value": "Используйте основной номер телефона для входа в Teamgram на любом устройстве. Номер SIM-карты iPad не подойдёт, поскольку Вам необходимо получить SMS. \n\nНомер указан верно?\n{number}"
   },
   "Login.PadPhoneHelpTitle": {
     "key": "Login.PadPhoneHelpTitle",
@@ -9022,7 +9022,7 @@
   },
   "Login.PhoneBannedEmailBody": {
     "key": "Login.PhoneBannedEmailBody",
-    "value": "Я пытаюсь использовать свой мобильный номер: %1$@.\nНо Telegram говорит, что он заблокирован. Пожалуйста, помогите.\n\nВерсия приложения: %2$@\nВерсия OS: %3$@\nЛокаль: %4$@\nОператор: %5$@"
+    "value": "Я пытаюсь использовать свой мобильный номер: %1$@.\nНо Teamgram говорит, что он заблокирован. Пожалуйста, помогите.\n\nВерсия приложения: %2$@\nВерсия OS: %3$@\nЛокаль: %4$@\nОператор: %5$@"
   },
   "Login.PhoneBannedEmailSubject": {
     "key": "Login.PhoneBannedEmailSubject",
@@ -9038,11 +9038,11 @@
   },
   "Login.PhoneGenericEmailBody": {
     "key": "Login.PhoneGenericEmailBody",
-    "value": "Я пытаюсь использовать свой мобильный номер: %1$@\nНо Telegram показывает ошибку.\nПожалуйста, помогите.\n\nОшибка: %2$@\nВерсия приложения: %3$@\nВерсия ОС: %4$@\nЛокаль: %5$@\nПровайдер: %6$@"
+    "value": "Я пытаюсь использовать свой мобильный номер: %1$@\nНо Teamgram показывает ошибку.\nПожалуйста, помогите.\n\nОшибка: %2$@\nВерсия приложения: %3$@\nВерсия ОС: %4$@\nЛокаль: %5$@\nПровайдер: %6$@"
   },
   "Login.PhoneGenericEmailSubject": {
     "key": "Login.PhoneGenericEmailSubject",
-    "value": "Ошибка Telegram iOS: %@"
+    "value": "Ошибка Teamgram iOS: %@"
   },
   "Login.PhoneNumberAlreadyAuthorized": {
     "key": "Login.PhoneNumberAlreadyAuthorized",
@@ -9094,7 +9094,7 @@
   },
   "Login.SmsRequestState1": {
     "key": "Login.SmsRequestState1",
-    "value": "Telegram отправит Вам SMS через %d:%.2d"
+    "value": "Teamgram отправит Вам SMS через %d:%.2d"
   },
   "Login.SmsRequestState2": {
     "key": "Login.SmsRequestState2",
@@ -9102,7 +9102,7 @@
   },
   "Login.SmsRequestState3": {
     "key": "Login.SmsRequestState3",
-    "value": "СМС от Telegram отправлена\n[Не получили код?]"
+    "value": "СМС от Teamgram отправлена\n[Не получили код?]"
   },
   "Login.TermsOfService.ProceedBot": {
     "key": "Login.TermsOfService.ProceedBot",
@@ -9134,11 +9134,11 @@
   },
   "Login.WillCallYou": {
     "key": "Login.WillCallYou",
-    "value": "Telegram позвонит Вам через %@"
+    "value": "Teamgram позвонит Вам через %@"
   },
   "Login.WillSendSms": {
     "key": "Login.WillSendSms",
-    "value": "Telegram отправит Вам SMS через %@"
+    "value": "Teamgram отправит Вам SMS через %@"
   },
   "LoginPassword.FloodError": {
     "key": "LoginPassword.FloodError",
@@ -9170,7 +9170,7 @@
   },
   "LogoutOptions.AddAccountText": {
     "key": "LogoutOptions.AddAccountText",
-    "value": "Подключите несколько аккаунтов Telegram и легко переключайтесь между ними."
+    "value": "Подключите несколько аккаунтов Teamgram и легко переключайтесь между ними."
   },
   "LogoutOptions.AddAccountTitle": {
     "key": "LogoutOptions.AddAccountTitle",
@@ -10906,7 +10906,7 @@
   },
   "Notifications.DisplayNamesOnLockScreenInfo": {
     "key": "Notifications.DisplayNamesOnLockScreenInfo",
-    "value": "Показывать имена в оповещениях на заблокированном экране. Чтобы отключить, перейдите в настройки iOS > Telegram > Уведомления > Показ миниатюр и выберите значение «Без блокировки» или «Никогда»."
+    "value": "Показывать имена в оповещениях на заблокированном экране. Чтобы отключить, перейдите в настройки iOS > Teamgram > Уведомления > Показ миниатюр и выберите значение «Без блокировки» или «Никогда»."
   },
   "Notifications.DisplayNamesOnLockScreenInfoWithLink": {
     "key": "Notifications.DisplayNamesOnLockScreenInfoWithLink",
@@ -12392,11 +12392,11 @@
   },
   "Passport.DeletePassport": {
     "key": "Passport.DeletePassport",
-    "value": "Удалить Telegram Passport"
+    "value": "Удалить Teamgram Passport"
   },
   "Passport.DeletePassportConfirmation": {
     "key": "Passport.DeletePassportConfirmation",
-    "value": "Вы точно хотите удалить Telegram Passport? Вся информация будет потеряна."
+    "value": "Вы точно хотите удалить Teamgram Passport? Вся информация будет потеряна."
   },
   "Passport.DeletePersonalDetails": {
     "key": "Passport.DeletePersonalDetails",
@@ -12812,11 +12812,11 @@
   },
   "Passport.InfoText": {
     "key": "Passport.InfoText",
-    "value": "С помощью Telegram Passport можно зарегистрироваться на сайтах и сервисах, где требуется идентификация личности.\n\nВаша информация, персональные данные и документы защищены оконечным шифрованием (end-to-end). Никто, включая Telegram, не сможет получить к ним доступ без Вашего согласия.\n\nПочитать об этом подробнее можно в нашем FAQ."
+    "value": "С помощью Teamgram Passport можно зарегистрироваться на сайтах и сервисах, где требуется идентификация личности.\n\nВаша информация, персональные данные и документы защищены оконечным шифрованием (end-to-end). Никто, включая Telegram, не сможет получить к ним доступ без Вашего согласия.\n\nПочитать об этом подробнее можно в нашем FAQ."
   },
   "Passport.InfoTitle": {
     "key": "Passport.InfoTitle",
-    "value": "Что такое Telegram Passport?"
+    "value": "Что такое Teamgram Passport?"
   },
   "Passport.InvalidPasswordError": {
     "key": "Passport.InvalidPasswordError",
@@ -13012,7 +13012,7 @@
   },
   "Passport.NotLoggedInMessage": {
     "key": "Passport.NotLoggedInMessage",
-    "value": "Чтобы использовать Telegram Passport, войдите в свой аккаунт в Telegram."
+    "value": "Чтобы использовать Teamgram Passport, войдите в свой аккаунт в Telegram."
   },
   "Passport.PassportInformation": {
     "key": "Passport.PassportInformation",
@@ -13028,7 +13028,7 @@
   },
   "Passport.PasswordDescription": {
     "key": "Passport.PasswordDescription",
-    "value": "Чтобы защитить персональные данные оконечным шифрованием, пожалуйста, задайте пароль.\n\nЭтот пароль также будет запрашиваться при входе в Telegram с нового устройства."
+    "value": "Чтобы защитить персональные данные оконечным шифрованием, пожалуйста, задайте пароль.\n\nЭтот пароль также будет запрашиваться при входе в Teamgram с нового устройства."
   },
   "Passport.PasswordHelp": {
     "key": "Passport.PasswordHelp",
@@ -13044,7 +13044,7 @@
   },
   "Passport.PasswordReset": {
     "key": "Passport.PasswordReset",
-    "value": "Все документы, загруженные Вами в Telegram Passport, будут потеряны. Вы сможете загрузить документы заново."
+    "value": "Все документы, загруженные Вами в Teamgram Passport, будут потеряны. Вы сможете загрузить документы заново."
   },
   "Passport.Phone.Delete": {
     "key": "Passport.Phone.Delete",
@@ -13120,7 +13120,7 @@
   },
   "PassportKit.Button.GetTelegramAlertMessage": {
     "key": "PassportKit.Button.GetTelegramAlertMessage",
-    "value": "Чтобы использовать Telegram Passport, необходимо установить приложение Telegram Messenger"
+    "value": "Чтобы использовать Teamgram Passport, необходимо установить приложение Teamgram Messenger"
   },
   "PassportKit.Button.GetTelegramAlertNotNow": {
     "key": "PassportKit.Button.GetTelegramAlertNotNow",
@@ -13128,11 +13128,11 @@
   },
   "PassportKit.Button.GetTelegramAlertTitle": {
     "key": "PassportKit.Button.GetTelegramAlertTitle",
-    "value": "Установка Telegram Messenger"
+    "value": "Установка Teamgram Messenger"
   },
   "PassportKit.Button.Title": {
     "key": "PassportKit.Button.Title",
-    "value": "Войти через Telegram"
+    "value": "Войти через Teamgram"
   },
   "Peer.DeletedUser": {
     "key": "Peer.DeletedUser",
@@ -13321,7 +13321,7 @@
   },
   "Permissions.CellularDataText.v0": {
     "key": "Permissions.CellularDataText.v0",
-    "value": "Telegram использует сеть как можно экономнее. Управлять этим можно в настройках приложения > Данные и память."
+    "value": "Teamgram использует сеть как можно экономнее. Управлять этим можно в настройках приложения > Данные и память."
   },
   "Permissions.CellularDataTitle.v0": {
     "key": "Permissions.CellularDataTitle.v0",
@@ -13622,7 +13622,7 @@
   },
   "Privacy.Calls.IntegrationHelp": {
     "key": "Privacy.Calls.IntegrationHelp",
-    "value": "Интеграция со звонками iOS позволит показывать звонки Telegram на экране блокировки и в общей истории вызовов. Если включена синхронизация с iCloud, Ваша история вызовов будет синхронизироваться с Apple."
+    "value": "Интеграция со звонками iOS позволит показывать звонки Teamgram на экране блокировки и в общей истории вызовов. Если включена синхронизация с iCloud, Ваша история вызовов будет синхронизироваться с Apple."
   },
   "Privacy.Calls.NeverAllow": {
     "key": "Privacy.Calls.NeverAllow",
@@ -13798,7 +13798,7 @@
   },
   "Privacy.PaymentsClearInfoHelp": {
     "key": "Privacy.PaymentsClearInfoHelp",
-    "value": "Вы можете удалить свою платёжную информацию и запросить удаление сохраненных кредитных карт у платёжных провайдеров. Обратите внимание, что сам Telegram не хранит информацию о Ваших кредитных картах."
+    "value": "Вы можете удалить свою платёжную информацию и запросить удаление сохраненных кредитных карт у платёжных провайдеров. Обратите внимание, что сам Teamgram не хранит информацию о Ваших кредитных картах."
   },
   "Privacy.PaymentsTitle": {
     "key": "Privacy.PaymentsTitle",
@@ -13963,7 +13963,7 @@
   },
   "PrivacyPolicy.DeclineLastWarning": {
     "key": "PrivacyPolicy.DeclineLastWarning",
-    "value": "Внимание: в этом случае Ваш аккаунт в Telegram будет необратимо удалён вместе со всей информацией, которую Вы храните на серверах Telegram.\n\nВажно: Вы можете отменить удаление и сначала экспортировать данные своего аккаунта, чтобы не потерять их. (Для этого зайдите в аккаунт через свежую версию Telegram для ПК и выберите Настройки > Экспорт данных из Telegram.)"
+    "value": "Внимание: в этом случае Ваш аккаунт в Teamgram будет необратимо удалён вместе со всей информацией, которую Вы храните на серверах Telegram.\n\nВажно: Вы можете отменить удаление и сначала экспортировать данные своего аккаунта, чтобы не потерять их. (Для этого зайдите в аккаунт через свежую версию Teamgram для ПК и выберите Настройки > Экспорт данных из Telegram.)"
   },
   "PrivacyPolicy.DeclineMessage": {
     "key": "PrivacyPolicy.DeclineMessage",
@@ -14007,7 +14007,7 @@
   },
   "PrivacySettings.DeleteAccountHelp": {
     "key": "PrivacySettings.DeleteAccountHelp",
-    "value": "Если Вы ни разу не заглянете в Telegram за это время, аккаунт будет удалён вместе со всеми сообщениями и контактами."
+    "value": "Если Вы ни разу не заглянете в Teamgram за это время, аккаунт будет удалён вместе со всеми сообщениями и контактами."
   },
   "PrivacySettings.DeleteAccountIfAwayFor": {
     "key": "PrivacySettings.DeleteAccountIfAwayFor",
@@ -14580,7 +14580,7 @@
   },
   "Settings.FAQ": {
     "key": "Settings.FAQ",
-    "value": "Вопросы о Telegram"
+    "value": "Вопросы о Teamgram"
   },
   "Settings.FAQ_Button": {
     "key": "Settings.FAQ_Button",
@@ -14588,7 +14588,7 @@
   },
   "Settings.FAQ_Intro": {
     "key": "Settings.FAQ_Intro",
-    "value": "Пожалуйста, обратите внимание, что в поддержке Telegram отвечают волонтеры. Мы постараемся помочь как можно быстрее, но ожидание может занять время.\n\nПожалуйста, ознакомьтесь с часто задаваемыми вопросами о Telegram: там Вы найдёте ответы на большинство вопросов и важные советы по устранению неполадок."
+    "value": "Пожалуйста, обратите внимание, что в поддержке Teamgram отвечают волонтеры. Мы постараемся помочь как можно быстрее, но ожидание может занять время.\n\nПожалуйста, ознакомьтесь с часто задаваемыми вопросами о Teamgram: там Вы найдёте ответы на большинство вопросов и важные советы по устранению неполадок."
   },
   "Settings.FAQ_URL": {
     "key": "Settings.FAQ_URL",
@@ -14608,7 +14608,7 @@
   },
   "Settings.LogoutConfirmationText": {
     "key": "Settings.LogoutConfirmationText",
-    "value": "Вы можете пользоваться Telegram на всех Ваших устройствах одновременно.\n\nВажно: если Вы выйдете из аккаунта, все секретные чаты на этом устройстве будут утеряны."
+    "value": "Вы можете пользоваться Teamgram на всех Ваших устройствах одновременно.\n\nВажно: если Вы выйдете из аккаунта, все секретные чаты на этом устройстве будут утеряны."
   },
   "Settings.LogoutConfirmationTitle": {
     "key": "Settings.LogoutConfirmationTitle",
@@ -14620,7 +14620,7 @@
   },
   "Settings.Passport": {
     "key": "Settings.Passport",
-    "value": "Telegram Passport"
+    "value": "Teamgram Passport"
   },
   "Settings.PhoneNumber": {
     "key": "Settings.PhoneNumber",
@@ -15076,11 +15076,11 @@
   },
   "Share.AuthDescription": {
     "key": "Share.AuthDescription",
-    "value": "Чтобы поделиться, войдите в свой аккаунт в Telegram."
+    "value": "Чтобы поделиться, войдите в свой аккаунт в Teamgram."
   },
   "Share.AuthTitle": {
     "key": "Share.AuthTitle",
-    "value": "Войти в Telegram"
+    "value": "Войти в Teamgram"
   },
   "Share.MultipleMessagesDisabled": {
     "key": "Share.MultipleMessagesDisabled",
@@ -16203,7 +16203,7 @@
   },
   "Tour.Title1": {
     "key": "Tour.Title1",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "Tour.Title2": {
     "key": "Tour.Title2",
@@ -16479,7 +16479,7 @@
   },
   "TwoStepAuth.GenericHelp": {
     "key": "TwoStepAuth.GenericHelp",
-    "value": "Включена двухэтапная аутентификация.\n\nДля входа в Telegram нужно будет вводить установленный здесь пароль."
+    "value": "Включена двухэтапная аутентификация.\n\nДля входа в Teamgram нужно будет вводить установленный здесь пароль."
   },
   "TwoStepAuth.HintPlaceholder": {
     "key": "TwoStepAuth.HintPlaceholder",
@@ -16495,7 +16495,7 @@
   },
   "TwoStepAuth.PasswordRemovePassportConfirmation": {
     "key": "TwoStepAuth.PasswordRemovePassportConfirmation",
-    "value": "Вы уверены, что хотите отключить пароль?\n\nВажно! Вся информация, сохраненная в Telegram Passport, будет потеряна."
+    "value": "Вы уверены, что хотите отключить пароль?\n\nВажно! Вся информация, сохраненная в Teamgram Passport, будет потеряна."
   },
   "TwoStepAuth.PasswordSet": {
     "key": "TwoStepAuth.PasswordSet",
@@ -16679,7 +16679,7 @@
   },
   "Update.AppVersion": {
     "key": "Update.AppVersion",
-    "value": "Telegram %@"
+    "value": "Teamgram %@"
   },
   "Update.Skip": {
     "key": "Update.Skip",
@@ -16687,11 +16687,11 @@
   },
   "Update.Title": {
     "key": "Update.Title",
-    "value": "Обновление Telegram"
+    "value": "Обновление Teamgram"
   },
   "Update.UpdateApp": {
     "key": "Update.UpdateApp",
-    "value": "Обновить Telegram"
+    "value": "Обновить Teamgram"
   },
   "Updated.AtDate": {
     "key": "Updated.AtDate",
@@ -16810,7 +16810,7 @@
   },
   "UserInfo.Invite": {
     "key": "UserInfo.Invite",
-    "value": "Пригласить в Telegram"
+    "value": "Пригласить в Teamgram"
   },
   "UserInfo.InviteBotToGroup": {
     "key": "UserInfo.InviteBotToGroup",
@@ -16898,7 +16898,7 @@
   },
   "UserInfo.TelegramCall": {
     "key": "UserInfo.TelegramCall",
-    "value": "Позвонить через Telegram"
+    "value": "Позвонить через Teamgram"
   },
   "UserInfo.Title": {
     "key": "UserInfo.Title",
@@ -16938,7 +16938,7 @@
   },
   "Username.LinkHint": {
     "key": "Username.LinkHint",
-    "value": "По этой ссылке откроется диалог с Вами в Telegram:[\nhttps://t.me/%@]"
+    "value": "По этой ссылке откроется диалог с Вами в Teamgram:[\nhttps://t.me/%@]"
   },
   "Username.Placeholder": {
     "key": "Username.Placeholder",
@@ -17792,11 +17792,11 @@
   },
   "Watch.AppName": {
     "key": "Watch.AppName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "Watch.AuthRequired": {
     "key": "Watch.AuthRequired",
-    "value": "Войдите в Telegram на телефоне, чтобы начать"
+    "value": "Войдите в Teamgram на телефоне, чтобы начать"
   },
   "Watch.Bot.Restart": {
     "key": "Watch.Bot.Restart",
@@ -17910,7 +17910,7 @@
   },
   "Watch.Location.Access": {
     "key": "Watch.Location.Access",
-    "value": "Разрешите Telegram доступ к геолокации в настройках телефона"
+    "value": "Разрешите Teamgram доступ к геолокации в настройках телефона"
   },
   "Watch.Location.Current": {
     "key": "Watch.Location.Current",
@@ -17958,7 +17958,7 @@
   },
   "Watch.Microphone.Access": {
     "key": "Watch.Microphone.Access",
-    "value": "Разрешите Telegram доступ к микрофону"
+    "value": "Разрешите Teamgram доступ к микрофону"
   },
   "Watch.NoConnection": {
     "key": "Watch.NoConnection",
@@ -17966,7 +17966,7 @@
   },
   "Watch.Notification.Joined": {
     "key": "Watch.Notification.Joined",
-    "value": "Теперь в Telegram"
+    "value": "Теперь в Teamgram"
   },
   "Watch.PhotoView.Title": {
     "key": "Watch.PhotoView.Title",
@@ -18207,7 +18207,7 @@
   },
   "Widget.AuthRequired": {
     "key": "Widget.AuthRequired",
-    "value": "Войти в Telegram"
+    "value": "Войти в Teamgram"
   },
   "Widget.ChatsGalleryDescription": {
     "key": "Widget.ChatsGalleryDescription",
@@ -19224,7 +19224,7 @@
   },
   "AddAnotherAccountInfo": {
     "key": "AddAnotherAccountInfo",
-    "value": "Подключите несколько аккаунтов Telegram и легко переключайтесь между ними."
+    "value": "Подключите несколько аккаунтов Teamgram и легко переключайтесь между ними."
   },
   "AddBannedErrorAdmin": {
     "key": "AddBannedErrorAdmin",
@@ -19560,11 +19560,11 @@
   },
   "AppName": {
     "key": "AppName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "AppNameBeta": {
     "key": "AppNameBeta",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "Appearance": {
     "key": "Appearance",
@@ -19860,7 +19860,7 @@
   },
   "AreYouSureLogout": {
     "key": "AreYouSureLogout",
-    "value": "Вы точно хотите выйти?\n\nВы можете пользоваться Telegram на всех Ваших устройствах одновременно.\n\nВажно: при выходе из аккаунта все секретные чаты на этом устройстве пропадут."
+    "value": "Вы точно хотите выйти?\n\nВы можете пользоваться Teamgram на всех Ваших устройствах одновременно.\n\nВажно: при выходе из аккаунта все секретные чаты на этом устройстве пропадут."
   },
   "AreYouSureRegistration": {
     "key": "AreYouSureRegistration",
@@ -19920,7 +19920,7 @@
   },
   "AskAQuestionInfo": {
     "key": "AskAQuestionInfo",
-    "value": "Пожалуйста, обратите внимание, что в поддержке Telegram отвечают волонтеры. Мы постараемся помочь как можно быстрее, но ожидание может занять время.\n\nПожалуйста, ознакомьтесь с <![CDATA[<a href=\"https://telegram.org/faq#general\">частыми вопросами о Telegram</a>]]>: там есть ответ на большинство вопросов и важные советы по <![CDATA[<a href=\"https://telegram.org/faq#troubleshooting\">устранению неполадок</a>]]>."
+    "value": "Пожалуйста, обратите внимание, что в поддержке Teamgram отвечают волонтеры. Мы постараемся помочь как можно быстрее, но ожидание может занять время.\n\nПожалуйста, ознакомьтесь с <![CDATA[<a href=\"https://telegram.org/faq#general\">частыми вопросами о Telegram</a>]]>: там есть ответ на большинство вопросов и важные советы по <![CDATA[<a href=\"https://telegram.org/faq#troubleshooting\">устранению неполадок</a>]]>."
   },
   "AskButton": {
     "key": "AskButton",
@@ -20089,11 +20089,11 @@
   },
   "AuthAnotherClientInfo1": {
     "key": "AuthAnotherClientInfo1",
-    "value": "Установите Telegram для компьютера по ссылке *desktop.telegram.org*."
+    "value": "Установите Teamgram для компьютера по ссылке *desktop.telegram.org*."
   },
   "AuthAnotherClientInfo2": {
     "key": "AuthAnotherClientInfo2",
-    "value": "Запустите Telegram Desktop, чтобы получить QR-код."
+    "value": "Запустите Teamgram Desktop, чтобы получить QR-код."
   },
   "AuthAnotherClientInfo3": {
     "key": "AuthAnotherClientInfo3",
@@ -20723,7 +20723,7 @@
   },
   "BotPermissionGameAlert": {
     "key": "BotPermissionGameAlert",
-    "value": "Разрешить боту %1$s передавать Ваше имя и id в Telegram (не номер телефона) сайтам, которые Вы откроете с его помощью?"
+    "value": "Разрешить боту %1$s передавать Ваше имя и id в Teamgram (не номер телефона) сайтам, которые Вы откроете с его помощью?"
   },
   "BotRestart": {
     "key": "BotRestart",
@@ -20903,15 +20903,15 @@
   },
   "CallReportSent": {
     "key": "CallReportSent",
-    "value": "Спасибо, что помогаете делать звонки Telegram лучше."
+    "value": "Спасибо, что помогаете делать звонки Teamgram лучше."
   },
   "CallText": {
     "key": "CallText",
-    "value": "Telegram позвонит Вам через %1$d:%2$02d"
+    "value": "Teamgram позвонит Вам через %1$d:%2$02d"
   },
   "CallViaTelegram": {
     "key": "CallViaTelegram",
-    "value": "Звонок через Telegram"
+    "value": "Звонок через Teamgram"
   },
   "Calling": {
     "key": "Calling",
@@ -20952,11 +20952,11 @@
   },
   "CancelAccountResetInfo": {
     "key": "CancelAccountResetInfo",
-    "value": "Кто-то с доступом к **%1$s** запросил удаление Вашего аккаунта Telegram и сброс пароля двухэтапной аутентификации.\n\nЕсли это были не Вы, введите код из SMS, отправленного на Ваш номер. Вы также можете отменить удаление, **изменив номер телефона**."
+    "value": "Кто-то с доступом к **%1$s** запросил удаление Вашего аккаунта Teamgram и сброс пароля двухэтапной аутентификации.\n\nЕсли это были не Вы, введите код из SMS, отправленного на Ваш номер. Вы также можете отменить удаление, **изменив номер телефона**."
   },
   "CancelAccountResetInfo2": {
     "key": "CancelAccountResetInfo2",
-    "value": "Кто-то с доступом к **%1$s** запросил удаление Вашего аккаунта Telegram и сброс пароля двухэтапной аутентификации.\n\nЕсли это были не Вы, введите код из SMS, отправленного на Ваш номер. Вы также можете отменить удаление, *изменив номер телефона*."
+    "value": "Кто-то с доступом к **%1$s** запросил удаление Вашего аккаунта Teamgram и сброс пароля двухэтапной аутентификации.\n\nЕсли это были не Вы, введите код из SMS, отправленного на Ваш номер. Вы также можете отменить удаление, *изменив номер телефона*."
   },
   "CancelEmailQuestion": {
     "key": "CancelEmailQuestion",
@@ -21252,7 +21252,7 @@
   },
   "ChannelLinkInfo": {
     "key": "ChannelLinkInfo",
-    "value": "Любой пользователь Telegram сможет подписаться на Ваш канал, перейдя по этой ссылке."
+    "value": "Любой пользователь Teamgram сможет подписаться на Ваш канал, перейдя по этой ссылке."
   },
   "ChannelLinkTitle": {
     "key": "ChannelLinkTitle",
@@ -21931,7 +21931,7 @@
   },
   "ClearTelegramCache": {
     "key": "ClearTelegramCache",
-    "value": "Очистить кэш Telegram"
+    "value": "Очистить кэш Teamgram"
   },
   "Close": {
     "key": "Close",
@@ -22527,7 +22527,7 @@
   },
   "DeleteAccountHelp": {
     "key": "DeleteAccountHelp",
-    "value": "Если Вы ни разу не заглянете в Telegram за это время, аккаунт будет удалён вместе со всеми сообщениями и контактами."
+    "value": "Если Вы ни разу не заглянете в Teamgram за это время, аккаунт будет удалён вместе со всеми сообщениями и контактами."
   },
   "DeleteAccountIfAwayFor": {
     "key": "DeleteAccountIfAwayFor",
@@ -23325,7 +23325,7 @@
   },
   "EnableAllStreamingInfo": {
     "key": "EnableAllStreamingInfo",
-    "value": "Потоковая загрузка недоступна для некоторых видеозаписей – например, отправленных с устройств Android с помощью Telegram версии 4.7 и ниже."
+    "value": "Потоковая загрузка недоступна для некоторых видеозаписей – например, отправленных с устройств Android с помощью Teamgram версии 4.7 и ниже."
   },
   "EnableAnimations": {
     "key": "EnableAnimations",
@@ -23353,7 +23353,7 @@
   },
   "EnabledPasswordText": {
     "key": "EnabledPasswordText",
-    "value": "Включена двухэтапная аутентификация.\nДля входа в свой аккаунт в Telegram Вам нужно будет вводить установленный здесь пароль."
+    "value": "Включена двухэтапная аутентификация.\nДля входа в свой аккаунт в Teamgram Вам нужно будет вводить установленный здесь пароль."
   },
   "EncryptedChatStartedIncoming": {
     "key": "EncryptedChatStartedIncoming",
@@ -25113,7 +25113,7 @@
   },
   "ImportImportingInfo": {
     "key": "ImportImportingInfo",
-    "value": "Пожалуйста, не закрывайте Telegram до завершения импорта."
+    "value": "Пожалуйста, не закрывайте Teamgram до завершения импорта."
   },
   "ImportImportingTitle": {
     "key": "ImportImportingTitle",
@@ -25307,16 +25307,16 @@
   },
   "InviteText2": {
     "key": "InviteText2",
-    "value": "Привет, я использую Telegram для переписки. Присоединяйся! Скачать его можно здесь: %1$s"
+    "value": "Привет, я использую Teamgram для переписки. Присоединяйся! Скачать его можно здесь: %1$s"
   },
   "InviteTextNum": {
     "key": "InviteTextNum",
     "zeroValue": null,
-    "oneValue": "Привет, я использую Telegram для переписки – как и ещё %1$d наш контакт. Присоединяйся! Скачать можно здесь: %@",
+    "oneValue": "Привет, я использую Teamgram для переписки – как и ещё %1$d наш контакт. Присоединяйся! Скачать можно здесь: %@",
     "twoValue": null,
-    "fewValue": "Привет, я использую Telegram для переписки – как и ещё %1$d наших контакта. Присоединяйся! Скачать можно здесь: %@",
-    "manyValue": "Привет, я использую Telegram для переписки – как и ещё %1$d наших контактов. Присоединяйся! Скачать можно здесь: %@",
-    "otherValue": "Привет, я использую Telegram для переписки – как и ещё %1$d наших контактов. Присоединяйся! Скачать можно здесь: %@"
+    "fewValue": "Привет, я использую Teamgram для переписки – как и ещё %1$d наших контакта. Присоединяйся! Скачать можно здесь: %@",
+    "manyValue": "Привет, я использую Teamgram для переписки – как и ещё %1$d наших контактов. Присоединяйся! Скачать можно здесь: %@",
+    "otherValue": "Привет, я использую Teamgram для переписки – как и ещё %1$d наших контактов. Присоединяйся! Скачать можно здесь: %@"
   },
   "InviteToChannelError": {
     "key": "InviteToChannelError",
@@ -25332,11 +25332,11 @@
   },
   "InviteToTelegram": {
     "key": "InviteToTelegram",
-    "value": "ПРИГЛАСИТЬ В TELEGRAM"
+    "value": "ПРИГЛАСИТЬ В Teamgram"
   },
   "InviteUser": {
     "key": "InviteUser",
-    "value": "У этого пользователя пока нет Telegram, отправить приглашение?"
+    "value": "У этого пользователя пока нет Teamgram, отправить приглашение?"
   },
   "Invited": {
     "key": "Invited",
@@ -25516,7 +25516,7 @@
   },
   "LanguageUnknownCustomAlert": {
     "key": "LanguageUnknownCustomAlert",
-    "value": "К сожалению, в этом неофициальном переводе (**%1$s**) нет текстов приложения Telegram для Android."
+    "value": "К сожалению, в этом неофициальном переводе (**%1$s**) нет текстов приложения Teamgram для Android."
   },
   "LanguageUnknownTitle": {
     "key": "LanguageUnknownTitle",
@@ -25688,11 +25688,11 @@
   },
   "LinkInfo": {
     "key": "LinkInfo",
-    "value": "Любой пользователь Telegram сможет вступить в Вашу группу, перейдя по этой ссылке."
+    "value": "Любой пользователь Teamgram сможет вступить в Вашу группу, перейдя по этой ссылке."
   },
   "LinkInfoChannel": {
     "key": "LinkInfoChannel",
-    "value": "Любой пользователь Telegram сможет подписаться на канал при помощи этой ссылки."
+    "value": "Любой пользователь Teamgram сможет подписаться на канал при помощи этой ссылки."
   },
   "LinkInvalid": {
     "key": "LinkInvalid",
@@ -25933,7 +25933,7 @@
   },
   "LowDiskSpaceMessage": {
     "key": "LowDiskSpaceMessage",
-    "value": "В устройстве почти не осталось места. Чтобы освободить немного места, разрешите Telegram хранить в кэше только недавние медиафайлы."
+    "value": "В устройстве почти не осталось места. Чтобы освободить немного места, разрешите Teamgram хранить в кэше только недавние медиафайлы."
   },
   "LowDiskSpaceNeverRemove": {
     "key": "LowDiskSpaceNeverRemove",
@@ -26029,7 +26029,7 @@
   },
   "MapPreviewProviderTelegram": {
     "key": "MapPreviewProviderTelegram",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "MapPreviewProviderTitle": {
     "key": "MapPreviewProviderTitle",
@@ -26740,7 +26740,7 @@
   },
   "NoContactsYetLine1": {
     "key": "NoContactsYetLine1",
-    "value": "Пригласите друзей в Telegram"
+    "value": "Пригласите друзей в Teamgram"
   },
   "NoContactsYetLine2": {
     "key": "NoContactsYetLine2",
@@ -26832,7 +26832,7 @@
   },
   "NoOtherSessionsInfo": {
     "key": "NoOtherSessionsInfo",
-    "value": "Вы можете войти в Telegram с другого смартфона, планшета или компьютера, используя тот же номер телефона. Все данные будут мгновенно синхронизированы."
+    "value": "Вы можете войти в Teamgram с другого смартфона, планшета или компьютера, используя тот же номер телефона. Все данные будут мгновенно синхронизированы."
   },
   "NoOtherWebSessions": {
     "key": "NoOtherWebSessions",
@@ -26940,7 +26940,7 @@
   },
   "NoUsernameFound": {
     "key": "NoUsernameFound",
-    "value": "Нет аккаунта Telegram с таким именем пользователя."
+    "value": "Нет аккаунта Teamgram с таким именем пользователя."
   },
   "NoVotes": {
     "key": "NoVotes",
@@ -27284,7 +27284,7 @@
   },
   "NotificationHiddenChatName": {
     "key": "NotificationHiddenChatName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "NotificationHiddenChatUserName": {
     "key": "NotificationHiddenChatUserName",
@@ -27296,7 +27296,7 @@
   },
   "NotificationHiddenName": {
     "key": "NotificationHiddenName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "NotificationInvitedToGroup": {
     "key": "NotificationInvitedToGroup",
@@ -27934,7 +27934,7 @@
   },
   "Page1Title": {
     "key": "Page1Title",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "Page2Message": {
     "key": "Page2Message",
@@ -28319,15 +28319,15 @@
   },
   "PassportInfo": {
     "key": "PassportInfo",
-    "value": "С помощью Telegram Passport можно зарегистрироваться на сайтах и сервисах, где требуется идентификация личности.\n\nВаша информация, персональные данные и документы защищены оконечным шифрованием (end-to-end). Никто, включая Telegram, не сможет получить к ним доступ без Вашего согласия.\n\nПочитать об этом подробнее можно в нашем FAQ."
+    "value": "С помощью Teamgram Passport можно зарегистрироваться на сайтах и сервисах, где требуется идентификация личности.\n\nВаша информация, персональные данные и документы защищены оконечным шифрованием (end-to-end). Никто, включая Telegram, не сможет получить к ним доступ без Вашего согласия.\n\nПочитать об этом подробнее можно в нашем FAQ."
   },
   "PassportInfo2": {
     "key": "PassportInfo2",
-    "value": "С помощью Telegram Passport можно зарегистрироваться на сайтах и сервисах, где требуется идентификация личности.\n\nВаша информация, персональные данные и документы защищены оконечным шифрованием (end-to-end). Никто, включая Telegram, не сможет получить к ним доступ без Вашего согласия.\n\nПочитать об этом подробнее можно в нашем *FAQ*."
+    "value": "С помощью Teamgram Passport можно зарегистрироваться на сайтах и сервисах, где требуется идентификация личности.\n\nВаша информация, персональные данные и документы защищены оконечным шифрованием (end-to-end). Никто, включая Telegram, не сможет получить к ним доступ без Вашего согласия.\n\nПочитать об этом подробнее можно в нашем *FAQ*."
   },
   "PassportInfoTitle": {
     "key": "PassportInfoTitle",
-    "value": "Что такое Telegram Passport?"
+    "value": "Что такое Teamgram Passport?"
   },
   "PassportInfoUrl": {
     "key": "PassportInfoUrl",
@@ -28695,7 +28695,7 @@
   },
   "PassportSDK_TelegramPassport": {
     "key": "PassportSDK_TelegramPassport",
-    "value": "Telegram Passport"
+    "value": "Teamgram Passport"
   },
   "PassportScanPassport": {
     "key": "PassportScanPassport",
@@ -29071,7 +29071,7 @@
   },
   "PaymentWarningText": {
     "key": "PaymentWarningText",
-    "value": "Ни Telegram, ни %1$s не будут иметь доступа к Вашей платёжной информации. Все реквизиты карт обрабатываются только платёжной системой, %2$s.\n\nОплата осуществляется напрямую разработчику %1$s. Telegram не может предоставить никаких гарантий. В случае любых проблем, пожалуйста, свяжитесь с разработчиком %1$s или своим банком."
+    "value": "Ни Telegram, ни %1$s не будут иметь доступа к Вашей платёжной информации. Все реквизиты карт обрабатываются только платёжной системой, %2$s.\n\nОплата осуществляется напрямую разработчику %1$s. Teamgram не может предоставить никаких гарантий. В случае любых проблем, пожалуйста, свяжитесь с разработчиком %1$s или своим банком."
   },
   "PendingEmailText": {
     "key": "PendingEmailText",
@@ -29145,7 +29145,7 @@
   },
   "PermissionBackgroundLocation": {
     "key": "PermissionBackgroundLocation",
-    "value": "Telegram требуется доступ к геопозиции в фоновом режиме, чтобы Вы могли транслировать её в этот чат в реальном времени.\n\nПриложение будет иметь доступ к геопозиции только на выбранный Вами период времени, и Вы можете отозвать доступ в любой момент. Информация будет использоваться только для трансляции геопозиции в этот чат."
+    "value": "Teamgram требуется доступ к геопозиции в фоновом режиме, чтобы Вы могли транслировать её в этот чат в реальном времени.\n\nПриложение будет иметь доступ к геопозиции только на выбранный Вами период времени, и Вы можете отозвать доступ в любой момент. Информация будет использоваться только для трансляции геопозиции в этот чат."
   },
   "PermissionContacts": {
     "key": "PermissionContacts",
@@ -29153,7 +29153,7 @@
   },
   "PermissionDrawAboveOtherApps": {
     "key": "PermissionDrawAboveOtherApps",
-    "value": "Telegram требуется доступ к работе поверх других приложений, чтобы показывать видео в режиме картинка в картинке."
+    "value": "Teamgram требуется доступ к работе поверх других приложений, чтобы показывать видео в режиме картинка в картинке."
   },
   "PermissionDrawAboveOtherAppsGroupCall": {
     "key": "PermissionDrawAboveOtherAppsGroupCall",
@@ -29169,23 +29169,23 @@
   },
   "PermissionNoAudio": {
     "key": "PermissionNoAudio",
-    "value": "Telegram требуется доступ к микрофону, чтобы Вы могли отправлять голосовые сообщения."
+    "value": "Teamgram требуется доступ к микрофону, чтобы Вы могли отправлять голосовые сообщения."
   },
   "PermissionNoAudioVideo": {
     "key": "PermissionNoAudioVideo",
-    "value": "Telegram требуется доступ к микрофону, чтобы Вы могли снимать видео."
+    "value": "Teamgram требуется доступ к микрофону, чтобы Вы могли снимать видео."
   },
   "PermissionNoCamera": {
     "key": "PermissionNoCamera",
-    "value": "Telegram требуется доступ к камере, чтобы Вы могли снимать фото и видео."
+    "value": "Teamgram требуется доступ к камере, чтобы Вы могли снимать фото и видео."
   },
   "PermissionNoLocation": {
     "key": "PermissionNoLocation",
-    "value": "Telegram требуется доступ к геопозиции, чтобы Вы могли отправлять её друзьям."
+    "value": "Teamgram требуется доступ к геопозиции, чтобы Вы могли отправлять её друзьям."
   },
   "PermissionNoLocationPosition": {
     "key": "PermissionNoLocationPosition",
-    "value": "Telegram требуется доступ к геопозиции."
+    "value": "Teamgram требуется доступ к геопозиции."
   },
   "PermissionOpenSettings": {
     "key": "PermissionOpenSettings",
@@ -29193,7 +29193,7 @@
   },
   "PermissionStorage": {
     "key": "PermissionStorage",
-    "value": "Telegram требуется доступ к хранилищу, чтобы Вы могли отправлять и сохранять фото, видео, музыку и другие медиа."
+    "value": "Teamgram требуется доступ к хранилищу, чтобы Вы могли отправлять и сохранять фото, видео, музыку и другие медиа."
   },
   "PermissionXiaomiLockscreen": {
     "key": "PermissionXiaomiLockscreen",
@@ -29421,7 +29421,7 @@
   },
   "PleaseLoginPassport": {
     "key": "PleaseLoginPassport",
-    "value": "Чтобы использовать Telegram Passport, войдите в аккаунт Telegram."
+    "value": "Чтобы использовать Teamgram Passport, войдите в аккаунт Telegram."
   },
   "PleaseReEnterPassword": {
     "key": "PleaseReEnterPassword",
@@ -29526,11 +29526,11 @@
   },
   "PrimaryLinkHelp": {
     "key": "PrimaryLinkHelp",
-    "value": "Пользователи Telegram смогут присоединиться к Вашей группе, перейдя по ссылке."
+    "value": "Пользователи Teamgram смогут присоединиться к Вашей группе, перейдя по ссылке."
   },
   "PrimaryLinkHelpChannel": {
     "key": "PrimaryLinkHelpChannel",
-    "value": "Пользователи Telegram смогут присоединиться к Вашему каналу, перейдя по ссылке."
+    "value": "Пользователи Teamgram смогут присоединиться к Вашему каналу, перейдя по ссылке."
   },
   "PriorityInfo": {
     "key": "PriorityInfo",
@@ -29638,7 +29638,7 @@
   },
   "PrivacyPaymentsClearAlert": {
     "key": "PrivacyPaymentsClearAlert",
-    "value": "Удалить данные о доставке и запросить удаление сохраненных кредитных карт у платёжных провайдеров? Обратите внимание, что сам Telegram не хранит информацию о Ваших кредитных картах."
+    "value": "Удалить данные о доставке и запросить удаление сохраненных кредитных карт у платёжных провайдеров? Обратите внимание, что сам Teamgram не хранит информацию о Ваших кредитных картах."
   },
   "PrivacyPaymentsClearAlertText": {
     "key": "PrivacyPaymentsClearAlertText",
@@ -29650,7 +29650,7 @@
   },
   "PrivacyPaymentsClearInfo": {
     "key": "PrivacyPaymentsClearInfo",
-    "value": "Вы можете удалить свою платёжную информацию и запросить удаление сохраненных кредитных карт у платёжных провайдеров. Обратите внимание, что сам Telegram не хранит информацию о Ваших кредитных картах."
+    "value": "Вы можете удалить свою платёжную информацию и запросить удаление сохраненных кредитных карт у платёжных провайдеров. Обратите внимание, что сам Teamgram не хранит информацию о Ваших кредитных картах."
   },
   "PrivacyPhone": {
     "key": "PrivacyPhone",
@@ -29863,7 +29863,7 @@
   },
   "QRCodePermissionNoCamera": {
     "key": "QRCodePermissionNoCamera",
-    "value": "Чтобы Вы могли сканировать QR-коды, Telegram нужен доступ к камере."
+    "value": "Чтобы Вы могли сканировать QR-коды, Teamgram нужен доступ к камере."
   },
   "Question": {
     "key": "Question",
@@ -30725,7 +30725,7 @@
   },
   "SecretChatName": {
     "key": "SecretChatName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "SecretChatTimerDays": {
     "key": "SecretChatTimerDays",
@@ -31017,7 +31017,7 @@
   },
   "SentCallCode": {
     "key": "SentCallCode",
-    "value": "Наш робот звонит на номер **%1$s**.\n\nОтвечать на звонок не требуется, Telegram автоматически получит код для входа."
+    "value": "Наш робот звонит на номер **%1$s**.\n\nОтвечать на звонок не требуется, Teamgram автоматически получит код для входа."
   },
   "SentCallOnly": {
     "key": "SentCallOnly",
@@ -31954,24 +31954,24 @@
   },
   "TelegramCacheSize": {
     "key": "TelegramCacheSize",
-    "value": "%s кэша Telegram"
+    "value": "%s кэша Teamgram"
   },
   "TelegramContacts": {
     "key": "TelegramContacts",
     "zeroValue": null,
-    "oneValue": "%1$d контакт в Telegram",
+    "oneValue": "%1$d контакт в Teamgram",
     "twoValue": null,
-    "fewValue": "%1$d контакта в Telegram",
-    "manyValue": "%1$d контактов в Telegram",
-    "otherValue": "%1$d контактов в Telegram"
+    "fewValue": "%1$d контакта в Teamgram",
+    "manyValue": "%1$d контактов в Teamgram",
+    "otherValue": "%1$d контактов в Teamgram"
   },
   "TelegramFAQ": {
     "key": "TelegramFAQ",
-    "value": "Вопросы о Telegram"
+    "value": "Вопросы о Teamgram"
   },
   "TelegramFaq": {
     "key": "TelegramFaq",
-    "value": "Вопросы о Telegram"
+    "value": "Вопросы о Teamgram"
   },
   "TelegramFaqUrl": {
     "key": "TelegramFaqUrl",
@@ -31979,7 +31979,7 @@
   },
   "TelegramPassport": {
     "key": "TelegramPassport",
-    "value": "Telegram Passport"
+    "value": "Teamgram Passport"
   },
   "TelegramPassportCreatePassword": {
     "key": "TelegramPassportCreatePassword",
@@ -31987,23 +31987,23 @@
   },
   "TelegramPassportCreatePasswordInfo": {
     "key": "TelegramPassportCreatePasswordInfo",
-    "value": "Чтобы защитить свои данные оконечным шифрованием, пожалуйста, задайте пароль.\n\nЭтот пароль также будет запрашиваться при входе в Telegram с нового устройства."
+    "value": "Чтобы защитить свои данные оконечным шифрованием, пожалуйста, задайте пароль.\n\nЭтот пароль также будет запрашиваться при входе в Teamgram с нового устройства."
   },
   "TelegramPassportDelete": {
     "key": "TelegramPassportDelete",
-    "value": "Удалить Telegram Passport"
+    "value": "Удалить Teamgram Passport"
   },
   "TelegramPassportDeleteAlert": {
     "key": "TelegramPassportDeleteAlert",
-    "value": "Вы точно хотите удалить свой Telegram Passport?"
+    "value": "Вы точно хотите удалить свой Teamgram Passport?"
   },
   "TelegramPassportDeleteTitle": {
     "key": "TelegramPassportDeleteTitle",
-    "value": "Удалить Telegram passport"
+    "value": "Удалить Teamgram passport"
   },
   "TelegramVersion": {
     "key": "TelegramVersion",
-    "value": "Telegram для Android %1$s"
+    "value": "Teamgram для Android %1$s"
   },
   "Terminate": {
     "key": "Terminate",
@@ -32377,7 +32377,7 @@
   },
   "TosDeclineDeleteAccount": {
     "key": "TosDeclineDeleteAccount",
-    "value": "Внимание: в этом случае Ваш аккаунт в Telegram будет необратимо удален вместе со всей информацией, которую Вы храните на серверах Telegram.\n\nВажно: Вы можете отменить удаление и сначала экспортировать данные аккаунта, чтобы не потерять их. (Для этого зайдите в аккаунт через свежую версию Telegram для ПК и выберите Настройки > Экспорт данных из Telegram.)"
+    "value": "Внимание: в этом случае Ваш аккаунт в Teamgram будет необратимо удален вместе со всей информацией, которую Вы храните на серверах Telegram.\n\nВажно: Вы можете отменить удаление и сначала экспортировать данные аккаунта, чтобы не потерять их. (Для этого зайдите в аккаунт через свежую версию Teamgram для ПК и выберите Настройки > Экспорт данных из Telegram.)"
   },
   "TosUpdateDecline": {
     "key": "TosUpdateDecline",
@@ -32401,7 +32401,7 @@
   },
   "TurnPasswordOffPassport": {
     "key": "TurnPasswordOffPassport",
-    "value": "Внимание! Все данные, сохранённые в Вашем Telegram Passport, будут потеряны!"
+    "value": "Внимание! Все данные, сохранённые в Вашем Teamgram Passport, будут потеряны!"
   },
   "TurnPasswordOffQuestion": {
     "key": "TurnPasswordOffQuestion",
@@ -32601,7 +32601,7 @@
   },
   "UpdateTelegram": {
     "key": "UpdateTelegram",
-    "value": "Обновление Telegram"
+    "value": "Обновление Teamgram"
   },
   "UpdatedMinutes": {
     "key": "UpdatedMinutes",
@@ -33010,7 +33010,7 @@
   },
   "VideoCallViaTelegram": {
     "key": "VideoCallViaTelegram",
-    "value": "Видеозвонок через Telegram"
+    "value": "Видеозвонок через Teamgram"
   },
   "VideoCaption": {
     "key": "VideoCaption",
@@ -33436,19 +33436,19 @@
   },
   "VoipInCallBranding": {
     "key": "VoipInCallBranding",
-    "value": "Звонок Telegram"
+    "value": "Звонок Teamgram"
   },
   "VoipInCallBrandingWithName": {
     "key": "VoipInCallBrandingWithName",
-    "value": "Звонок %s через Telegram"
+    "value": "Звонок %s через Teamgram"
   },
   "VoipInVideoCallBranding": {
     "key": "VoipInVideoCallBranding",
-    "value": "Видеозвонок через Telegram"
+    "value": "Видеозвонок через Teamgram"
   },
   "VoipInVideoCallBrandingWithName": {
     "key": "VoipInVideoCallBrandingWithName",
-    "value": "Видеозвонок %s через Telegram"
+    "value": "Видеозвонок %s через Teamgram"
   },
   "VoipIncoming": {
     "key": "VoipIncoming",
@@ -33472,14 +33472,11 @@
   },
   "VoipNeedMicCameraPermission": {
     "key": "VoipNeedMicCameraPermission",
-    "value": "Чтобы Вы могли совершать видеозвонки, Telegram требуется доступ к камере и микрофону."
+    "value": "Чтобы Вы могли совершать видеозвонки, Teamgram требуется доступ к камере и микрофону."
   },
   "VoipNeedMicPermission": {
     "key": "VoipNeedMicPermission",
-    "value": "Telegram требуется доступ к микрофону, чтобы Вы могли пользоваться звонками."
-  },
-  "VoipNotificationSettings": {
-    "key": "VoipNotificationSettings",
+    "value": "Teamgram",
     "value": "Звонки"
   },
   "VoipOffline": {
@@ -33528,7 +33525,7 @@
   },
   "VoipOutgoingCall": {
     "key": "VoipOutgoingCall",
-    "value": "Текущий звонок Telegram"
+    "value": "Текущий звонок Teamgram"
   },
   "VoipOutputDevices": {
     "key": "VoipOutputDevices",
@@ -33811,7 +33808,7 @@
   },
   "YourContacts": {
     "key": "YourContacts",
-    "value": "Ваши контакты в Telegram"
+    "value": "Ваши контакты в Teamgram"
   },
   "YourEmail": {
     "key": "YourEmail",
@@ -34000,7 +33997,7 @@
   },
   "login_with_telegram": {
     "key": "login_with_telegram",
-    "value": "Войти через Telegram"
+    "value": "Войти через Teamgram"
   },
   "messages": {
     "key": "messages",
@@ -34013,7 +34010,7 @@
   },
   "telegram_passport": {
     "key": "telegram_passport",
-    "value": "Telegram Passport"
+    "value": "Teamgram Passport"
   },
   "Activity": {
     "key": "Activity",
@@ -34161,7 +34158,7 @@
   },
   "QRHint": {
     "key": "QRHint",
-    "value": "1. Запустите Telegram на телефоне\n2. Откройте настройки > Устройства > Сканировать QR-код.\n3. Сканируйте этот код для авторизации"
+    "value": "1. Запустите Teamgram на телефоне\n2. Откройте настройки > Устройства > Сканировать QR-код.\n3. Сканируйте этот код для авторизации"
   },
   "Saved": {
     "key": "Saved",
@@ -34193,7 +34190,7 @@
   },
   "SignInToTelegram": {
     "key": "SignInToTelegram",
-    "value": "Вход в Telegram"
+    "value": "Вход в Teamgram"
   },
   "SmileysPeople": {
     "key": "SmileysPeople",

@@ -1707,11 +1707,11 @@ export default {
   },
   lng_update_telegram: {
     key: 'lng_update_telegram',
-    value: 'Update Telegram',
+    value: 'Update Teamgram',
   },
   'Login.QR.Title': {
     key: 'Login.QR.Title',
-    value: 'Log in to Telegram by QR Code',
+    value: 'Log in to Teamgram by QR Code',
   },
   PHONE_NUMBER_INVALID: {
     key: 'PHONE_NUMBER_INVALID',

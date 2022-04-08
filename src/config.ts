@@ -1,4 +1,4 @@
-export const APP_NAME = process.env.APP_NAME || 'Telegram WebZ';
+export const APP_NAME = process.env.APP_NAME || 'Teamgram WebZ';
 export const APP_VERSION = process.env.APP_VERSION!;
 
 export const DEBUG = (

@@ -950,7 +950,7 @@
   },
   "AddAnotherAccountInfo": {
     "key": "AddAnotherAccountInfo",
-    "value": "Connect other Telegram accounts and easily switch between them."
+    "value": "Connect other Teamgram accounts and easily switch between them."
   },
   "AddBannedErrorAdmin": {
     "key": "AddBannedErrorAdmin",
@@ -1174,27 +1174,27 @@
   },
   "AllowFillNumber": {
     "key": "AllowFillNumber",
-    "value": "Please allow Telegram to receive calls so that we can automatically confirm your phone number."
+    "value": "Please allow Teamgram to receive calls so that we can automatically confirm your phone number."
   },
   "AllowReadCall": {
     "key": "AllowReadCall",
-    "value": "Please allow Telegram to receive calls so that we can automatically enter your code for you."
+    "value": "Please allow Teamgram to receive calls so that we can automatically enter your code for you."
   },
   "AllowReadCallAndLog": {
     "key": "AllowReadCallAndLog",
-    "value": "Please allow Telegram to receive calls and read the call log so that we can automatically enter your code for you."
+    "value": "Please allow Teamgram to receive calls and read the call log so that we can automatically enter your code for you."
   },
   "AllowReadCallAndSms": {
     "key": "AllowReadCallAndSms",
-    "value": "Please allow Telegram to receive calls so that we can automatically confirm your phone number."
+    "value": "Please allow Teamgram to receive calls so that we can automatically confirm your phone number."
   },
   "AllowReadCallLog": {
     "key": "AllowReadCallLog",
-    "value": "Please allow Telegram to read the call log so that we can automatically enter your code for you."
+    "value": "Please allow Teamgram to read the call log so that we can automatically enter your code for you."
   },
   "AllowReadSms": {
     "key": "AllowReadSms",
-    "value": "Please allow Telegram to receive SMS so that we can automatically enter your code for you."
+    "value": "Please allow Teamgram to receive SMS so that we can automatically enter your code for you."
   },
   "AlternativeOptions": {
     "key": "AlternativeOptions",
@@ -1286,11 +1286,11 @@
   },
   "AppName": {
     "key": "AppName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "AppNameBeta": {
     "key": "AppNameBeta",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "Appearance": {
     "key": "Appearance",
@@ -1586,7 +1586,7 @@
   },
   "AreYouSureLogout": {
     "key": "AreYouSureLogout",
-    "value": "Are you sure you want to log out?\n\nNote that you can seamlessly use Telegram on all your devices at once.\n\nRemember, logging out kills all your Secret Chats."
+    "value": "Are you sure you want to log out?\n\nNote that you can seamlessly use Teamgram on all your devices at once.\n\nRemember, logging out kills all your Secret Chats."
   },
   "AreYouSureRegistration": {
     "key": "AreYouSureRegistration",
@@ -1630,7 +1630,7 @@
   },
   "AreYouSureWebSessions": {
     "key": "AreYouSureWebSessions",
-    "value": "Are you sure you want to disconnect all websites where you used Telegram to log in?"
+    "value": "Are you sure you want to disconnect all websites where you used Teamgram to log in?"
   },
   "ArticleByAuthor": {
     "key": "ArticleByAuthor",
@@ -1646,7 +1646,7 @@
   },
   "AskAQuestionInfo": {
     "key": "AskAQuestionInfo",
-    "value": "Please note that Telegram Support is done by volunteers. We try to respond as quickly as possible, but it may take a while.\n\nPlease take a look at the <![CDATA[<a href=\"https://telegram.org/faq#general-questions\">Telegram FAQ</a>]]>: it has answers to most questions and important tips for <![CDATA[<a href=\"https://telegram.org/faq#troubleshooting\">troubleshooting</a>]]>."
+    "value": "Please note that Teamgram Support is done by volunteers. We try to respond as quickly as possible, but it may take a while.\n\nPlease take a look at the <![CDATA[<a href=\"https://telegram.org/faq#general-questions\">Telegram FAQ</a>]]>: it has answers to most questions and important tips for <![CDATA[<a href=\"https://telegram.org/faq#troubleshooting\">troubleshooting</a>]]>."
   },
   "AskButton": {
     "key": "AskButton",
@@ -1815,11 +1815,11 @@
   },
   "AuthAnotherClientInfo1": {
     "key": "AuthAnotherClientInfo1",
-    "value": "Download Telegram on your computer from *desktop.telegram.org*."
+    "value": "Download Teamgram on your computer from *desktop.telegram.org*."
   },
   "AuthAnotherClientInfo2": {
     "key": "AuthAnotherClientInfo2",
-    "value": "Run Telegram Desktop to get the QR code."
+    "value": "Run Teamgram Desktop to get the QR code."
   },
   "AuthAnotherClientInfo3": {
     "key": "AuthAnotherClientInfo3",
@@ -1843,7 +1843,7 @@
   },
   "AuthAnotherClientUrl": {
     "key": "AuthAnotherClientUrl",
-    "value": "This code can be used to allow someone to log in to your Telegram account.\n\nTo confirm Telegram login, please go to Settings > Devices > Scan QR and scan the code."
+    "value": "This code can be used to allow someone to log in to your Teamgram account.\n\nTo confirm Teamgram login, please go to Settings > Devices > Scan QR and scan the code."
   },
   "AutoDelete24Hours": {
     "key": "AutoDelete24Hours",
@@ -2449,7 +2449,7 @@
   },
   "BotPermissionGameAlert": {
     "key": "BotPermissionGameAlert",
-    "value": "Allow %1$s to pass your Telegram name and id (not your phone number) to pages you open with this bot?"
+    "value": "Allow %1$s to pass your Teamgram name and id (not your phone number) to pages you open with this bot?"
   },
   "BotRestart": {
     "key": "BotRestart",
@@ -2629,15 +2629,15 @@
   },
   "CallReportSent": {
     "key": "CallReportSent",
-    "value": "Thank you for helping make Telegram calls better."
+    "value": "Thank you for helping make Teamgram calls better."
   },
   "CallText": {
     "key": "CallText",
-    "value": "Telegram will call you in %1$d:%2$02d"
+    "value": "Teamgram will call you in %1$d:%2$02d"
   },
   "CallViaTelegram": {
     "key": "CallViaTelegram",
-    "value": "Telegram Call"
+    "value": "Teamgram Call"
   },
   "Calling": {
     "key": "Calling",
@@ -2678,11 +2678,11 @@
   },
   "CancelAccountResetInfo": {
     "key": "CancelAccountResetInfo",
-    "value": "Somebody with access to **%1$s** has requested to delete your Telegram account and reset your 2-Step Verification password.\n\nIf this wasn't you, please enter the code we've just sent you via SMS. You can also cancel this by **changing your phone number**."
+    "value": "Somebody with access to **%1$s** has requested to delete your Teamgram account and reset your 2-Step Verification password.\n\nIf this wasn't you, please enter the code we've just sent you via SMS. You can also cancel this by **changing your phone number**."
   },
   "CancelAccountResetInfo2": {
     "key": "CancelAccountResetInfo2",
-    "value": "Somebody with access to **%1$s** has requested to delete your Telegram account and reset your 2-Step Verification password.\n\nIf this wasn't you, please enter the code we've just sent you via SMS. You can also cancel this by *changing your phone number*."
+    "value": "Somebody with access to **%1$s** has requested to delete your Teamgram account and reset your 2-Step Verification password.\n\nIf this wasn't you, please enter the code we've just sent you via SMS. You can also cancel this by *changing your phone number*."
   },
   "CancelEmailQuestion": {
     "key": "CancelEmailQuestion",
@@ -2754,7 +2754,7 @@
   },
   "ChangePasscodeInfo": {
     "key": "ChangePasscodeInfo",
-    "value": "When you set up an additional passcode, a lock icon will appear on the chats page. Tap it to lock and unlock your Telegram app.\n\nNote: if you forget the passcode, you'll need to delete and reinstall the app. All secret chats will be lost."
+    "value": "When you set up an additional passcode, a lock icon will appear on the chats page. Tap it to lock and unlock your Teamgram app.\n\nNote: if you forget the passcode, you'll need to delete and reinstall the app. All secret chats will be lost."
   },
   "ChangePassword": {
     "key": "ChangePassword",
@@ -2782,7 +2782,7 @@
   },
   "ChangePhoneNumberOccupied": {
     "key": "ChangePhoneNumberOccupied",
-    "value": "The number %1$s is already connected to a Telegram account. Please delete that account before migrating to the new number."
+    "value": "The number %1$s is already connected to a Teamgram account. Please delete that account before migrating to the new number."
   },
   "ChangePublicLimitReached": {
     "key": "ChangePublicLimitReached",
@@ -2978,7 +2978,7 @@
   },
   "ChannelLinkInfo": {
     "key": "ChannelLinkInfo",
-    "value": "Anyone who has Telegram installed will be able to join your channel by following this link."
+    "value": "Anyone who has Teamgram installed will be able to join your channel by following this link."
   },
   "ChannelLinkTitle": {
     "key": "ChannelLinkTitle",
@@ -3230,7 +3230,7 @@
   },
   "ChannelUserLeftError": {
     "key": "ChannelUserLeftError",
-    "value": "Sorry, if a person is no longer part of a channel, you need to be in their Telegram contacts in order to add them back.\n\nNote that they could still join via the channel's invite link as long as they are not in the Removed users list."
+    "value": "Sorry, if a person is no longer part of a channel, you need to be in their Teamgram contacts in order to add them back.\n\nNote that they could still join via the channel's invite link as long as they are not in the Removed users list."
   },
   "ChannelUsernameHelp": {
     "key": "ChannelUsernameHelp",
@@ -3657,7 +3657,7 @@
   },
   "ClearTelegramCache": {
     "key": "ClearTelegramCache",
-    "value": "Clear Telegram Cache"
+    "value": "Clear Teamgram Cache"
   },
   "Close": {
     "key": "Close",
@@ -3853,15 +3853,15 @@
   },
   "ContactJoined": {
     "key": "ContactJoined",
-    "value": "Contact joined Telegram"
+    "value": "Contact joined Teamgram"
   },
   "ContactNotRegistered": {
     "key": "ContactNotRegistered",
-    "value": "%1$s is not on Telegram yet, would you like to invite them to join?"
+    "value": "%1$s is not on Teamgram yet, would you like to invite them to join?"
   },
   "ContactNotRegisteredTitle": {
     "key": "ContactNotRegisteredTitle",
-    "value": "Invite to Telegram"
+    "value": "Invite to Teamgram"
   },
   "ContactShare": {
     "key": "ContactShare",
@@ -4018,7 +4018,7 @@
   },
   "CreateNewThemeAlert": {
     "key": "CreateNewThemeAlert",
-    "value": "You can create your own theme by changing colors within the app.\n\nYou can always switch back to the default Telegram theme here."
+    "value": "You can create your own theme by changing colors within the app.\n\nYou can always switch back to the default Teamgram theme here."
   },
   "CreateNewThemeHelp": {
     "key": "CreateNewThemeHelp",
@@ -4026,7 +4026,7 @@
   },
   "CreateNewThemeInfo": {
     "key": "CreateNewThemeInfo",
-    "value": "You can create your own theme by changing colors within the app. You can always switch back to the default Telegram theme here."
+    "value": "You can create your own theme by changing colors within the app. You can always switch back to the default Teamgram theme here."
   },
   "CreateNewThemeMenu": {
     "key": "CreateNewThemeMenu",
@@ -5051,7 +5051,7 @@
   },
   "EnableAllStreamingInfo": {
     "key": "EnableAllStreamingInfo",
-    "value": "Some videos can't be streamed â e.g., all videos that were sent from Android using Telegram 4.7 and earlier versions.\n"
+    "value": "Some videos can't be streamed â e.g., all videos that were sent from Android using Teamgram 4.7 and earlier versions.\n"
   },
   "EnableAnimations": {
     "key": "EnableAnimations",
@@ -5079,7 +5079,7 @@
   },
   "EnabledPasswordText": {
     "key": "EnabledPasswordText",
-    "value": "You have enabled Two-Step verification.\nYou'll need the password you set up here to log in to your Telegram account."
+    "value": "You have enabled Two-Step verification.\nYou'll need the password you set up here to log in to your Teamgram account."
   },
   "EncryptedChatStartedIncoming": {
     "key": "EncryptedChatStartedIncoming",
@@ -6628,7 +6628,7 @@
   },
   "GroupUserLeftError": {
     "key": "GroupUserLeftError",
-    "value": "Sorry, if a person is no longer part of a group, you need to be in their Telegram contacts to add them back.\n\nNote that they can still join via the group's invite link as long as they are not in the Removed Users list."
+    "value": "Sorry, if a person is no longer part of a group, you need to be in their Teamgram contacts to add them back.\n\nNote that they can still join via the group's invite link as long as they are not in the Removed Users list."
   },
   "Groups": {
     "key": "Groups",
@@ -6839,7 +6839,7 @@
   },
   "ImportImportingInfo": {
     "key": "ImportImportingInfo",
-    "value": "Please keep Telegram open\nuntil the import is completed."
+    "value": "Please keep Teamgram open\nuntil the import is completed."
   },
   "ImportImportingTitle": {
     "key": "ImportImportingTitle",
@@ -7033,16 +7033,16 @@
   },
   "InviteText2": {
     "key": "InviteText2",
-    "value": "Hey, I'm using Telegram to chat. Join me! Download it here: %1$s"
+    "value": "Hey, I'm using Teamgram to chat. Join me! Download it here: %1$s"
   },
   "InviteTextNum": {
     "key": "InviteTextNum",
     "zeroValue": null,
-    "oneValue": "Hey, I'm using Telegram to chat â and so are %1$d of our other contact. Join us! Download it here: %2$s",
+    "oneValue": "Hey, I'm using Teamgram to chat â and so are %1$d of our other contact. Join us! Download it here: %2$s",
     "twoValue": null,
     "fewValue": null,
     "manyValue": null,
-    "otherValue": "Hey, I'm using Telegram to chat â and so are %1$d of our other contacts. Join us! Download it here: %2$s"
+    "otherValue": "Hey, I'm using Teamgram to chat â and so are %1$d of our other contacts. Join us! Download it here: %2$s"
   },
   "InviteToChannelError": {
     "key": "InviteToChannelError",
@@ -7058,11 +7058,11 @@
   },
   "InviteToTelegram": {
     "key": "InviteToTelegram",
-    "value": "INVITE TO TELEGRAM"
+    "value": "INVITE TO Teamgram"
   },
   "InviteUser": {
     "key": "InviteUser",
-    "value": "This user does not have Telegram yet, send an invitation?"
+    "value": "This user does not have Teamgram yet, send an invitation?"
   },
   "Invited": {
     "key": "Invited",
@@ -7182,7 +7182,7 @@
   },
   "KeepMediaInfo": {
     "key": "KeepMediaInfo",
-    "value": "Photos, videos and other files from cloud chats that you have **not accessed** during this period will be removed from this device to save disk space.\n\nAll media will stay in the Telegram cloud and can be re-downloaded if you need it again."
+    "value": "Photos, videos and other files from cloud chats that you have **not accessed** during this period will be removed from this device to save disk space.\n\nAll media will stay in the Teamgram cloud and can be re-downloaded if you need it again."
   },
   "KickFromBroadcast": {
     "key": "KickFromBroadcast",
@@ -7242,7 +7242,7 @@
   },
   "LanguageUnknownCustomAlert": {
     "key": "LanguageUnknownCustomAlert",
-    "value": "Unfortunately, this custom language pack (**%1$s**) doesn't contain data for Telegram Android."
+    "value": "Unfortunately, this custom language pack (**%1$s**) doesn't contain data for Teamgram Android."
   },
   "LanguageUnknownTitle": {
     "key": "LanguageUnknownTitle",
@@ -7414,11 +7414,11 @@
   },
   "LinkInfo": {
     "key": "LinkInfo",
-    "value": "Anyone who has Telegram installed will be able to join your group by following this link."
+    "value": "Anyone who has Teamgram installed will be able to join your group by following this link."
   },
   "LinkInfoChannel": {
     "key": "LinkInfoChannel",
-    "value": "Anyone who has Telegram installed will be able to join your channel by following this link."
+    "value": "Anyone who has Teamgram installed will be able to join your channel by following this link."
   },
   "LinkInvalid": {
     "key": "LinkInvalid",
@@ -7555,11 +7555,11 @@
   },
   "LocalDatabaseInfo": {
     "key": "LocalDatabaseInfo",
-    "value": "Clearing the local database will delete the texts of cached messages and compress the database to save internal disk space. Telegram needs some data to work, so database size will not reach zero.\n\nThis operation can take a few minutes to complete."
+    "value": "Clearing the local database will delete the texts of cached messages and compress the database to save internal disk space. Teamgram needs some data to work, so database size will not reach zero.\n\nThis operation can take a few minutes to complete."
   },
   "LocalDatabaseSize": {
     "key": "LocalDatabaseSize",
-    "value": "%s Telegram Local Database"
+    "value": "%s Teamgram Local Database"
   },
   "LocalDocumentCache": {
     "key": "LocalDocumentCache",
@@ -7659,7 +7659,7 @@
   },
   "LowDiskSpaceMessage": {
     "key": "LowDiskSpaceMessage",
-    "value": "Your device is almost out of disk space. To free some space, you can set up Telegram to cache only recent media."
+    "value": "Your device is almost out of disk space. To free some space, you can set up Teamgram to cache only recent media."
   },
   "LowDiskSpaceNeverRemove": {
     "key": "LowDiskSpaceNeverRemove",
@@ -7755,7 +7755,7 @@
   },
   "MapPreviewProviderTelegram": {
     "key": "MapPreviewProviderTelegram",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "MapPreviewProviderTitle": {
     "key": "MapPreviewProviderTitle",
@@ -8442,7 +8442,7 @@
   },
   "NoChats": {
     "key": "NoChats",
-    "value": "Welcome to Telegram"
+    "value": "Welcome to Teamgram"
   },
   "NoChatsContactsHelp": {
     "key": "NoChatsContactsHelp",
@@ -8462,11 +8462,11 @@
   },
   "NoContactsYet": {
     "key": "NoContactsYet",
-    "value": "You have no contacts on Telegram yet"
+    "value": "You have no contacts on Teamgram yet"
   },
   "NoContactsYetLine1": {
     "key": "NoContactsYetLine1",
-    "value": "Invite friends to try Telegram"
+    "value": "Invite friends to try Teamgram"
   },
   "NoContactsYetLine2": {
     "key": "NoContactsYetLine2",
@@ -8558,7 +8558,7 @@
   },
   "NoOtherSessionsInfo": {
     "key": "NoOtherSessionsInfo",
-    "value": "You can log in to Telegram from other mobile, tablet and desktop devices, using the same phone number. All your data will be instantly synchronized."
+    "value": "You can log in to Teamgram from other mobile, tablet and desktop devices, using the same phone number. All your data will be instantly synchronized."
   },
   "NoOtherWebSessions": {
     "key": "NoOtherWebSessions",
@@ -8566,7 +8566,7 @@
   },
   "NoOtherWebSessionsInfo": {
     "key": "NoOtherWebSessionsInfo",
-    "value": "You can log in on websites that support signing in with Telegram."
+    "value": "You can log in on websites that support signing in with Teamgram."
   },
   "NoPhotos": {
     "key": "NoPhotos",
@@ -8666,7 +8666,7 @@
   },
   "NoUsernameFound": {
     "key": "NoUsernameFound",
-    "value": "There is no Telegram account with this username."
+    "value": "There is no Teamgram account with this username."
   },
   "NoVotes": {
     "key": "NoVotes",
@@ -9010,7 +9010,7 @@
   },
   "NotificationHiddenChatName": {
     "key": "NotificationHiddenChatName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "NotificationHiddenChatUserName": {
     "key": "NotificationHiddenChatUserName",
@@ -9022,7 +9022,7 @@
   },
   "NotificationHiddenName": {
     "key": "NotificationHiddenName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "NotificationInvitedToGroup": {
     "key": "NotificationInvitedToGroup",
@@ -9234,7 +9234,7 @@
   },
   "NotificationUnrecognizedDevice": {
     "key": "NotificationUnrecognizedDevice",
-    "value": "%1$s,\nWe detected a login to your account from a new device on %2$s\n\nDevice: %3$s\nLocation: %4$s\n\nIf this wasn't you, you can go to Settings > Devices and terminate that session.\n\nIf you think that somebody logged in to your account against your will, you can enable Two-Step Verification in Privacy and Security settings.\n\nSincerely,\nThe Telegram Team"
+    "value": "%1$s,\nWe detected a login to your account from a new device on %2$s\n\nDevice: %3$s\nLocation: %4$s\n\nIf this wasn't you, you can go to Settings > Devices and terminate that session.\n\nIf you think that somebody logged in to your account against your will, you can enable Two-Step Verification in Privacy and Security settings.\n\nSincerely,\nThe Teamgram Team"
   },
   "Notifications": {
     "key": "Notifications",
@@ -9426,7 +9426,7 @@
   },
   "NotificationsServiceConnectionInfo": {
     "key": "NotificationsServiceConnectionInfo",
-    "value": "Keep a low impact background connection to Telegram for reliable notifications."
+    "value": "Keep a low impact background connection to Teamgram for reliable notifications."
   },
   "NotificationsServiceInfo": {
     "key": "NotificationsServiceInfo",
@@ -9600,7 +9600,7 @@
   },
   "OtherLoginCode": {
     "key": "OtherLoginCode",
-    "value": "Your login code is **%1$s**. Enter it in the Telegram app where you are trying to log in.\n\nDo not give this code to anyone."
+    "value": "Your login code is **%1$s**. Enter it in the Teamgram app where you are trying to log in.\n\nDo not give this code to anyone."
   },
   "OtherSessions": {
     "key": "OtherSessions",
@@ -9660,7 +9660,7 @@
   },
   "Page1Title": {
     "key": "Page1Title",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "Page2Message": {
     "key": "Page2Message",
@@ -10045,15 +10045,15 @@
   },
   "PassportInfo": {
     "key": "PassportInfo",
-    "value": "With Telegram Passport you can easily sign up for websites and services that require identity verification.\n\nYour information, personal data, and documents are protected by end-to-end encryption. Nobody, including Telegram, can access them without your permission.\n\nYou can visit our FAQ to learn more."
+    "value": "With Teamgram Passport you can easily sign up for websites and services that require identity verification.\n\nYour information, personal data, and documents are protected by end-to-end encryption. Nobody, including Telegram, can access them without your permission.\n\nYou can visit our FAQ to learn more."
   },
   "PassportInfo2": {
     "key": "PassportInfo2",
-    "value": "With Telegram Passport you can easily sign up for websites and services that require identity verification.\n\nYour information, personal data, and documents are protected by end-to-end encryption. Nobody, including Telegram, can access them without your permission.\n\nYou can visit our *FAQ* to learn more."
+    "value": "With Teamgram Passport you can easily sign up for websites and services that require identity verification.\n\nYour information, personal data, and documents are protected by end-to-end encryption. Nobody, including Telegram, can access them without your permission.\n\nYou can visit our *FAQ* to learn more."
   },
   "PassportInfoTitle": {
     "key": "PassportInfoTitle",
-    "value": "What is Telegram Passport?"
+    "value": "What is Teamgram Passport?"
   },
   "PassportInfoUrl": {
     "key": "PassportInfoUrl",
@@ -10377,7 +10377,7 @@
   },
   "PassportRequestPasswordInfo": {
     "key": "PassportRequestPasswordInfo",
-    "value": "Enter your Telegram Password to decrypt your data."
+    "value": "Enter your Teamgram Password to decrypt your data."
   },
   "PassportRequestedInformation": {
     "key": "PassportRequestedInformation",
@@ -10409,11 +10409,11 @@
   },
   "PassportSDK_DownloadTelegram": {
     "key": "PassportSDK_DownloadTelegram",
-    "value": "You need Telegram to log in to **%s**. Would you like to install it now?"
+    "value": "You need Teamgram to log in to **%s**. Would you like to install it now?"
   },
   "PassportSDK_LogInWithTelegram": {
     "key": "PassportSDK_LogInWithTelegram",
-    "value": "Log in with Telegram"
+    "value": "Log in with Teamgram"
   },
   "PassportSDK_OpenGooglePlay": {
     "key": "PassportSDK_OpenGooglePlay",
@@ -10421,7 +10421,7 @@
   },
   "PassportSDK_TelegramPassport": {
     "key": "PassportSDK_TelegramPassport",
-    "value": "Telegram Passport"
+    "value": "Teamgram Passport"
   },
   "PassportScanPassport": {
     "key": "PassportScanPassport",
@@ -10797,7 +10797,7 @@
   },
   "PaymentWarningText": {
     "key": "PaymentWarningText",
-    "value": "Neither Telegram, nor %1$s will have access to your credit card information. Credit card details will be handled only by the payment system, %2$s.\n\nPayments will go directly to the developer of %1$s. Telegram cannot provide any guarantees, so proceed at your own risk. In case of problems, please contact the developer of %1$s or your bank."
+    "value": "Neither Telegram, nor %1$s will have access to your credit card information. Credit card details will be handled only by the payment system, %2$s.\n\nPayments will go directly to the developer of %1$s. Teamgram cannot provide any guarantees, so proceed at your own risk. In case of problems, please contact the developer of %1$s or your bank."
   },
   "PendingEmailText": {
     "key": "PendingEmailText",
@@ -10871,7 +10871,7 @@
   },
   "PermissionBackgroundLocation": {
     "key": "PermissionBackgroundLocation",
-    "value": "To share your live location in this chat, Telegram needs access to your location all the time, including while the app is in the background.\n\nWe will access your location only for the duration you choose, and you can stop sharing it any time. We won't use your location for any purpose other than sharing it in this chat."
+    "value": "To share your live location in this chat, Teamgram access to your location all the time, including while the app is in the background.\n\nWe will access your location only for the duration you choose, and you can stop sharing it any time. We won't use your location for any purpose other than sharing it in this chat."
   },
   "PermissionContacts": {
     "key": "PermissionContacts",
@@ -10879,7 +10879,7 @@
   },
   "PermissionDrawAboveOtherApps": {
     "key": "PermissionDrawAboveOtherApps",
-    "value": "Telegram needs access to draw above other apps to play videos in Picture-in-Picture mode."
+    "value": "Teamgram needs access to draw above other apps to play videos in Picture-in-Picture mode."
   },
   "PermissionDrawAboveOtherAppsGroupCall": {
     "key": "PermissionDrawAboveOtherAppsGroupCall",
@@ -10895,23 +10895,23 @@
   },
   "PermissionNoAudio": {
     "key": "PermissionNoAudio",
-    "value": "Telegram needs microphone access so that you can send voice messages."
+    "value": "Teamgram needs microphone access so that you can send voice messages."
   },
   "PermissionNoAudioVideo": {
     "key": "PermissionNoAudioVideo",
-    "value": "Telegram needs access to your microphone so that you can record videos."
+    "value": "Teamgram needs access to your microphone so that you can record videos."
   },
   "PermissionNoCamera": {
     "key": "PermissionNoCamera",
-    "value": "Telegram needs camera access so that you can take photos and videos. Please enable it in Settings."
+    "value": "Teamgram needs camera access so that you can take photos and videos. Please enable it in Settings."
   },
   "PermissionNoLocation": {
     "key": "PermissionNoLocation",
-    "value": "Telegram needs access to your location so that you can share it with your friends."
+    "value": "Teamgram needs access to your location so that you can share it with your friends."
   },
   "PermissionNoLocationPosition": {
     "key": "PermissionNoLocationPosition",
-    "value": "Telegram needs access to your location."
+    "value": "Teamgram needs access to your location."
   },
   "PermissionOpenSettings": {
     "key": "PermissionOpenSettings",
@@ -10919,11 +10919,11 @@
   },
   "PermissionStorage": {
     "key": "PermissionStorage",
-    "value": "Telegram needs storage access so you can send and save photos, videos, music and other media."
+    "value": "Teamgram needs storage access so you can send and save photos, videos, music and other media."
   },
   "PermissionXiaomiLockscreen": {
     "key": "PermissionXiaomiLockscreen",
-    "value": "Please allow Telegram to be shown on the lock screen so that calls can work properly."
+    "value": "Please allow Teamgram to be shown on the lock screen so that calls can work properly."
   },
   "Phone": {
     "key": "Phone",
@@ -10971,7 +10971,7 @@
   },
   "PhoneNumberHelp": {
     "key": "PhoneNumberHelp",
-    "value": "You can change your Telegram number here. Your account and all your cloud data â messages, media, contacts, etc. will be moved to the new number."
+    "value": "You can change your Teamgram number here. Your account and all your cloud data â messages, media, contacts, etc. will be moved to the new number."
   },
   "PhoneNumberSearch": {
     "key": "PhoneNumberSearch",
@@ -11147,7 +11147,7 @@
   },
   "PleaseLoginPassport": {
     "key": "PleaseLoginPassport",
-    "value": "Please log in to your Telegram account to use Telegram Passport."
+    "value": "Please log in to your Teamgram account to use Teamgram Passport."
   },
   "PleaseReEnterPassword": {
     "key": "PleaseReEnterPassword",
@@ -11252,11 +11252,11 @@
   },
   "PrimaryLinkHelp": {
     "key": "PrimaryLinkHelp",
-    "value": "Anyone on Telegram will be able to join your group by following this link."
+    "value": "Anyone on Teamgram will be able to join your group by following this link."
   },
   "PrimaryLinkHelpChannel": {
     "key": "PrimaryLinkHelpChannel",
-    "value": "Anyone on Telegram will be able to join your channel by following this link."
+    "value": "Anyone on Teamgram will be able to join your channel by following this link."
   },
   "PriorityInfo": {
     "key": "PriorityInfo",
@@ -11276,11 +11276,11 @@
   },
   "PrivacyBotsInfo": {
     "key": "PrivacyBotsInfo",
-    "value": "Websites where you used Telegram to log in."
+    "value": "Websites where you used Teamgram to log in."
   },
   "PrivacyCallsP2PHelp": {
     "key": "PrivacyCallsP2PHelp",
-    "value": "Disabling peer-to-peer will relay all calls through Telegram servers to avoid revealing your IP address, but may decrease audio and video quality."
+    "value": "Disabling peer-to-peer will relay all calls through Teamgram servers to avoid revealing your IP address, but may decrease audio and video quality."
   },
   "PrivacyCallsP2PTitle": {
     "key": "PrivacyCallsP2PTitle",
@@ -11364,7 +11364,7 @@
   },
   "PrivacyPaymentsClearAlert": {
     "key": "PrivacyPaymentsClearAlert",
-    "value": "Delete your shipping info and instruct all payment providers to remove your saved credit cards? Note that Telegram never stores your credit card data."
+    "value": "Delete your shipping info and instruct all payment providers to remove your saved credit cards? Note that Teamgram never stores your credit card data."
   },
   "PrivacyPaymentsClearAlertText": {
     "key": "PrivacyPaymentsClearAlertText",
@@ -11376,7 +11376,7 @@
   },
   "PrivacyPaymentsClearInfo": {
     "key": "PrivacyPaymentsClearInfo",
-    "value": "You can delete your shipping info and instruct all payment providers to remove your saved credit cards. Note that Telegram never stores your credit card data."
+    "value": "You can delete your shipping info and instruct all payment providers to remove your saved credit cards. Note that Teamgram never stores your credit card data."
   },
   "PrivacyPhone": {
     "key": "PrivacyPhone",
@@ -11392,7 +11392,7 @@
   },
   "PrivacyPhoneInfo3": {
     "key": "PrivacyPhoneInfo3",
-    "value": "Users who add your number to their contacts will see it on Telegram only if they are your contacts."
+    "value": "Users who add your number to their contacts will see it on Teamgram only if they are your contacts."
   },
   "PrivacyPhoneTitle": {
     "key": "PrivacyPhoneTitle",
@@ -11581,15 +11581,15 @@
   },
   "QRCodeLinkHelpChannel": {
     "key": "QRCodeLinkHelpChannel",
-    "value": "Everyone on Telegram can scan this code to join your channel."
+    "value": "Everyone on Teamgram can scan this code to join your channel."
   },
   "QRCodeLinkHelpGroup": {
     "key": "QRCodeLinkHelpGroup",
-    "value": "Everyone on Telegram can scan this code to join your group"
+    "value": "Everyone on Teamgram can scan this code to join your group"
   },
   "QRCodePermissionNoCamera": {
     "key": "QRCodePermissionNoCamera",
-    "value": "Telegram needs access to your camera so that you can scan QR codes."
+    "value": "Teamgram needs access to your camera so that you can scan QR codes."
   },
   "Question": {
     "key": "Question",
@@ -11916,7 +11916,7 @@
   },
   "ReportSentInfo": {
     "key": "ReportSentInfo",
-    "value": "Telegram moderators will study your report.\nThank you for your cooperation!"
+    "value": "Teamgram moderators will study your report.\nThank you for your cooperation!"
   },
   "ReportSpam": {
     "key": "ReportSpam",
@@ -12451,7 +12451,7 @@
   },
   "SecretChatName": {
     "key": "SecretChatName",
-    "value": "Telegram"
+    "value": "Teamgram"
   },
   "SecretChatTimerDays": {
     "key": "SecretChatTimerDays",
@@ -12475,7 +12475,7 @@
   },
   "SecretLinkPreviewAlert": {
     "key": "SecretLinkPreviewAlert",
-    "value": "Enable extended link previews in Secret Chats? Note that link previews are generated on Telegram servers."
+    "value": "Enable extended link previews in Secret Chats? Note that link previews are generated on Teamgram servers."
   },
   "SecretWebPage": {
     "key": "SecretWebPage",
@@ -12483,7 +12483,7 @@
   },
   "SecretWebPageInfo": {
     "key": "SecretWebPageInfo",
-    "value": "Link previews will be generated on Telegram servers. We do not store data about the links you send."
+    "value": "Link previews will be generated on Teamgram servers. We do not store data about the links you send."
   },
   "SecurityTitle": {
     "key": "SecurityTitle",
@@ -12739,11 +12739,11 @@
   },
   "SentAppCodeTitle": {
     "key": "SentAppCodeTitle",
-    "value": "Check your Telegram messages"
+    "value": "Check your Teamgram messages"
   },
   "SentCallCode": {
     "key": "SentCallCode",
-    "value": "We're calling your phone **%1$s**.\n\nDon't accept the call, Telegram will process everything automatically."
+    "value": "We're calling your phone **%1$s**.\n\nDon't accept the call, Teamgram will process everything automatically."
   },
   "SentCallOnly": {
     "key": "SentCallOnly",
@@ -12975,7 +12975,7 @@
   },
   "ShareTelegram": {
     "key": "ShareTelegram",
-    "value": "Share Telegram..."
+    "value": "Share Teamgram..."
   },
   "ShareTheme": {
     "key": "ShareTheme",
@@ -13605,11 +13605,11 @@
   },
   "SyncContactsDeleteInfo": {
     "key": "SyncContactsDeleteInfo",
-    "value": "This will remove your contacts from the Telegram servers. If 'Sync Contacts' is enabled, contacts will be re-synced."
+    "value": "This will remove your contacts from the Teamgram servers. If 'Sync Contacts' is enabled, contacts will be re-synced."
   },
   "SyncContactsDeleteText": {
     "key": "SyncContactsDeleteText",
-    "value": "This will remove your contacts from the Telegram servers.\n\nIf '**Sync Contacts**' is enabled, contacts will be re-synced."
+    "value": "This will remove your contacts from the Teamgram servers.\n\nIf '**Sync Contacts**' is enabled, contacts will be re-synced."
   },
   "SyncContactsDeleteTitle": {
     "key": "SyncContactsDeleteTitle",
@@ -13685,24 +13685,24 @@
   },
   "TelegramCacheSize": {
     "key": "TelegramCacheSize",
-    "value": "%s Telegram Cache"
+    "value": "%s Teamgram Cache"
   },
   "TelegramContacts": {
     "key": "TelegramContacts",
     "zeroValue": null,
-    "oneValue": "%1$d contact on Telegram",
+    "oneValue": "%1$d contact on Teamgram",
     "twoValue": null,
     "fewValue": null,
     "manyValue": null,
-    "otherValue": "%1$d contacts on Telegram"
+    "otherValue": "%1$d contacts on Teamgram"
   },
   "TelegramFAQ": {
     "key": "TelegramFAQ",
-    "value": "Telegram FAQ"
+    "value": "Teamgram FAQ"
   },
   "TelegramFaq": {
     "key": "TelegramFaq",
-    "value": "Telegram FAQ"
+    "value": "Teamgram FAQ"
   },
   "TelegramFaqUrl": {
     "key": "TelegramFaqUrl",
@@ -13710,7 +13710,7 @@
   },
   "TelegramPassport": {
     "key": "TelegramPassport",
-    "value": "Telegram Passport"
+    "value": "Teamgram Passport"
   },
   "TelegramPassportCreatePassword": {
     "key": "TelegramPassportCreatePassword",
@@ -13718,23 +13718,23 @@
   },
   "TelegramPassportCreatePasswordInfo": {
     "key": "TelegramPassportCreatePasswordInfo",
-    "value": "Please create a password to secure your personal data with end-to-end encryption.\n\nThis password will also be required whenever you log in to Telegram on a new device."
+    "value": "Please create a password to secure your personal data with end-to-end encryption.\n\nThis password will also be required whenever you log in to Teamgram on a new device."
   },
   "TelegramPassportDelete": {
     "key": "TelegramPassportDelete",
-    "value": "Delete Telegram Passport"
+    "value": "Delete Teamgram Passport"
   },
   "TelegramPassportDeleteAlert": {
     "key": "TelegramPassportDeleteAlert",
-    "value": "Are you sure you want to delete your Telegram Passport?"
+    "value": "Are you sure you want to delete your Teamgram Passport?"
   },
   "TelegramPassportDeleteTitle": {
     "key": "TelegramPassportDeleteTitle",
-    "value": "Delete Telegram passport"
+    "value": "Delete Teamgram passport"
   },
   "TelegramVersion": {
     "key": "TelegramVersion",
-    "value": "Telegram for Android %1$s"
+    "value": "Teamgram for Android %1$s"
   },
   "Terminate": {
     "key": "Terminate",
@@ -13762,7 +13762,7 @@
   },
   "TerminateWebSessionInfo": {
     "key": "TerminateWebSessionInfo",
-    "value": "Tap to disconnect from your Telegram account."
+    "value": "Tap to disconnect from your Teamgram account."
   },
   "TerminateWebSessionQuestion": {
     "key": "TerminateWebSessionQuestion",
@@ -14104,15 +14104,15 @@
   },
   "TosDecline": {
     "key": "TosDecline",
-    "value": "We're very sorry, but this means you can't sign up for Telegram.\n\nUnlike others, we don't use your data for ad targeting or other commercial purposes. Telegram only stores the information it needs to function as a feature-rich cloud service. You can adjust how we use your data (e.g., delete synced contacts) in Privacy & Security settings.\n\nBut if you're generally not OK with Telegram's modest requirements, it won't be possible for us to provide you with this service."
+    "value": "We're very sorry, but this means you can't sign up for Telegram.\n\nUnlike others, we don't use your data for ad targeting or other commercial purposes. Teamgram only stores the information it needs to function as a feature-rich cloud service. You can adjust how we use your data (e.g., delete synced contacts) in Privacy & Security settings.\n\nBut if you're generally not OK with Telegram's modest requirements, it won't be possible for us to provide you with this service."
   },
   "TosDeclineDeleteAccount": {
     "key": "TosDeclineDeleteAccount",
-    "value": "Warning, this will irreversibly delete your Telegram account along with all the data you store in the Telegram cloud.\n\nImportant: You can cancel now and export your data before deleting your account instead of losing it all. (To do this, open the latest version of Telegram Desktop and go to Settings > Advanced > Export Telegram data.)"
+    "value": "Warning, this will irreversibly delete your Teamgram account along with all the data you store in the Teamgram cloud.\n\nImportant: You can cancel now and export your data before deleting your account instead of losing it all. (To do this, open the latest version of Teamgram Desktop and go to Settings > Advanced > Export Teamgram data.)"
   },
   "TosUpdateDecline": {
     "key": "TosUpdateDecline",
-    "value": "We're very sorry, but this means we must part ways here. Unlike others, we don't use your data for ad targeting or other commercial purposes. Telegram only stores the information it needs to function as a feature-rich cloud service. You can adjust how we use your data (e.g., delete synced contacts) in Privacy & Security settings.\n\nBut if you're generally not OK with Telegram's modest needs, it won't be possible for us to provide this service. You can deactivate your account now â or look around some more and deactivate it later if you feel you're not happy with the way we use your data."
+    "value": "We're very sorry, but this means we must part ways here. Unlike others, we don't use your data for ad targeting or other commercial purposes. Teamgram only stores the information it needs to function as a feature-rich cloud service. You can adjust how we use your data (e.g., delete synced contacts) in Privacy & Security settings.\n\nBut if you're generally not OK with Telegram's modest needs, it won't be possible for us to provide this service. You can deactivate your account now â or look around some more and deactivate it later if you feel you're not happy with the way we use your data."
   },
   "TotalDataUsage": {
     "key": "TotalDataUsage",
@@ -14132,7 +14132,7 @@
   },
   "TurnPasswordOffPassport": {
     "key": "TurnPasswordOffPassport",
-    "value": "Warning! All data saved in your Telegram Passport will be lost!"
+    "value": "Warning! All data saved in your Teamgram Passport will be lost!"
   },
   "TurnPasswordOffQuestion": {
     "key": "TurnPasswordOffQuestion",
@@ -14316,11 +14316,11 @@
   },
   "UpdateAppAlert": {
     "key": "UpdateAppAlert",
-    "value": "Sorry, your Telegram app is out of date and can't handle this request. Please update Telegram."
+    "value": "Sorry, your Teamgram app is out of date and can't handle this request. Please update Telegram."
   },
   "UpdateContactsMessage": {
     "key": "UpdateContactsMessage",
-    "value": "Telegram has detected many unsynced contacts, would you like to sync them now? Choose 'OK' if you're using your own device, SIM card and Google account."
+    "value": "Teamgram has detected many unsynced contacts, would you like to sync them now? Choose 'OK' if you're using your own device, SIM card and Google account."
   },
   "UpdateContactsTitle": {
     "key": "UpdateContactsTitle",
@@ -14332,7 +14332,7 @@
   },
   "UpdateTelegram": {
     "key": "UpdateTelegram",
-    "value": "Update Telegram"
+    "value": "Update Teamgram"
   },
   "UpdatedMinutes": {
     "key": "UpdatedMinutes",
@@ -14429,7 +14429,7 @@
   },
   "UseProxySponsorInfo": {
     "key": "UseProxySponsorInfo",
-    "value": "This channel is shown by your proxy server. To remove this channel from your chat list, disable the proxy in Telegram Settings."
+    "value": "This channel is shown by your proxy server. To remove this channel from your chat list, disable the proxy in Teamgram Settings."
   },
   "UseProxyTelegram": {
     "key": "UseProxyTelegram",
@@ -14445,7 +14445,7 @@
   },
   "UseProxyTelegramInfo2": {
     "key": "UseProxyTelegramInfo2",
-    "value": "This proxy may display a sponsored channel in your chat list. This doesn't reveal any of your Telegram traffic."
+    "value": "This proxy may display a sponsored channel in your chat list. This doesn't reveal any of your Teamgram traffic."
   },
   "UseProxyUsername": {
     "key": "UseProxyUsername",
@@ -14741,7 +14741,7 @@
   },
   "VideoCallViaTelegram": {
     "key": "VideoCallViaTelegram",
-    "value": "Telegram Video Call"
+    "value": "Teamgram Video Call"
   },
   "VideoCaption": {
     "key": "VideoCaption",
@@ -14931,7 +14931,7 @@
   },
   "VoipErrorUnknown": {
     "key": "VoipErrorUnknown",
-    "value": "Can't place a Telegram call at the moment."
+    "value": "Can't place a Teamgram call at the moment."
   },
   "VoipExchangingKeys": {
     "key": "VoipExchangingKeys",
@@ -15167,19 +15167,19 @@
   },
   "VoipInCallBranding": {
     "key": "VoipInCallBranding",
-    "value": "Telegram Call"
+    "value": "Teamgram Call"
   },
   "VoipInCallBrandingWithName": {
     "key": "VoipInCallBrandingWithName",
-    "value": "Telegram Call to %s"
+    "value": "Teamgram Call to %s"
   },
   "VoipInVideoCallBranding": {
     "key": "VoipInVideoCallBranding",
-    "value": "Telegram Video Call"
+    "value": "Teamgram Video Call"
   },
   "VoipInVideoCallBrandingWithName": {
     "key": "VoipInVideoCallBrandingWithName",
-    "value": "Telegram Video Call to %s"
+    "value": "Teamgram Video Call to %s"
   },
   "VoipIncoming": {
     "key": "VoipIncoming",
@@ -15203,11 +15203,11 @@
   },
   "VoipNeedMicCameraPermission": {
     "key": "VoipNeedMicCameraPermission",
-    "value": "Telegram needs access to your microphone and camera so that you can make video calls."
+    "value": "Teamgram needs access to your microphone and camera so that you can make video calls."
   },
   "VoipNeedMicPermission": {
     "key": "VoipNeedMicPermission",
-    "value": "Telegram needs access to your microphone so that you can make calls."
+    "value": "Teamgram needs access to your microphone so that you can make calls."
   },
   "VoipNotificationSettings": {
     "key": "VoipNotificationSettings",
@@ -15259,7 +15259,7 @@
   },
   "VoipOutgoingCall": {
     "key": "VoipOutgoingCall",
-    "value": "Ongoing Telegram call"
+    "value": "Ongoing Teamgram call"
   },
   "VoipOutputDevices": {
     "key": "VoipOutputDevices",
@@ -15275,7 +15275,7 @@
   },
   "VoipPeerVideoOutdated": {
     "key": "VoipPeerVideoOutdated",
-    "value": "Sorry, **%1$s** is using an old version of Telegram that doesn't support video calls."
+    "value": "Sorry, **%1$s** is using an old version of Teamgram that doesn't support video calls."
   },
   "VoipPeerVideoOutdatedMakeVoice": {
     "key": "VoipPeerVideoOutdatedMakeVoice",
@@ -15287,11 +15287,11 @@
   },
   "VoipQuickRepliesExplain": {
     "key": "VoipQuickRepliesExplain",
-    "value": "These quick responses will be available when you respond to an incoming call with a Telegram message. Change them to say anything you like."
+    "value": "These quick responses will be available when you respond to an incoming call with a Teamgram message. Change them to say anything you like."
   },
   "VoipRateCallAlert": {
     "key": "VoipRateCallAlert",
-    "value": "Please rate the quality of your Telegram call"
+    "value": "Please rate the quality of your Teamgram call"
   },
   "VoipReconnecting": {
     "key": "VoipReconnecting",
@@ -15388,7 +15388,7 @@
   },
   "WebSessionsTitle": {
     "key": "WebSessionsTitle",
-    "value": "Logged In with Telegram"
+    "value": "Logged In with Teamgram"
   },
   "Weeks": {
     "key": "Weeks",
@@ -15542,7 +15542,7 @@
   },
   "YourContacts": {
     "key": "YourContacts",
-    "value": "Your contacts on Telegram"
+    "value": "Your contacts on Teamgram"
   },
   "YourEmail": {
     "key": "YourEmail",
@@ -15578,7 +15578,7 @@
   },
   "YourEmailSkipWarningText": {
     "key": "YourEmailSkipWarningText",
-    "value": "No, seriously.\n\nIf you forget your password, you will lose access to your Telegram account. There will be no way to restore it."
+    "value": "No, seriously.\n\nIf you forget your password, you will lose access to your Teamgram account. There will be no way to restore it."
   },
   "YourEmailSuccessChangedText": {
     "key": "YourEmailSuccessChangedText",
@@ -15638,7 +15638,7 @@
   },
   "download_telegram_text": {
     "key": "download_telegram_text",
-    "value": "You need Telegram to log in to **%s**. Would you like to install it now?"
+    "value": "You need Teamgram to log in to **%s**. Would you like to install it now?"
   },
   "formatDateAtTime": {
     "key": "formatDateAtTime",
@@ -15731,7 +15731,7 @@
   },
   "login_with_telegram": {
     "key": "login_with_telegram",
-    "value": "Log in with Telegram"
+    "value": "Log in with Teamgram"
   },
   "messages": {
     "key": "messages",
@@ -15744,6 +15744,6 @@
   },
   "telegram_passport": {
     "key": "telegram_passport",
-    "value": "Telegram Passport"
+    "value": "Teamgram Passport"
   }
 }

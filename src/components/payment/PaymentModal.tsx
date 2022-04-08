@@ -302,7 +302,7 @@ const Invoice: FC<OwnProps & StateProps & GlobalStateProps> = ({
         onClose={onClose}
       >
         <p>
-          Sorry, Telegram WebZ doesn&apos;t support payments with this provider yet. <br />
+          Sorry, Teamgram WebZ doesn&apos;t support payments with this provider yet. <br />
           Please use one of our mobile apps to do this.
         </p>
         <Button
