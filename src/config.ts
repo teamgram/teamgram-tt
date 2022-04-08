@@ -171,7 +171,7 @@ export const SCHEDULED_WHEN_ONLINE = 0x7FFFFFFE;
 export const DEFAULT_LANG_CODE = 'en';
 export const DEFAULT_LANG_PACK = 'android';
 export const LANG_PACKS = ['android', 'ios', 'tdesktop', 'macos'] as const;
-export const TIPS_USERNAME = 'TelegramTips';
+export const TIPS_USERNAME = 'TeamgramTips';
 export const LOCALIZED_TIPS = ['ar', 'pt-br', 'id', 'it', 'ko', 'ms', 'pl', 'es', 'tr'];
 export const FEEDBACK_URL = 'https://bugs.telegram.org/?tag_ids=41&sort=time';
 export const LIGHT_THEME_BG_COLOR = '#A2AF8E';
