@@ -1,5 +1,7 @@
 dev
 
+dist
+
 src/lib/rlottie/rlottie-wasm.js
 src/lib/webp/webp_wasm.js
 
@@ -13,3 +15,10 @@ src/lib/gramjs/tl/generateModules.js
 src/api/gramjs/methods/users.ts
 src/lib/gramjs/Utils.js
 src/lib/gramjs/client/TelegramClient.js
+
+src/lib/lovely-chart
+
+webpack.config.js
+jest.config.js
+src/lib/secret-sauce/
+
