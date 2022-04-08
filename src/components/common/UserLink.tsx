@@ -5,24 +5,24 @@ import { ApiChat, ApiUser } from '../../api/types';
 import buildClassName from '../../util/buildClassName';
 
 import Link from '../ui/Link';
-import { getDispatch } from '../../lib/teact/teactn';
+import { getActions } from '../../global';
 
 type OwnProps = {
   className?: string;
   sender?: ApiUser | ApiChat;
-  children: any;
+  children: React.ReactNode;
 };
 
 const UserLink: FC<OwnProps> = ({
   className, sender, children,
 }) => {
-  const { openUserInfo } = getDispatch();
+  const { openChat } = getActions();
 
   const handleClick = useCallback(() => {
     if (sender) {
-      openUserInfo({ id: sender.id });
+      openChat({ id: sender.id });
     }
-  }, [sender, openUserInfo]);
+  }, [sender, openChat]);
 
   if (!sender) {
     return children;

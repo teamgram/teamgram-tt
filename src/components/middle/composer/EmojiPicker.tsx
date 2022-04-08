@@ -1,7 +1,7 @@
 import React, {
   FC, useState, useEffect, memo, useRef, useMemo, useCallback,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { withGlobal } from '../../../global';
 
 import { GlobalState } from '../../../global/types';
 
@@ -174,6 +174,7 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
         round
         faded
         color="translucent"
+        // eslint-disable-next-line react/jsx-no-bind
         onClick={() => selectCategory(index)}
         ariaLabel={category.name}
       >

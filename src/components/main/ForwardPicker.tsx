@@ -1,7 +1,7 @@
 import React, {
   FC, useMemo, useState, memo, useRef, useCallback, useEffect,
 } from '../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../global';
 
 import { ApiChat, MAIN_THREAD_ID } from '../../api/types';
 
@@ -10,7 +10,7 @@ import {
   filterUsersByName,
   getCanPostInChat,
   sortChatIds,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import { unique } from '../../util/iteratees';
 import useLang from '../../hooks/useLang';
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
@@ -43,8 +43,7 @@ const ForwardPicker: FC<OwnProps & StateProps> = ({
   const {
     setForwardChatId,
     exitForwardMode,
-    loadMoreChats,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   const [filter, setFilter] = useState('');
@@ -105,7 +104,6 @@ const ForwardPicker: FC<OwnProps & StateProps> = ({
       filterPlaceholder={lang('ForwardTo')}
       filter={filter}
       onFilterChange={setFilter}
-      loadMore={loadMoreChats}
       onSelectChatOrUser={handleSelectUser}
       onClose={exitForwardMode}
       onCloseAnimationEnd={unmarkIsShown}

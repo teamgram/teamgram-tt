@@ -1,7 +1,7 @@
 import React, {
   FC, useCallback, useEffect, useMemo,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { AudioOrigin } from '../../types';
 import {
@@ -13,8 +13,8 @@ import { IS_IOS, IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../util/enviro
 import * as mediaLoader from '../../util/mediaLoader';
 import {
   getMediaDuration, getMessageContent, getMessageMediaHash, getSenderTitle, isMessageLocal,
-} from '../../modules/helpers';
-import { selectChat, selectSender } from '../../modules/selectors';
+} from '../../global/helpers';
+import { selectChat, selectSender } from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
 import { makeTrackId } from '../../util/audioPlayer';
 import { clearMediaSession } from '../../util/mediaSession';
@@ -63,7 +63,7 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
     setAudioPlayerMuted,
     focusMessage,
     closeAudioPlayer,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   const { audio, voice, video } = getMessageContent(message);
@@ -127,10 +127,9 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
 
   const handleVolumeChange = useCallback((value: number) => {
     setAudioPlayerVolume({ volume: value / 100 });
-    setAudioPlayerMuted({ isMuted: false });
 
     setVolume(value / 100);
-  }, [setAudioPlayerMuted, setAudioPlayerVolume, setVolume]);
+  }, [setAudioPlayerVolume, setVolume]);
 
   const handleVolumeClick = useCallback(() => {
     if (IS_TOUCH_ENV && !IS_IOS) return;
@@ -216,7 +215,7 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
           <>
             <div className="volume-slider-spacer" />
             <div className="volume-slider">
-              <RangeSlider value={isMuted ? 0 : volume * 100} onChange={handleVolumeChange} />
+              <RangeSlider bold value={isMuted ? 0 : volume * 100} onChange={handleVolumeChange} />
             </div>
           </>
         )}

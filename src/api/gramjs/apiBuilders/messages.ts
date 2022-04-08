@@ -28,6 +28,7 @@ import {
   ApiAvailableReaction,
   ApiSponsoredMessage,
   ApiUser,
+  ApiLocation,
 } from '../../types';
 
 import {
@@ -35,9 +36,11 @@ import {
   LOCAL_MESSAGE_ID_BASE,
   SERVICE_NOTIFICATIONS_USER_ID,
   SPONSORED_MESSAGE_CACHE_MS,
+  SUPPORTED_AUDIO_CONTENT_TYPES,
   SUPPORTED_IMAGE_CONTENT_TYPES,
   SUPPORTED_VIDEO_CONTENT_TYPES,
   VIDEO_MOV_TYPE,
+  VIDEO_WEBM_TYPE,
 } from '../../../config';
 import { pick } from '../../../util/iteratees';
 import { buildStickerFromDocument } from './symbols';
@@ -172,7 +175,8 @@ export function buildApiMessageWithChatId(chatId: string, mtpMessage: UniversalM
     ...(replyToPeerId && { replyToChatId: getApiChatIdFromMtpPeer(replyToPeerId) }),
     ...(replyToTopId && { replyToTopMessageId: replyToTopId }),
     ...(forwardInfo && { forwardInfo }),
-    ...(isEdited && { isEdited, editDate: mtpMessage.editDate }),
+    ...(isEdited && { isEdited }),
+    ...(mtpMessage.editDate && { editDate: mtpMessage.editDate }),
     ...(isMediaUnread && { isMediaUnread }),
     ...(mtpMessage.mentioned && isMediaUnread && { hasUnreadMention: true }),
     ...(mtpMessage.mentioned && { isMentioned: true }),
@@ -320,6 +324,9 @@ export function buildMessageMediaContent(media: GramJs.TypeMessageMedia): ApiMes
   const invoice = buildInvoiceFromMedia(media);
   if (invoice) return { invoice };
 
+  const location = buildLocationFromMedia(media);
+  if (location) return { location };
+
   return undefined;
 }
 
@@ -368,6 +375,11 @@ export function buildVideoFromDocument(document: GramJs.Document): ApiVideo | un
   const {
     id, mimeType, thumbs, size, attributes,
   } = document;
+
+  // eslint-disable-next-line no-restricted-globals
+  if (mimeType === VIDEO_WEBM_TYPE && !(self as any).isWebmSupported) {
+    return undefined;
+  }
 
   // eslint-disable-next-line no-restricted-globals
   if (mimeType === VIDEO_MOV_TYPE && !(self as any).isMovSupported) {
@@ -563,6 +575,67 @@ function buildInvoiceFromMedia(media: GramJs.TypeMessageMedia): ApiInvoice | und
   }
 
   return buildInvoice(media);
+}
+
+function buildLocationFromMedia(media: GramJs.TypeMessageMedia): ApiLocation | undefined {
+  if (media instanceof GramJs.MessageMediaGeo) {
+    return buildGeo(media);
+  }
+
+  if (media instanceof GramJs.MessageMediaVenue) {
+    return buildVenue(media);
+  }
+
+  if (media instanceof GramJs.MessageMediaGeoLive) {
+    return buildGeoLive(media);
+  }
+
+  return undefined;
+}
+
+function buildGeo(media: GramJs.MessageMediaGeo): ApiLocation | undefined {
+  const point = buildGeoPoint(media.geo);
+  return point && { type: 'geo', geo: point };
+}
+
+function buildVenue(media: GramJs.MessageMediaVenue): ApiLocation | undefined {
+  const {
+    geo, title, provider, address, venueId, venueType,
+  } = media;
+  const point = buildGeoPoint(geo);
+  return point && {
+    type: 'venue',
+    geo: point,
+    title,
+    provider,
+    address,
+    venueId,
+    venueType,
+  };
+}
+
+function buildGeoLive(media: GramJs.MessageMediaGeoLive): ApiLocation | undefined {
+  const { geo, period, heading } = media;
+  const point = buildGeoPoint(geo);
+  return point && {
+    type: 'geoLive',
+    geo: point,
+    period,
+    heading,
+  };
+}
+
+function buildGeoPoint(geo: GramJs.TypeGeoPoint): ApiLocation['geo'] | undefined {
+  if (geo instanceof GramJs.GeoPointEmpty) return undefined;
+  const {
+    long, lat, accuracyRadius, accessHash,
+  } = geo;
+  return {
+    long,
+    lat,
+    accessHash: accessHash.toString(),
+    accuracyRadius,
+  };
 }
 
 export function buildPoll(poll: GramJs.Poll, pollResults: GramJs.PollResults): ApiPoll {
@@ -1007,9 +1080,8 @@ function buildUploadingMedia(
   } = attachment;
 
   if (attachment.quick) {
-    const { width, height, duration } = attachment.quick;
-
-    if (mimeType.startsWith('image/')) {
+    if (SUPPORTED_IMAGE_CONTENT_TYPES.has(mimeType)) {
+      const { width, height } = attachment.quick;
       return {
         photo: {
           id: LOCAL_MEDIA_UPLOADING_TEMP_ID,
@@ -1018,7 +1090,9 @@ function buildUploadingMedia(
           blobUrl,
         },
       };
-    } else {
+    }
+    if (SUPPORTED_VIDEO_CONTENT_TYPES.has(mimeType)) {
+      const { width, height, duration } = attachment.quick;
       return {
         video: {
           id: LOCAL_MEDIA_UPLOADING_TEMP_ID,
@@ -1033,7 +1107,8 @@ function buildUploadingMedia(
         },
       };
     }
-  } else if (attachment.voice) {
+  }
+  if (attachment.voice) {
     const { duration, waveform } = attachment.voice;
     const { data: inputWaveform } = interpolateArray(waveform, INPUT_WAVEFORM_LENGTH);
     return {
@@ -1043,26 +1118,29 @@ function buildUploadingMedia(
         waveform: inputWaveform,
       },
     };
-  } else if (mimeType.startsWith('audio/')) {
+  }
+  if (SUPPORTED_AUDIO_CONTENT_TYPES.has(mimeType)) {
+    const { duration, performer, title } = attachment.audio || {};
     return {
       audio: {
         id: LOCAL_MEDIA_UPLOADING_TEMP_ID,
         mimeType,
         fileName,
         size,
-        duration: 200, // Arbitrary
-      },
-    };
-  } else {
-    return {
-      document: {
-        mimeType,
-        fileName,
-        size,
-        ...(previewBlobUrl && { previewBlobUrl }),
+        duration: duration || 0,
+        title,
+        performer,
       },
     };
   }
+  return {
+    document: {
+      mimeType,
+      fileName,
+      size,
+      ...(previewBlobUrl && { previewBlobUrl }),
+    },
+  };
 }
 
 function buildNewPoll(poll: ApiNewPoll, localId: number) {

@@ -1,11 +1,11 @@
 import React, {
   FC, useMemo, useState, memo, useRef, useCallback, useEffect,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiUser } from '../../../api/types';
 
-import { filterUsersByName, getUserFullName } from '../../../modules/helpers';
+import { filterUsersByName, getUserFullName } from '../../../global/helpers';
 import { unique } from '../../../util/iteratees';
 import useLang from '../../../hooks/useLang';
 
@@ -37,7 +37,7 @@ const BlockUserModal: FC<OwnProps & StateProps> = ({
     loadContactList,
     setUserSearchQuery,
     blockContact,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   const [filter, setFilter] = useState('');

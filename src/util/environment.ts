@@ -55,12 +55,12 @@ export const IS_TABLET_COLUMN_LAYOUT = !IS_SINGLE_COLUMN_LAYOUT && (
   window.innerWidth <= MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN
 );
 export const IS_VOICE_RECORDING_SUPPORTED = Boolean(
-  navigator.mediaDevices && 'getUserMedia' in navigator.mediaDevices && (
+  window.navigator.mediaDevices && 'getUserMedia' in window.navigator.mediaDevices && (
     window.AudioContext || (window as any).webkitAudioContext
   ),
 );
 export const IS_SMOOTH_SCROLL_SUPPORTED = 'scrollBehavior' in document.documentElement.style;
-export const IS_EMOJI_SUPPORTED = PLATFORM_ENV && (IS_MAC_OS || IS_IOS);
+export const IS_EMOJI_SUPPORTED = PLATFORM_ENV && (IS_MAC_OS || IS_IOS) && isLastEmojiVersionSupported();
 export const IS_SERVICE_WORKER_SUPPORTED = 'serviceWorker' in navigator;
 // TODO Consider failed service worker
 export const IS_PROGRESSIVE_SUPPORTED = IS_SERVICE_WORKER_SUPPORTED;
@@ -86,7 +86,27 @@ export const DPR = window.devicePixelRatio || 1;
 
 export const MASK_IMAGE_DISABLED = true;
 
+export const IS_BACKDROP_BLUR_SUPPORTED = !IS_TEST && (
+  CSS.supports('backdrop-filter: blur()') || CSS.supports('-webkit-backdrop-filter: blur()')
+);
+export const IS_COMPACT_MENU = !IS_TOUCH_ENV;
 export const IS_SCROLL_PATCH_NEEDED = !IS_MAC_OS && !IS_IOS && !IS_ANDROID;
 
 // Smaller area reduces scroll jumps caused by `patchChromiumScroll`
 export const MESSAGE_LIST_SENSITIVE_AREA = IS_SCROLL_PATCH_NEEDED ? 300 : 750;
+
+function isLastEmojiVersionSupported() {
+  const ALLOWABLE_CALCULATION_ERROR_SIZE = 5;
+  const inlineEl = document.createElement('span');
+  inlineEl.classList.add('emoji-test-element');
+  document.body.appendChild(inlineEl);
+
+  inlineEl.innerText = '🫱🏻'; // Emoji from 14.0 version
+  const newEmojiWidth = inlineEl.offsetWidth;
+  inlineEl.innerText = '❤️'; // Emoji from 1.0 version
+  const legacyEmojiWidth = inlineEl.offsetWidth;
+
+  document.body.removeChild(inlineEl);
+
+  return Math.abs(newEmojiWidth - legacyEmojiWidth) < ALLOWABLE_CALCULATION_ERROR_SIZE;
+}

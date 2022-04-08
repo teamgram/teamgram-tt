@@ -1,7 +1,7 @@
 import React, {
   FC, useCallback, useEffect, useRef, memo,
 } from '../../../lib/teact/teact';
-import { getGlobal } from '../../../lib/teact/teactn';
+import { getGlobal } from '../../../global';
 
 import { ApiUser } from '../../../api/types';
 
@@ -92,6 +92,7 @@ const MentionTooltip: FC<OwnProps> = ({
         <ListItem
           key={id}
           className="chat-item-clickable scroll-item"
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => handleUserSelect(id)}
           focus={selectedMentionIndex === index}
         >

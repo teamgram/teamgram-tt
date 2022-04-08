@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { MessageListType } from '../../global/types';
 
@@ -12,12 +12,13 @@ import {
   selectCurrentMessageList,
   selectHasProtectedMessage,
   selectSelectedMessagesCount,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import useFlag from '../../hooks/useFlag';
 import captureKeyboardListeners from '../../util/captureKeyboardListeners';
 import buildClassName from '../../util/buildClassName';
 import usePrevious from '../../hooks/usePrevious';
 import useLang from '../../hooks/useLang';
+import useCopySelectedMessages from './hooks/useCopySelectedMessages';
 
 import Button from '../ui/Button';
 
@@ -58,11 +59,13 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
     exitMessageSelectMode,
     openForwardMenuForSelectedMessages,
     downloadSelectedMessages,
-  } = getDispatch();
+    copySelectedMessages,
+  } = getActions();
 
   const [isDeleteModalOpen, openDeleteModal, closeDeleteModal] = useFlag();
   const [isReportModalOpen, openReportModal, closeReportModal] = useFlag();
 
+  useCopySelectedMessages(Boolean(isActive), copySelectedMessages);
   useEffect(() => {
     return isActive && !isDeleteModalOpen && !isReportModalOpen
       ? captureKeyboardListeners({
@@ -72,6 +75,11 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
       })
       : undefined;
   }, [isActive, isDeleteModalOpen, isReportModalOpen, openDeleteModal, exitMessageSelectMode]);
+
+  const handleCopy = useCallback(() => {
+    copySelectedMessages();
+    exitMessageSelectMode();
+  }, [copySelectedMessages, exitMessageSelectMode]);
 
   const handleDownload = useCallback(() => {
     downloadSelectedMessages();
@@ -139,6 +147,7 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
             {canDownloadMessages && (
               renderButton('download', lang('lng_media_download'), handleDownload, hasProtectedMessage)
             )}
+            {renderButton('copy', lang('lng_context_copy_selected_items'), handleCopy, hasProtectedMessage)}
             {renderButton('delete', lang('EditAdminGroupDeleteMessages'), openDeleteModal, !canDeleteMessages, true)}
           </div>
         )}

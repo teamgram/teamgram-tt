@@ -1,10 +1,10 @@
 import React, { FC, useEffect } from '../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../global';
 
 import { ApiMediaFormat } from '../../api/types';
 import { GlobalState } from '../../global/types';
 
-import { getChatAvatarHash } from '../../modules/helpers/chats'; // Direct import for better module splitting
+import { getChatAvatarHash } from '../../global/helpers/chats'; // Direct import for better module splitting
 import useFlag from '../../hooks/useFlag';
 import useShowTransition from '../../hooks/useShowTransition';
 import { pause } from '../../util/schedulers';
@@ -16,17 +16,14 @@ import buildClassName from '../../util/buildClassName';
 
 import './UiLoader.scss';
 
-// @ts-ignore
 import telegramLogoPath from '../../assets/telegram-logo.svg';
-// @ts-ignore
 import reactionThumbsPath from '../../assets/reaction-thumbs.png';
-// @ts-ignore
 import monkeyPath from '../../assets/monkey.svg';
-import { selectIsRightColumnShown, selectTheme } from '../../modules/selectors';
+import { selectIsRightColumnShown, selectTheme } from '../../global/selectors';
 
 type OwnProps = {
   page: 'main' | 'authCode' | 'authPassword' | 'authPhoneNumber' | 'authQrCode';
-  children: any;
+  children: React.ReactNode;
 };
 
 type StateProps =
@@ -88,7 +85,7 @@ const UiLoader: FC<OwnProps & StateProps> = ({
   shouldSkipHistoryAnimations,
   leftColumnWidth,
 }) => {
-  const { setIsUiReady } = getDispatch();
+  const { setIsUiReady } = getActions();
 
   const [isReady, markReady] = useFlag();
   const {
@@ -138,7 +135,6 @@ const UiLoader: FC<OwnProps & StateProps> = ({
             <>
               <div
                 className="left"
-                // @ts-ignore teact feature
                 style={leftColumnWidth ? `width: ${leftColumnWidth}px` : undefined}
               />
               <div

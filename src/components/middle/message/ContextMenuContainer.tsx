@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import { MessageListType } from '../../../global/types';
 import { ApiAvailableReaction, ApiMessage } from '../../../api/types';
@@ -12,11 +12,11 @@ import {
   selectChat,
   selectCurrentMessageList,
   selectIsMessageProtected,
-} from '../../../modules/selectors';
+} from '../../../global/selectors';
 import {
   isActionMessage, isChatChannel,
-  isChatGroup, isOwnMessage, areReactionsEmpty, isUserId,
-} from '../../../modules/helpers';
+  isChatGroup, isOwnMessage, areReactionsEmpty, isUserId, isMessageLocal, getMessageVideo,
+} from '../../../global/helpers';
 import { SERVICE_NOTIFICATIONS_USER_ID } from '../../../config';
 import { getDayStartAt } from '../../../util/dateFormat';
 import { copyTextToClipboard } from '../../../util/clipboard';
@@ -67,6 +67,7 @@ type StateProps = {
   canCopyLink?: boolean;
   canSelect?: boolean;
   canDownload?: boolean;
+  canSaveGif?: boolean;
   activeDownloads: number[];
   canShowSeenBy?: boolean;
   enabledReactions?: string[];
@@ -104,6 +105,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   canCopyLink,
   canSelect,
   canDownload,
+  canSaveGif,
   activeDownloads,
   canShowSeenBy,
 }) => {
@@ -125,7 +127,9 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
     openReactorListModal,
     loadFullChat,
     loadReactors,
-  } = getDispatch();
+    copyMessagesByIds,
+    saveGif,
+  } = getActions();
 
   const { transitionClassNames } = useShowTransition(isOpen, onCloseAnimationEnd, undefined, false);
   const [isMenuOpen, setIsMenuOpen] = useState(true);
@@ -288,6 +292,11 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
     });
   }, [message.chatId, message.id, rescheduleMessage]);
 
+  const handleCopyMessages = useCallback((messageIds: number[]) => {
+    copyMessagesByIds({ messageIds });
+    closeMenu();
+  }, [closeMenu, copyMessagesByIds]);
+
   const handleCopyLink = useCallback(() => {
     copyTextToClipboard(`https://t.me/${chatUsername || `c/${message.chatId.replace('-', '')}`}/${message.id}`);
     closeMenu();
@@ -303,6 +312,12 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
     });
     closeMenu();
   }, [album, message, closeMenu, isDownloading, cancelMessageMediaDownload, downloadMessageMedia]);
+
+  const handleSaveGif = useCallback(() => {
+    const video = getMessageVideo(message);
+    saveGif({ gif: video });
+    closeMenu();
+  }, [closeMenu, message, saveGif]);
 
   const handleSendReaction = useCallback((reaction: string | undefined, x: number, y: number) => {
     sendReaction({
@@ -349,6 +364,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         canCopyLink={canCopyLink}
         canSelect={canSelect}
         canDownload={canDownload}
+        canSaveGif={canSaveGif}
         canShowSeenBy={canShowSeenBy}
         isDownloading={isDownloading}
         seenByRecentUsers={seenByRecentUsers}
@@ -366,7 +382,9 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         onReschedule={handleOpenCalendar}
         onClose={closeMenu}
         onCopyLink={handleCopyLink}
+        onCopyMessages={handleCopyMessages}
         onDownload={handleDownloadClick}
+        onSaveGif={handleSaveGif}
         onShowSeenBy={handleOpenSeenByModal}
         onSendReaction={handleSendReaction}
         onShowReactors={handleOpenReactorListModal}
@@ -425,10 +443,12 @@ export default memo(withGlobal<OwnProps>(
       canCopyLink,
       canSelect,
       canDownload,
+      canSaveGif,
     } = (threadId && selectAllowedMessageActions(global, message, threadId)) || {};
     const isPinned = messageListType === 'pinned';
     const isScheduled = messageListType === 'scheduled';
     const isChannel = chat && isChatChannel(chat);
+    const isLocal = isMessageLocal(message);
     const canShowSeenBy = Boolean(chat
       && seenByMaxChatMembers
       && seenByExpiresAt
@@ -440,7 +460,7 @@ export default memo(withGlobal<OwnProps>(
       && message.date > Date.now() / 1000 - seenByExpiresAt);
     const isPrivate = chat && isUserId(chat.id);
     const isAction = isActionMessage(message);
-    const canShowReactionsCount = !isChannel && !isScheduled && !isAction && !isPrivate && message.reactions
+    const canShowReactionsCount = !isLocal && !isChannel && !isScheduled && !isAction && !isPrivate && message.reactions
       && !areReactionsEmpty(message.reactions) && message.reactions.canSeeList;
     const canRemoveReaction = isPrivate && message.reactions?.results?.some((l) => l.isChosen);
     const isProtected = selectIsMessageProtected(global, message);
@@ -463,13 +483,14 @@ export default memo(withGlobal<OwnProps>(
       canCopyLink: !isProtected && !isScheduled && canCopyLink,
       canSelect,
       canDownload: !isProtected && canDownload,
+      canSaveGif: !isProtected && canSaveGif,
       activeDownloads,
       canShowSeenBy,
-      enabledReactions: chat?.fullInfo?.enabledReactions,
+      enabledReactions: chat?.isForbidden ? undefined : chat?.fullInfo?.enabledReactions,
       isPrivate,
       hasFullInfo: Boolean(chat?.fullInfo),
       canShowReactionsCount,
-      canShowReactionList: !isAction && !isScheduled && chat?.id !== SERVICE_NOTIFICATIONS_USER_ID,
+      canShowReactionList: !isLocal && !isAction && !isScheduled && chat?.id !== SERVICE_NOTIFICATIONS_USER_ID,
       canRemoveReaction,
     };
   },

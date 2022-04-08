@@ -2,15 +2,15 @@ import { ChangeEvent } from 'react';
 import React, {
   FC, memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ManagementScreens, ManagementProgress } from '../../../types';
 import { ApiChat, ApiExportedInvite, ApiMediaFormat } from '../../../api/types';
 
-import { getChatAvatarHash, getHasAdminRight } from '../../../modules/helpers';
+import { getChatAvatarHash, getHasAdminRight } from '../../../global/helpers';
 import useMedia from '../../../hooks/useMedia';
 import useLang from '../../../hooks/useLang';
-import { selectChat } from '../../../modules/selectors';
+import { selectChat } from '../../../global/selectors';
 import useFlag from '../../../hooks/useFlag';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import { formatInteger } from '../../../util/textFormat';
@@ -68,7 +68,7 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
     openChat,
     loadExportedChatInvites,
     loadChatJoinRequests,
-  } = getDispatch();
+  } = getActions();
 
   const currentTitle = chat ? (chat.title || '') : '';
   const currentAbout = chat?.fullInfo ? (chat.fullInfo.about || '') : '';
@@ -102,6 +102,7 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
   }, [progress]);
 
   const adminsCount = (chat?.fullInfo?.adminMembers?.length) || 0;
+  const removedUsersCount = (chat?.fullInfo?.kickedMembers?.length) || 0;
 
   const handleClickEditType = useCallback(() => {
     onScreenSelect(ManagementScreens.ChatPrivacyType);
@@ -119,13 +120,13 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
     onScreenSelect(ManagementScreens.ChatAdministrators);
   }, [onScreenSelect]);
 
-  const handleClickInvites = () => {
+  const handleClickInvites = useCallback(() => {
     onScreenSelect(ManagementScreens.Invites);
-  };
+  }, [onScreenSelect]);
 
-  const handleClickRequests = () => {
+  const handleClickRequests = useCallback(() => {
     onScreenSelect(ManagementScreens.JoinRequests);
-  };
+  }, [onScreenSelect]);
 
   const handleSetPhoto = useCallback((file: File) => {
     setPhoto(file);
@@ -167,6 +168,10 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
     onScreenSelect(ManagementScreens.ChannelSubscribers);
   }, [onScreenSelect]);
 
+  const handleRemovedUsersClick = useCallback(() => {
+    onScreenSelect(ManagementScreens.ChannelRemovedUsers);
+  }, [onScreenSelect]);
+
   const handleDeleteChannel = useCallback(() => {
     if (chat.isCreator) {
       deleteChannel({ chatId: chat.id });
@@ -181,7 +186,7 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
 
   const enabledReactionsCount = chat.fullInfo?.enabledReactions?.length || 0;
 
-  if (chat.isRestricted) {
+  if (chat.isRestricted || chat.isForbidden) {
     return undefined;
   }
 
@@ -226,14 +231,6 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
           >
             <span className="title">{lang('Discussion')}</span>
             <span className="subtitle">{hasLinkedChat ? lang('DiscussionUnlink') : lang('Add')}</span>
-          </ListItem>
-          <ListItem
-            icon="admin"
-            multiline
-            onClick={handleClickAdministrators}
-          >
-            <span className="title">{lang('ChannelAdministrators')}</span>
-            <span className="subtitle">{adminsCount}</span>
           </ListItem>
           {canInvite && (
             <ListItem
@@ -281,12 +278,29 @@ const ManageChannel: FC<OwnProps & StateProps> = ({
         </div>
         <div className="section">
           <ListItem
+            icon="admin"
+            multiline
+            onClick={handleClickAdministrators}
+          >
+            <span className="title">{lang('ChannelAdministrators')}</span>
+            <span className="subtitle">{adminsCount}</span>
+          </ListItem>
+          <ListItem
             icon="group"
             multiline
             onClick={handleClickSubscribers}
           >
             <span className="title" dir="auto">{lang('ChannelSubscribers')}</span>
             <span className="subtitle" dir="auto">{lang('Subscribers', chat.membersCount ?? 0, 'i')}</span>
+          </ListItem>
+          <ListItem
+            icon="delete-user"
+            multiline
+            narrow
+            onClick={handleRemovedUsersClick}
+          >
+            <span className="title">{lang('ChannelBlockedUsers')}</span>
+            <span className="subtitle">{removedUsersCount}</span>
           </ListItem>
         </div>
         <div className="section">

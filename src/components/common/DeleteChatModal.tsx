@@ -1,9 +1,9 @@
 import React, { FC, useCallback, memo } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiChat } from '../../api/types';
 
-import { selectIsChatWithSelf, selectUser } from '../../modules/selectors';
+import { selectIsChatWithSelf, selectUser } from '../../global/selectors';
 import {
   isUserId,
   isUserBot,
@@ -13,7 +13,7 @@ import {
   isChatSuperGroup,
   isChatChannel,
   getChatTitle,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import useLang from '../../hooks/useLang';
 import renderText from './helpers/renderText';
 
@@ -63,7 +63,7 @@ const DeleteChatModal: FC<OwnProps & StateProps> = ({
     deleteChannel,
     deleteChatUser,
     blockContact,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   const chatTitle = getChatTitle(lang, chat);
@@ -107,6 +107,15 @@ const DeleteChatModal: FC<OwnProps & StateProps> = ({
     leaveChannel,
     deleteChannel,
   ]);
+
+  const handleLeaveChat = useCallback(() => {
+    if (isChannel || isSuperGroup) {
+      leaveChannel({ chatId: chat.id });
+      onClose();
+    } else {
+      handleDeleteChat();
+    }
+  }, [chat.id, handleDeleteChat, isChannel, isSuperGroup, leaveChannel, onClose]);
 
   function renderHeader() {
     return (
@@ -183,7 +192,17 @@ const DeleteChatModal: FC<OwnProps & StateProps> = ({
           {contactName ? renderText(lang('ChatList.DeleteForEveryone', contactName)) : lang('DeleteForAll')}
         </Button>
       )}
-      <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteChat}>
+      {!isPrivateChat && chat.isCreator && (
+        <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteChat}>
+          {lang('DeleteForAll')}
+        </Button>
+      )}
+      <Button
+        color="danger"
+        className="confirm-dialog-button"
+        isText
+        onClick={isPrivateChat ? handleDeleteChat : handleLeaveChat}
+      >
         {lang(renderActionText())}
       </Button>
       <Button className="confirm-dialog-button" isText onClick={onClose}>{lang('Cancel')}</Button>

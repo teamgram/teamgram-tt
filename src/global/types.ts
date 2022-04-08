@@ -26,6 +26,9 @@ import {
   ApiAvailableReaction,
   ApiAppConfig,
   ApiSponsoredMessage,
+  ApiChannelStatistics,
+  ApiGroupStatistics,
+  ApiPaymentFormNativeParams, ApiUpdate,
 } from '../api/types';
 import {
   FocusDirection,
@@ -52,6 +55,7 @@ import {
   AudioOrigin,
   ManagementState,
 } from '../types';
+import { typify } from '../lib/teact/teactn';
 
 export type MessageListType =
   'thread'
@@ -65,13 +69,11 @@ export interface MessageList {
 }
 
 export interface ActiveEmojiInteraction {
+  id: number;
   x: number;
   y: number;
   messageId?: number;
-  endX?: number;
-  endY?: number;
   startSize?: number;
-  reaction?: string;
   animatedEffect?: string;
   isReversed?: boolean;
 }
@@ -91,6 +93,8 @@ export interface Thread {
   replyingToId?: number;
   editingId?: number;
   editingScheduledId?: number;
+  editingDraft?: ApiFormattedText;
+  editingScheduledDraft?: ApiFormattedText;
   draft?: ApiFormattedText;
   noWebPage?: boolean;
   threadInfo?: ApiThreadInfo;
@@ -108,6 +112,7 @@ export interface ServiceNotification {
 export type GlobalState = {
   appConfig?: ApiAppConfig;
   isChatInfoShown: boolean;
+  isStatisticsShown?: boolean;
   isLeftColumnShown: boolean;
   isPollModalOpen?: boolean;
   newChatMembersProgress?: NewChatMembersProgress;
@@ -152,8 +157,6 @@ export type GlobalState = {
   users: {
     byId: Record<string, ApiUser>;
     statusesById: Record<string, ApiUserStatus>;
-    // TODO Remove
-    selectedId?: string;
   };
 
   chats: {
@@ -334,7 +337,7 @@ export type GlobalState = {
   };
 
   availableReactions?: ApiAvailableReaction[];
-  activeEmojiInteraction?: ActiveEmojiInteraction;
+  activeEmojiInteractions?: ActiveEmojiInteraction[];
   activeReactions: Record<number, ActiveReaction>;
 
   localTextSearch: {
@@ -372,6 +375,9 @@ export type GlobalState = {
     avatarOwnerId?: string;
     profilePhotoIndex?: number;
     origin?: MediaViewerOrigin;
+    volume: number;
+    playbackRate: number;
+    isMuted: boolean;
   };
 
   audioPlayer: {
@@ -430,15 +436,14 @@ export type GlobalState = {
     };
     nativeProvider?: string;
     providerId?: string;
-    nativeParams?: {
-      needCardholderName: boolean;
-      needCountry: boolean;
-      needZip: boolean;
-      publishableKey: string;
-    };
+    nativeParams?: ApiPaymentFormNativeParams;
     stripeCredentials?: {
       type: string;
       id: string;
+    };
+    smartGlocalCredentials?: {
+      type: string;
+      token: string;
     };
     passwordMissing?: boolean;
     savedCredentials?: {
@@ -452,6 +457,7 @@ export type GlobalState = {
       description: string;
     };
     isPaymentModalOpen?: boolean;
+    confirmPaymentUrl?: string;
   };
 
   chatCreation?: {
@@ -501,26 +507,133 @@ export type GlobalState = {
   shouldShowContextMenuHint?: boolean;
 
   serviceNotifications: ServiceNotification[];
+
+  statistics: {
+    byChatId: Record<string, ApiChannelStatistics | ApiGroupStatistics>;
+  };
+
+  newContact?: {
+    userId?: string;
+    isByPhoneNumber?: boolean;
+  };
 };
 
-export type ActionTypes = (
+export interface ActionPayloads {
+  // Initial
+  signOut: { forceInitApi?: boolean } | undefined;
+  apiUpdate: ApiUpdate;
+
+  // Chats
+  openChat: {
+    id: string | undefined;
+    threadId?: number;
+    type?: MessageListType;
+    shouldReplaceHistory?: boolean;
+  };
+
+  // Messages
+  setEditingDraft: {
+    text?: ApiFormattedText;
+    chatId: string;
+    threadId: number;
+    type: MessageListType;
+  };
+
+  // Media Viewer & Audio Player
+  openMediaViewer: {
+    chatId?: string;
+    threadId?: number;
+    messageId?: number;
+    avatarOwnerId?: string;
+    profilePhotoIndex?: number;
+    origin?: MediaViewerOrigin;
+    volume?: number;
+    playbackRate?: number;
+    isMuted?: boolean;
+  };
+  closeMediaViewer: {};
+  setMediaViewerVolume: {
+    volume: number;
+  };
+  setMediaViewerPlaybackRate: {
+    playbackRate: number;
+  };
+  setMediaViewerMuted: {
+    isMuted: boolean;
+  };
+
+  openAudioPlayer: {
+    chatId: string;
+    threadId?: number;
+    messageId: number;
+    origin?: AudioOrigin;
+    volume?: number;
+    playbackRate?: number;
+    isMuted?: boolean;
+  };
+  closeAudioPlayer: {};
+  setAudioPlayerVolume: {
+    volume: number;
+  };
+  setAudioPlayerPlaybackRate: {
+    playbackRate: number;
+  };
+  setAudioPlayerMuted: {
+    isMuted: boolean;
+  };
+  setAudioPlayerOrigin: {
+    origin: AudioOrigin;
+  };
+
+  // Downloads
+  downloadSelectedMessages: {};
+  downloadMessageMedia: {
+    message: ApiMessage;
+  };
+  cancelMessageMediaDownload: {
+    message: ApiMessage;
+  };
+  cancelMessagesMediaDownload: {
+    messages: ApiMessage[];
+  };
+
+  // Users
+  openAddContactDialog: {
+    userId?: string;
+  };
+  openNewContactDialog: undefined;
+  closeNewContactDialog: undefined;
+  importContact: {
+    phoneNumber: string;
+    firstName: string;
+    lastName?: string;
+  };
+  updateContact: {
+    userId: string;
+    firstName: string;
+    lastName?: string;
+    isMuted?: boolean;
+    shouldSharePhoneNumber?: boolean;
+  };
+}
+
+export type NonTypedActionNames = (
   // system
-  'init' | 'reset' | 'disconnect' | 'initApi' | 'apiUpdate' | 'sync' | 'saveSession' | 'afterSync' |
+  'init' | 'reset' | 'disconnect' | 'initApi' | 'sync' | 'saveSession' |
   'showNotification' | 'dismissNotification' | 'showDialog' | 'dismissDialog' |
   // ui
   'toggleChatInfo' | 'setIsUiReady' | 'addRecentEmoji' | 'addRecentSticker' | 'toggleLeftColumn' |
   'toggleSafeLinkModal' | 'openHistoryCalendar' | 'closeHistoryCalendar' | 'disableContextMenuHint' |
   'setNewChatMembersDialogState' | 'disableHistoryAnimations' | 'setLeftColumnWidth' | 'resetLeftColumnWidth' |
-  'openSeenByModal' | 'closeSeenByModal' | 'closeReactorListModal' |
-  'openReactorListModal' |
+  'openSeenByModal' | 'closeSeenByModal' | 'closeReactorListModal' | 'openReactorListModal' |
+  'toggleStatistics' |
   // auth
-  'setAuthPhoneNumber' | 'setAuthCode' | 'setAuthPassword' | 'signUp' | 'returnToAuthPhoneNumber' | 'signOut' |
+  'setAuthPhoneNumber' | 'setAuthCode' | 'setAuthPassword' | 'signUp' | 'returnToAuthPhoneNumber' |
   'setAuthRememberMe' | 'clearAuthError' | 'uploadProfilePhoto' | 'goToAuthQrCode' | 'clearCache' |
   // chats
-  'preloadTopChatMessages' | 'preloadArchivedChats' | 'loadChats' | 'loadMoreChats' | 'openChat' |
-  'openChatWithInfo' | 'openLinkedChat' |
-  'openSupportChat' | 'openTipsChat' | 'focusMessageInComments' |
-  'loadFullChat' | 'loadTopChats' | 'requestChatUpdate' | 'updateChatMutedState' |
+  'preloadTopChatMessages' | 'loadAllChats' | 'openChatWithInfo' | 'openLinkedChat' |
+  'openSupportChat' | 'openTipsChat' | 'focusMessageInComments' | 'openChatByPhoneNumber' |
+  'loadChatSettings' | 'loadFullChat' | 'loadTopChats' | 'requestChatUpdate' | 'updateChatMutedState' |
   'joinChannel' | 'leaveChannel' | 'deleteChannel' | 'toggleChatPinned' | 'toggleChatArchived' | 'toggleChatUnread' |
   'loadChatFolders' | 'loadRecommendedChatFolders' | 'editChatFolder' | 'addChatFolder' | 'deleteChatFolder' |
   'updateChat' | 'toggleSignatures' | 'loadGroupsForDiscussion' | 'linkDiscussionGroup' | 'unlinkDiscussionGroup' |
@@ -531,15 +644,14 @@ export type ActionTypes = (
   'markMessageListRead' | 'markMessagesRead' | 'loadMessage' | 'focusMessage' | 'focusLastMessage' | 'sendPollVote' |
   'editMessage' | 'deleteHistory' | 'enterMessageSelectMode' | 'toggleMessageSelection' | 'exitMessageSelectMode' |
   'openTelegramLink' | 'openChatByUsername' | 'requestThreadInfoUpdate' | 'setScrollOffset' | 'unpinAllMessages' |
-  'setReplyingToId' | 'setEditingId' | 'editLastMessage' | 'saveDraft' | 'clearDraft' | 'loadPinnedMessages' |
+  'setReplyingToId' | 'editLastMessage' | 'saveDraft' | 'clearDraft' | 'loadPinnedMessages' |
   'toggleMessageWebPage' | 'replyToNextMessage' | 'deleteChatUser' | 'deleteChat' | 'sendReaction' |
   'reportMessages' | 'sendMessageAction' | 'focusNextReply' | 'openChatByInvite' | 'loadSeenBy' |
   'loadSponsoredMessages' | 'viewSponsoredMessage' | 'loadSendAs' | 'saveDefaultSendAs' | 'loadAvailableReactions' |
   'stopActiveEmojiInteraction' | 'interactWithAnimatedEmoji' | 'loadReactors' | 'setDefaultReaction' |
   'sendDefaultReaction' | 'sendEmojiInteraction' | 'sendWatchingEmojiInteraction' | 'loadMessageReactions' |
-  'stopActiveReaction' |
-  // downloads
-  'downloadSelectedMessages' | 'downloadMessageMedia' | 'cancelMessageMediaDownload' |
+  'stopActiveReaction' | 'startActiveReaction' | 'copySelectedMessages' | 'copyMessagesByIds' |
+  'setEditingId' |
   // scheduled messages
   'loadScheduledHistory' | 'sendScheduledMessages' | 'rescheduleMessage' | 'deleteScheduledMessages' |
   // poll result
@@ -558,14 +670,14 @@ export type ActionTypes = (
   'setEditingExportedInvite' | 'loadExportedChatInvites' | 'editExportedChatInvite' | 'exportChatInvite' |
   'deleteExportedChatInvite' | 'deleteRevokedExportedChatInvites' | 'setOpenedInviteInfo' | 'loadChatInviteImporters' |
   'loadChatJoinRequests' | 'hideChatJoinRequest' | 'hideAllChatJoinRequests' | 'requestNextManagementScreen' |
-  'loadChatInviteRequesters' |
+  'loadChatInviteRequesters' | 'hideChatReportPanel' |
   // groups
   'togglePreHistoryHidden' | 'updateChatDefaultBannedRights' | 'updateChatMemberBannedRights' | 'updateChatAdmin' |
   'acceptInviteConfirmation' |
   // users
-  'loadFullUser' | 'openUserInfo' | 'loadNearestCountry' | 'loadTopUsers' | 'loadContactList' |
-  'loadCurrentUser' | 'updateProfile' | 'checkUsername' | 'addContact' | 'updateContact' |
-  'deleteContact' | 'loadUser' | 'setUserSearchQuery' | 'loadCommonChats' |
+  'loadFullUser' | 'loadNearestCountry' | 'loadTopUsers' | 'loadContactList' |
+  'loadCurrentUser' | 'updateProfile' | 'checkUsername' |
+  'deleteContact' | 'loadUser' | 'setUserSearchQuery' | 'loadCommonChats' | 'reportSpam' |
   // chat creation
   'createChannel' | 'createGroupChat' | 'resetChatCreation' |
   // settings
@@ -580,17 +692,13 @@ export type ActionTypes = (
   'loadCountryList' | 'ensureTimeFormat' | 'loadAppConfig' |
   // stickers & GIFs
   'loadStickerSets' | 'loadAddedStickers' | 'loadRecentStickers' | 'loadFavoriteStickers' | 'loadFeaturedStickers' |
-  'loadStickers' | 'setStickerSearchQuery' | 'loadSavedGifs' | 'setGifSearchQuery' | 'searchMoreGifs' |
+  'loadStickers' | 'setStickerSearchQuery' | 'loadSavedGifs' | 'saveGif' | 'setGifSearchQuery' | 'searchMoreGifs' |
   'faveSticker' | 'unfaveSticker' | 'toggleStickerSet' | 'loadAnimatedEmojis' |
   'loadStickersForEmoji' | 'clearStickersForEmoji' | 'loadEmojiKeywords' | 'loadGreetingStickers' |
   'openStickerSetShortName' |
   // bots
   'clickInlineButton' | 'sendBotCommand' | 'loadTopInlineBots' | 'queryInlineBot' | 'sendInlineBotResult' |
   'resetInlineBot' | 'restartBot' | 'startBot' |
-  // media viewer & audio player
-  'openMediaViewer' | 'closeMediaViewer' |
-  'openAudioPlayer' | 'setAudioPlayerVolume' | 'setAudioPlayerPlaybackRate' |
-  'setAudioPlayerMuted' | 'setAudioPlayerOrigin' | 'closeAudioPlayer' |
   // misc
   'openPollModal' | 'closePollModal' |
   'loadWebPagePreview' | 'clearWebPagePreview' | 'loadWallpapers' | 'uploadWallpaper' |
@@ -605,13 +713,10 @@ export type ActionTypes = (
   'toggleGroupCallVideo' | 'requestToSpeak' | 'setGroupCallParticipantVolume' | 'toggleGroupCallPanel' |
   'createGroupCall' | 'joinVoiceChatByLink' | 'subscribeToGroupCallUpdates' | 'createGroupCallInviteLink' |
   'loadMoreGroupCallParticipants' | 'connectToActiveGroupCall' | 'playGroupCallSound' |
-  'openCallFallbackConfirm' | 'closeCallFallbackConfirm' | 'inviteToCallFallback'
-);
+  'openCallFallbackConfirm' | 'closeCallFallbackConfirm' | 'inviteToCallFallback' |
+  // stats
+  'loadStatistics' | 'loadStatisticsAsyncGraph'
+  );
 
-export interface DispatchOptions {
-  forceOnHeavyAnimation?: boolean;
-  // Workaround for iOS gesture history navigation
-  forceSyncOnIOs?: boolean;
-}
-
-export type GlobalActions = Record<ActionTypes, (payload?: any, options?: DispatchOptions) => void>;
+const typed = typify<GlobalState, ActionPayloads, NonTypedActionNames>();
+export type GlobalActions = ReturnType<typeof typed.getActions>;

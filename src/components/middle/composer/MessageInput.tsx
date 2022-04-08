@@ -2,12 +2,12 @@ import { ChangeEvent } from 'react';
 import React, {
   FC, useEffect, useRef, memo, useState, useCallback,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { IAnchorPosition, ISettings } from '../../../types';
 
 import { EDITABLE_INPUT_ID } from '../../../config';
-import { selectReplyingToId } from '../../../modules/selectors';
+import { selectReplyingToId } from '../../../global/selectors';
 import { debounce } from '../../../util/schedulers';
 import focusEditableElement from '../../../util/focusEditableElement';
 import buildClassName from '../../../util/buildClassName';
@@ -95,7 +95,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   const {
     editLastMessage,
     replyToNextMessage,
-  } = getDispatch();
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const inputRef = useRef<HTMLDivElement>(null);
@@ -132,6 +132,10 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   const chatIdRef = useRef(chatId);
   chatIdRef.current = chatId;
   const focusInput = useCallback(() => {
+    if (!inputRef.current) {
+      return;
+    }
+
     if (isHeavyAnimating()) {
       setTimeout(focusInput, FOCUS_DELAY_MS);
       return;
@@ -398,6 +402,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
         onMouseDown={handleMouseDown}
         onContextMenu={IS_ANDROID ? stopEvent : undefined}
         onTouchCancel={IS_ANDROID ? processSelection : undefined}
+        aria-label={placeholder}
       />
       <div ref={cloneRef} className={buildClassName(className, 'clone')} dir="auto" />
       {!forcedPlaceholder && <span className="placeholder-text" dir="auto">{placeholder}</span>}

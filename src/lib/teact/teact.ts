@@ -3,7 +3,7 @@ import {
   fastRaf, fastRafPrimary, onTickEnd, onTickEndPrimary, throttleWithPrimaryRaf, throttleWithRaf,
 } from '../../util/schedulers';
 import { flatten, orderBy } from '../../util/iteratees';
-import arePropsShallowEqual, { getUnequalProps } from '../../util/arePropsShallowEqual';
+import { getUnequalProps } from '../../util/arePropsShallowEqual';
 import { handleError } from '../../util/handleError';
 import { removeAllDelegatedListeners } from './dom-events';
 
@@ -69,7 +69,7 @@ interface ComponentInstance {
       cursor: number;
       byCursor: {
         effect: () => void;
-        dependencies?: any[];
+        dependencies?: readonly any[];
         cleanup?: Function;
       }[];
     };
@@ -449,7 +449,8 @@ function forceUpdateComponent(componentInstance: ComponentInstance) {
 
 export function getTarget($element: VirtualElement): Node | undefined {
   if (isComponentElement($element)) {
-    return getTarget($element.children[0]);
+    const componentElement = $element.children[0];
+    return componentElement ? getTarget(componentElement) : undefined;
   } else {
     return $element.target;
   }
@@ -522,7 +523,7 @@ function useLayoutEffectBase(
   schedulerFn: typeof onTickEnd | typeof requestAnimationFrame,
   primarySchedulerFn: typeof onTickEnd | typeof requestAnimationFrame,
   effect: () => Function | void,
-  dependencies?: any[],
+  dependencies?: readonly any[],
   debugKey?: string,
 ) {
   const { cursor, byCursor } = renderingInstance.hooks.effects;
@@ -621,11 +622,11 @@ function useLayoutEffectBase(
   renderingInstance.hooks.effects.cursor++;
 }
 
-export function useEffect(effect: () => Function | void, dependencies?: any[], debugKey?: string) {
+export function useEffect(effect: () => Function | void, dependencies?: readonly any[], debugKey?: string) {
   return useLayoutEffectBase(fastRaf, fastRafPrimary, effect, dependencies, debugKey);
 }
 
-export function useLayoutEffect(effect: () => Function | void, dependencies?: any[], debugKey?: string) {
+export function useLayoutEffect(effect: () => Function | void, dependencies?: readonly any[], debugKey?: string) {
   return useLayoutEffectBase(onTickEnd, onTickEndPrimary, effect, dependencies, debugKey);
 }
 
@@ -676,26 +677,10 @@ export function useRef<T>(initial?: T | null) {
   }), []);
 }
 
-export function memo<T extends FC>(Component: T, areEqual = arePropsShallowEqual, debugKey?: string) {
+export function memo<T extends FC>(Component: T, debugKey?: string) {
   return function TeactMemoWrapper(props: Props) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const propsRef = useRef(props);
-    const renderedRef = useRef();
-
-    if (!renderedRef.current || (propsRef.current && !areEqual(propsRef.current, props))) {
-      if (DEBUG && debugKey) {
-        // eslint-disable-next-line no-console
-        console.log(
-          `[Teact.memo] ${Component.name} (${debugKey}): Update is caused by:`,
-          getUnequalProps(propsRef.current!, props).join(', '),
-        );
-      }
-
-      propsRef.current = props;
-      renderedRef.current = createElement(Component, props) as VirtualElementComponent;
-    }
-
-    return renderedRef.current;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return useMemo(() => createElement(Component, props), Object.values(props), debugKey);
   } as T;
 }
 

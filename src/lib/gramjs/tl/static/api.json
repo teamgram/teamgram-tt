@@ -55,6 +55,7 @@
     "contacts.resolveUsername",
     "contacts.getTopPeers",
     "contacts.addContact",
+    "contacts.resolvePhone",
     "messages.getMessages",
     "messages.getDialogs",
     "messages.getHistory",
@@ -67,6 +68,8 @@
     "messages.sendMessage",
     "messages.sendMedia",
     "messages.forwardMessages",
+    "messages.reportSpam",
+    "messages.getPeerSettings",
     "messages.report",
     "messages.getChats",
     "messages.getFullChat",
@@ -96,6 +99,7 @@
     "messages.searchGlobal",
     "messages.getDocumentByHash",
     "messages.getSavedGifs",
+    "messages.saveGif",
     "messages.getInlineBotResults",
     "messages.sendInlineBotResult",
     "messages.editMessage",
@@ -121,6 +125,7 @@
     "messages.editChatAbout",
     "messages.editChatDefaultBannedRights",
     "messages.getEmojiKeywordsDifference",
+    "messages.hidePeerSettingsBar",
     "messages.getScheduledHistory",
     "messages.sendScheduledMessages",
     "messages.deleteScheduledMessages",
@@ -204,5 +209,8 @@
     "messages.setChatAvailableReactions",
     "messages.getAvailableReactions",
     "messages.setDefaultReaction",
-    "help.getAppConfig"
+    "help.getAppConfig",
+    "stats.getBroadcastStats",
+    "stats.getMegagroupStats",
+    "stats.loadAsyncGraph"
 ]

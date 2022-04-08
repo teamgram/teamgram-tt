@@ -1,8 +1,8 @@
 import React, { FC, useCallback, memo } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import useLang from '../../hooks/useLang';
-import { selectChatMessage } from '../../modules/selectors';
+import { selectChatMessage } from '../../global/selectors';
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
 
 import Modal from '../ui/Modal';
@@ -27,7 +27,7 @@ const SeenByModal: FC<OwnProps & StateProps> = ({
   const {
     openChat,
     closeSeenByModal,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
 
@@ -46,13 +46,14 @@ const SeenByModal: FC<OwnProps & StateProps> = ({
       isOpen={isOpen}
       onClose={closeSeenByModal}
       className="narrow"
-      title="Which users read the message"
+      title={`Seen by ${memberIds?.length} users`}
     >
       <div dir={lang.isRtl ? 'rtl' : undefined}>
         {renderingMemberIds && renderingMemberIds.map((userId) => (
           <ListItem
             key={userId}
             className="chat-item-clickable scroll-item small-icon"
+            // eslint-disable-next-line react/jsx-no-bind
             onClick={() => handleClick(userId)}
           >
             <PrivateChatInfo userId={userId} noStatusOrTyping />

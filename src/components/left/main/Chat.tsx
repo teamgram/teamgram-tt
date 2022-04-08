@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useLayoutEffect, useMemo, useRef,
 } from '../../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import useLang, { LangFn } from '../../../hooks/useLang';
 
@@ -25,11 +25,11 @@ import {
   getMessageSticker,
   selectIsChatMuted,
   getMessageRoundVideo,
-} from '../../../modules/helpers';
+} from '../../../global/helpers';
 import {
   selectChat, selectUser, selectChatMessage, selectOutgoingStatus, selectDraft, selectCurrentMessageList,
   selectNotifySettings, selectNotifyExceptions, selectUserStatus,
-} from '../../../modules/selectors';
+} from '../../../global/selectors';
 import { renderActionMessageText } from '../../common/helpers/renderActionMessageText';
 import renderText from '../../common/helpers/renderText';
 import { fastRaf } from '../../../util/schedulers';
@@ -108,7 +108,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   const {
     openChat,
     focusLastMessage,
-  } = getDispatch();
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);
@@ -339,7 +339,7 @@ function renderSummary(lang: LangFn, message: ApiMessage, blobUrl?: string, isRo
 
   return (
     <span className="media-preview">
-      <img src={blobUrl} alt="" className={isRoundVideo ? 'round' : undefined} />
+      <img src={blobUrl} alt="" className={buildClassName('media-preview--image', isRoundVideo && 'round')} />
       {getMessageVideo(message) && <i className="icon-play" />}
       {renderMessageSummary(lang, message, true)}
     </span>

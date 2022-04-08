@@ -1,7 +1,7 @@
 import React, {
   FC, useCallback, useState, memo, useEffect,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import {
   ApiChat,
@@ -48,7 +48,7 @@ const PollAnswerResults: FC<OwnProps & StateProps> = ({
     loadPollOptionResults,
     openChat,
     closePollResults,
-  } = getDispatch();
+  } = getActions();
 
   const prevVotersCount = usePrevious<number>(answerVote.votersCount);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -103,6 +103,7 @@ const PollAnswerResults: FC<OwnProps & StateProps> = ({
             <ListItem
               key={id}
               className="chat-item-clickable"
+              // eslint-disable-next-line react/jsx-no-bind
               onClick={() => handleMemberClick(id)}
             >
               <PrivateChatInfo

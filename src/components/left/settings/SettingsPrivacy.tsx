@@ -1,5 +1,5 @@
 import React, { FC, memo, useEffect } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { PrivacyVisibility, SettingsScreens } from '../../../types';
 
@@ -18,7 +18,6 @@ type OwnProps = {
 type StateProps = {
   hasPassword?: boolean;
   blockedCount: number;
-  sessionsCount: number;
   isSensitiveEnabled?: boolean;
   canChangeSensitive?: boolean;
   visibilityPrivacyPhoneNumber?: PrivacyVisibility;
@@ -34,7 +33,6 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
   onReset,
   hasPassword,
   blockedCount,
-  sessionsCount,
   isSensitiveEnabled,
   canChangeSensitive,
   visibilityPrivacyPhoneNumber,
@@ -50,7 +48,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
     loadAuthorizations,
     loadContentSettings,
     updateContentSettings,
-  } = getDispatch();
+  } = getActions();
 
   useEffect(() => {
     loadBlockedContacts();
@@ -84,6 +82,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="delete-user"
           narrow
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(SettingsScreens.PrivacyBlockedUsers)}
         >
           <div className="multiline-menu-item">
@@ -98,6 +97,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           icon="lock"
           narrow
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(
             hasPassword ? SettingsScreens.TwoFaEnabled : SettingsScreens.TwoFaDisabled,
           )}
@@ -109,20 +109,6 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
             </span>
           </div>
         </ListItem>
-        <ListItem
-          icon="active-sessions"
-          narrow
-          onClick={() => onScreenSelect(SettingsScreens.PrivacyActiveSessions)}
-        >
-          <div className="multiline-menu-item">
-            <span className="title">{lang('SessionsTitle')}</span>
-            {sessionsCount > 0 && (
-              <span className="subtitle" dir="auto">
-                {sessionsCount === 1 ? '1 session' : `${sessionsCount} sessions`}
-              </span>
-            )}
-          </div>
-        </ListItem>
       </div>
 
       <div className="settings-item">
@@ -131,6 +117,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(SettingsScreens.PrivacyPhoneNumber)}
         >
           <div className="multiline-menu-item">
@@ -143,6 +130,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(SettingsScreens.PrivacyLastSeen)}
         >
           <div className="multiline-menu-item">
@@ -155,6 +143,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(SettingsScreens.PrivacyProfilePhoto)}
         >
           <div className="multiline-menu-item">
@@ -167,6 +156,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(SettingsScreens.PrivacyForwarding)}
         >
           <div className="multiline-menu-item">
@@ -179,6 +169,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         <ListItem
           narrow
           className="no-icon"
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(SettingsScreens.PrivacyGroupChats)}
         >
           <div className="multiline-menu-item">
@@ -216,13 +207,11 @@ export default memo(withGlobal<OwnProps>(
         privacy,
       },
       blocked,
-      activeSessions,
     } = global;
 
     return {
       hasPassword,
       blockedCount: blocked.totalCount,
-      sessionsCount: activeSessions.length,
       isSensitiveEnabled,
       canChangeSensitive,
       visibilityPrivacyPhoneNumber: privacy.phoneNumber?.visibility,

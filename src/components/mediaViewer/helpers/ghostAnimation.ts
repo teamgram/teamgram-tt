@@ -12,6 +12,7 @@ import {
 import windowSize from '../../../util/windowSize';
 import stopEvent from '../../../util/stopEvent';
 import { IS_TOUCH_ENV } from '../../../util/environment';
+import { getMessageHtmlId } from '../../../global/helpers';
 
 const ANIMATION_DURATION = 200;
 
@@ -306,39 +307,39 @@ function getNodes(origin: MediaViewerOrigin, message?: ApiMessage) {
   switch (origin) {
     case MediaViewerOrigin.Album:
     case MediaViewerOrigin.ScheduledAlbum:
-      containerSelector = `.Transition__slide--active > .MessageList #album-media-${message!.id}`;
+      containerSelector = `.Transition__slide--active > .MessageList #album-media-${getMessageHtmlId(message!.id)}`;
       mediaSelector = '.full-media';
       break;
 
     case MediaViewerOrigin.SharedMedia:
-      containerSelector = `#shared-media${message!.id}`;
+      containerSelector = `#shared-media${getMessageHtmlId(message!.id)}`;
       mediaSelector = 'img';
       break;
 
     case MediaViewerOrigin.SearchResult:
-      containerSelector = `#search-media${message!.id}`;
+      containerSelector = `#search-media${getMessageHtmlId(message!.id)}`;
       mediaSelector = 'img';
       break;
 
     case MediaViewerOrigin.MiddleHeaderAvatar:
       containerSelector = '.MiddleHeader .Transition__slide--active .ChatInfo .Avatar';
-      mediaSelector = 'img.avatar-media';
+      mediaSelector = '.avatar-media';
       break;
 
     case MediaViewerOrigin.SettingsAvatar:
       containerSelector = '#Settings .ProfileInfo .Transition__slide--active .ProfilePhoto';
-      mediaSelector = 'img.avatar-media';
+      mediaSelector = '.avatar-media';
       break;
 
     case MediaViewerOrigin.ProfileAvatar:
       containerSelector = '#RightColumn .ProfileInfo .Transition__slide--active .ProfilePhoto';
-      mediaSelector = 'img.avatar-media';
+      mediaSelector = '.avatar-media';
       break;
 
     case MediaViewerOrigin.ScheduledInline:
     case MediaViewerOrigin.Inline:
     default:
-      containerSelector = `.Transition__slide--active > .MessageList #message${message!.id}`;
+      containerSelector = `.Transition__slide--active > .MessageList #${getMessageHtmlId(message!.id)}`;
       mediaSelector = '.message-content .full-media, .message-content .thumbnail';
   }
 

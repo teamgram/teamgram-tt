@@ -1,7 +1,7 @@
 import React, {
   FC, useCallback, useEffect, useRef, memo,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiBotCommand, ApiUser } from '../../../api/types';
 
@@ -35,7 +35,7 @@ const BotCommandTooltip: FC<OwnProps & StateProps> = ({
   onClick,
   onClose,
 }) => {
-  const { sendBotCommand } = getDispatch();
+  const { sendBotCommand } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);

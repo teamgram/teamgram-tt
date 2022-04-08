@@ -1,9 +1,11 @@
 import { MouseEvent } from 'react';
 import React from '../../../lib/teact/teact';
-import { getDispatch } from '../../../lib/teact/teactn';
+import { getActions } from '../../../global';
 
 import { ApiFormattedText, ApiMessageEntity, ApiMessageEntityTypes } from '../../../api/types';
 import renderText, { TextFilter } from './renderText';
+import { copyTextToClipboard } from '../../../util/clipboard';
+import { getTranslation } from '../../../util/langProvider';
 
 import MentionLink from '../../middle/message/MentionLink';
 import SafeLink from '../SafeLink';
@@ -334,7 +336,11 @@ function processEntity(
         </a>
       );
     case ApiMessageEntityTypes.Code:
-      return <code className="text-entity-code">{renderNestedMessagePart()}</code>;
+      return (
+        <code className="text-entity-code" onClick={handleCodeClick} role="textbox" tabIndex={0}>
+          {renderNestedMessagePart()}
+        </code>
+      );
     case ApiMessageEntityTypes.Email:
       return (
         <a
@@ -454,10 +460,17 @@ function getLinkUrl(entityContent: string, entity: ApiMessageEntity) {
 }
 
 function handleBotCommandClick(e: MouseEvent<HTMLAnchorElement>) {
-  getDispatch().sendBotCommand({ command: e.currentTarget.innerText });
+  getActions().sendBotCommand({ command: e.currentTarget.innerText });
 }
 
 function handleHashtagClick(e: MouseEvent<HTMLAnchorElement>) {
-  getDispatch().setLocalTextSearchQuery({ query: e.currentTarget.innerText });
-  getDispatch().searchTextMessagesLocal();
+  getActions().setLocalTextSearchQuery({ query: e.currentTarget.innerText });
+  getActions().searchTextMessagesLocal();
+}
+
+function handleCodeClick(e: MouseEvent<HTMLElement>) {
+  copyTextToClipboard(e.currentTarget.innerText);
+  getActions().showNotification({
+    message: getTranslation('TextCopied'),
+  });
 }

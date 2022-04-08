@@ -1,17 +1,17 @@
 import React, {
   FC, memo, useCallback, useEffect,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { GlobalState } from '../../global/types';
 import { ApiChat, ApiCountryCode, ApiUser } from '../../api/types';
 
 import {
   selectChat, selectNotifyExceptions, selectNotifySettings, selectUser,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import {
   getChatDescription, getChatLink, getHasAdminRight, isChatChannel, isUserId, isUserRightBanned, selectIsChatMuted,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import renderText from './helpers/renderText';
 import { copyTextToClipboard } from '../../util/clipboard';
 import { formatPhoneNumberWithCode } from '../../util/phoneNumber';
@@ -48,7 +48,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
     loadFullUser,
     showNotification,
     updateChatMutedState,
-  } = getDispatch();
+  } = getActions();
 
   const {
     id: userId,
@@ -86,6 +86,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
   return (
     <div className="ChatExtra">
       {formattedNumber && Boolean(formattedNumber.length) && (
+        // eslint-disable-next-line react/jsx-no-bind
         <ListItem icon="phone" multiline narrow ripple onClick={() => copy(formattedNumber, lang('Phone'))}>
           <span className="title" dir="auto">{formattedNumber}</span>
           <span className="subtitle">{lang('Phone')}</span>
@@ -97,6 +98,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
           multiline
           narrow
           ripple
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => copy(`@${username}`, lang('Username'))}
         >
           <span className="title" dir="auto">{renderText(username)}</span>
@@ -122,6 +124,7 @@ const ChatExtra: FC<OwnProps & StateProps> = ({
           multiline
           narrow
           ripple
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => copy(link, lang('SetUrlPlaceholder'))}
         >
           <div className="title">{link}</div>

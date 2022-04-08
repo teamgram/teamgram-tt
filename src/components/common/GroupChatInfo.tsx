@@ -2,7 +2,7 @@ import { MouseEvent as ReactMouseEvent } from 'react';
 import React, {
   FC, useEffect, useCallback, memo,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiChat, ApiTypingStatus } from '../../api/types';
 import { GlobalState } from '../../global/types';
@@ -12,8 +12,8 @@ import {
   getChatTypeString,
   getChatTitle,
   isChatSuperGroup,
-} from '../../modules/helpers';
-import { selectChat, selectChatMessages, selectChatOnlineCount } from '../../modules/selectors';
+} from '../../global/helpers';
+import { selectChat, selectChatMessages, selectChatOnlineCount } from '../../global/selectors';
 import renderText from './helpers/renderText';
 import useLang, { LangFn } from '../../hooks/useLang';
 
@@ -63,7 +63,7 @@ const GroupChatInfo: FC<OwnProps & StateProps> = ({
   const {
     loadFullChat,
     openMediaViewer,
-  } = getDispatch();
+  } = getActions();
 
   const isSuperGroup = chat && isChatSuperGroup(chat);
   const { id: chatId, isMin, isRestricted } = chat || {};

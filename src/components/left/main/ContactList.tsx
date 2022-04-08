@@ -1,20 +1,22 @@
 import React, {
   FC, useEffect, useCallback, useMemo, memo,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiUser, ApiUserStatus } from '../../../api/types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import { throttle } from '../../../util/schedulers';
-import { filterUsersByName, sortUserIds } from '../../../modules/helpers';
+import { filterUsersByName, sortUserIds } from '../../../global/helpers';
 import useInfiniteScroll from '../../../hooks/useInfiniteScroll';
 import useHistoryBack from '../../../hooks/useHistoryBack';
+import useLang from '../../../hooks/useLang';
 
 import PrivateChatInfo from '../../common/PrivateChatInfo';
 import InfiniteScroll from '../../ui/InfiniteScroll';
 import ListItem from '../../ui/ListItem';
 import Loading from '../../ui/Loading';
+import FloatingActionButton from '../../ui/FloatingActionButton';
 
 export type OwnProps = {
   filter: string;
@@ -43,7 +45,10 @@ const ContactList: FC<OwnProps & StateProps> = ({
   const {
     loadContactList,
     openChat,
-  } = getDispatch();
+    openNewContactDialog,
+  } = getActions();
+
+  const lang = useLang();
 
   // Due to the parent Transition, this component never gets unmounted,
   // that's why we use throttled API call on every update.
@@ -78,6 +83,7 @@ const ContactList: FC<OwnProps & StateProps> = ({
           <ListItem
             key={id}
             className="chat-item-clickable"
+            // eslint-disable-next-line react/jsx-no-bind
             onClick={() => handleClick(id)}
             ripple={!IS_SINGLE_COLUMN_LAYOUT}
           >
@@ -91,6 +97,13 @@ const ContactList: FC<OwnProps & StateProps> = ({
       ) : (
         <Loading key="loading" />
       )}
+      <FloatingActionButton
+        isShown
+        onClick={openNewContactDialog}
+        ariaLabel={lang('CreateNewContact')}
+      >
+        <i className="icon-add-user-filled" />
+      </FloatingActionButton>
     </InfiniteScroll>
   );
 };

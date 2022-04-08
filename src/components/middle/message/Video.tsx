@@ -1,7 +1,7 @@
 import React, {
   FC, useCallback, useRef, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch } from '../../../lib/teact/teactn';
+import { getActions } from '../../../global';
 
 import { ApiMediaFormat, ApiMessage } from '../../../api/types';
 import { IMediaDimensions } from './helpers/calculateAlbumLayout';
@@ -17,7 +17,7 @@ import {
   getMessageWebPageVideo,
   isForwardedMessage,
   isOwnMessage,
-} from '../../../modules/helpers';
+} from '../../../global/helpers';
 import { ObserveFn, useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useMediaWithLoadProgress from '../../../hooks/useMediaWithLoadProgress';
 import useMedia from '../../../hooks/useMedia';
@@ -138,7 +138,7 @@ const Video: FC<OwnProps> = ({
         onCancelUpload(message);
       }
     } else if (isDownloading) {
-      getDispatch().cancelMessageMediaDownload({ message });
+      getActions().cancelMessageMediaDownload({ message });
     } else if (!fullMediaData) {
       setIsLoadAllowed((isAllowed) => !isAllowed);
     } else if (fullMediaData && !isPlayAllowed) {
@@ -159,20 +159,17 @@ const Video: FC<OwnProps> = ({
       ref={ref}
       id={id}
       className={className}
-      // @ts-ignore teact feature
       style={style}
       onClick={isUploading ? undefined : handleClick}
     >
       <canvas
         ref={thumbRef}
         className="thumbnail"
-        // @ts-ignore teact feature
         style={`width: ${width}px; height: ${height}px;`}
       />
       <img
         src={previewBlobUrl}
         className={buildClassName('thumbnail', previewClassNames)}
-        // @ts-ignore teact feature
         style={`width: ${width}px; height: ${height}px;`}
         alt=""
         draggable={!isProtected}

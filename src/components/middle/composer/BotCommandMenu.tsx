@@ -9,7 +9,7 @@ import Menu from '../../ui/Menu';
 import BotCommand from './BotCommand';
 
 import './BotCommandMenu.scss';
-import { getDispatch } from '../../../lib/teact/teactn';
+import { getActions } from '../../../global';
 
 export type OwnProps = {
   isOpen: boolean;
@@ -20,7 +20,7 @@ export type OwnProps = {
 const BotCommandMenu: FC<OwnProps> = ({
   isOpen, botCommands, onClose,
 }) => {
-  const { sendBotCommand } = getDispatch();
+  const { sendBotCommand } = getActions();
 
   const [handleMouseEnter, handleMouseLeave] = useMouseInside(isOpen, onClose, undefined, IS_SINGLE_COLUMN_LAYOUT);
 
@@ -43,6 +43,7 @@ const BotCommandMenu: FC<OwnProps> = ({
       onMouseEnter={!IS_TOUCH_ENV ? handleMouseEnter : undefined}
       onMouseLeave={!IS_TOUCH_ENV ? handleMouseLeave : undefined}
       noCloseOnBackdrop={!IS_TOUCH_ENV}
+      noCompact
     >
       {botCommands.map((botCommand) => (
         <BotCommand

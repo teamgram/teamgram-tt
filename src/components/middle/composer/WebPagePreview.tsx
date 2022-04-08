@@ -1,11 +1,13 @@
-import React, { FC, memo, useEffect } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import React, {
+  FC, memo, useCallback, useEffect,
+} from '../../../lib/teact/teact';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiMessage, ApiMessageEntityTypes, ApiWebPage } from '../../../api/types';
 import { ISettings } from '../../../types';
 
 import { RE_LINK_TEMPLATE } from '../../../config';
-import { selectNoWebPage, selectTheme } from '../../../modules/selectors';
+import { selectNoWebPage, selectTheme } from '../../../global/selectors';
 import parseMessageInput from '../../../util/parseMessageInput';
 import useOnChange from '../../../hooks/useOnChange';
 import useShowTransition from '../../../hooks/useShowTransition';
@@ -47,7 +49,7 @@ const WebPagePreview: FC<OwnProps & StateProps> = ({
     loadWebPagePreview,
     clearWebPagePreview,
     toggleMessageWebPage,
-  } = getDispatch();
+  } = getActions();
 
   const link = useDebouncedMemo(() => {
     const { text, entities } = parseMessageInput(messageText);
@@ -84,13 +86,13 @@ const WebPagePreview: FC<OwnProps & StateProps> = ({
 
   const renderingWebPage = useCurrentOrPrev(webPagePreview, true);
 
+  const handleClearWebpagePreview = useCallback(() => {
+    toggleMessageWebPage({ chatId, threadId, noWebPage: true });
+  }, [chatId, threadId, toggleMessageWebPage]);
+
   if (!shouldRender || !renderingWebPage) {
     return undefined;
   }
-
-  const handleClearWebpagePreview = () => {
-    toggleMessageWebPage({ chatId, threadId, noWebPage: true });
-  };
 
   // TODO Refactor so `WebPage` can be used without message
   const { photo, ...webPageWithoutPhoto } = renderingWebPage;

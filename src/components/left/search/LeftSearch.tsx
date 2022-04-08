@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useState, useMemo, useRef,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { GlobalSearchContent } from '../../../types';
 
@@ -60,7 +60,7 @@ const LeftSearch: FC<OwnProps & StateProps> = ({
   const {
     setGlobalSearchContent,
     setGlobalSearchDate,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   const [activeTab, setActiveTab] = useState(currentContent);
@@ -90,7 +90,7 @@ const LeftSearch: FC<OwnProps & StateProps> = ({
         renderCount={TRANSITION_RENDER_COUNT}
         activeKey={currentContent}
       >
-        {() => {
+        {(() => {
           switch (currentContent) {
             case GlobalSearchContent.ChatList:
               if (chatId) {
@@ -136,7 +136,7 @@ const LeftSearch: FC<OwnProps & StateProps> = ({
             default:
               return undefined;
           }
-        }}
+        })()}
       </Transition>
     </div>
   );

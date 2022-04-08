@@ -1,7 +1,7 @@
 import React, {
   FC, useMemo, memo, useRef,
 } from '../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../global';
 
 import { ApiMessage, ApiUser, ApiChat } from '../../api/types';
 
@@ -11,12 +11,12 @@ import {
   selectChatMessages,
   selectChat,
   selectCurrentTextSearch,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import {
   getChatTitle,
   getUserFullName,
   isChatChannel,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import useLang from '../../hooks/useLang';
 import useKeyboardListNavigation from '../../hooks/useKeyboardListNavigation';
 import useHistoryBack from '../../hooks/useHistoryBack';
@@ -60,7 +60,7 @@ const RightSearch: FC<OwnProps & StateProps> = ({
   const {
     searchTextMessagesLocal,
     focusMessage,
-  } = getDispatch();
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);

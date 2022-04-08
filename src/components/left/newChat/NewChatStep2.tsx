@@ -1,7 +1,7 @@
 import React, {
   FC, useState, useCallback, useEffect, memo,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ChatCreationProgress } from '../../../types';
 
@@ -42,7 +42,7 @@ const NewChatStep2: FC<OwnProps & StateProps > = ({
   const {
     createGroupChat,
     createChannel,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
 
@@ -125,6 +125,7 @@ const NewChatStep2: FC<OwnProps & StateProps > = ({
           round
           size="smaller"
           color="translucent"
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onReset()}
           ariaLabel="Return to member selection"
         >

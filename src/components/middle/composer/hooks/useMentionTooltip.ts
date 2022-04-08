@@ -1,11 +1,11 @@
 import {
   useCallback, useEffect, useState,
 } from '../../../../lib/teact/teact';
-import { getGlobal } from '../../../../lib/teact/teactn';
+import { getGlobal } from '../../../../global';
 
 import { ApiMessageEntityTypes, ApiChatMember, ApiUser } from '../../../../api/types';
 import { EDITABLE_INPUT_ID } from '../../../../config';
-import { filterUsersByName, getUserFirstOrLastName } from '../../../../modules/helpers';
+import { filterUsersByName, getUserFirstOrLastName } from '../../../../global/helpers';
 import { prepareForRegExp } from '../helpers/prepareForRegExp';
 import focusEditableElement from '../../../../util/focusEditableElement';
 import useFlag from '../../../../hooks/useFlag';
@@ -16,10 +16,10 @@ const runThrottled = throttle((cb) => cb(), 500, true);
 let RE_USERNAME_SEARCH: RegExp;
 
 try {
-  RE_USERNAME_SEARCH = new RegExp('(^|\\s)@[-_\\p{L}\\p{M}\\p{N}]*$', 'gui');
+  RE_USERNAME_SEARCH = /(^|\s)@[-_\p{L}\p{M}\p{N}]*$/gui;
 } catch (e) {
   // Support for older versions of firefox
-  RE_USERNAME_SEARCH = new RegExp('(^|\\s)@[-_\\d\\wа-яё]*$', 'gi');
+  RE_USERNAME_SEARCH = /(^|\s)@[-_\d\wа-яё]*$/gi;
 }
 
 export default function useMentionTooltip(

@@ -1,12 +1,12 @@
 import React, {
   FC, memo, useCallback, useEffect, useRef, useState, useLayoutEffect,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiChat } from '../../api/types';
 
 import { debounce } from '../../util/schedulers';
-import { selectCurrentTextSearch, selectCurrentChat } from '../../modules/selectors';
+import { selectCurrentTextSearch, selectCurrentChat } from '../../global/selectors';
 import { getDayStartAt } from '../../util/dateFormat';
 
 import Button from '../ui/Button';
@@ -43,7 +43,7 @@ const MobileSearchFooter: FC<StateProps> = ({
     focusMessage,
     closeLocalTextSearch,
     openHistoryCalendar,
-  } = getDispatch();
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const inputRef = useRef<HTMLInputElement>(null);
@@ -166,6 +166,7 @@ const MobileSearchFooter: FC<StateProps> = ({
               round
               size="smaller"
               color="translucent"
+              // eslint-disable-next-line react/jsx-no-bind
               onClick={() => openHistoryCalendar({ selectedAt: getDayStartAt(Date.now()) })}
               ariaLabel="Search messages by date"
             >

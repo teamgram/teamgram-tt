@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../global';
 
 import {
   ApiMessage, ApiRestrictionReason, MAIN_THREAD_ID,
@@ -25,13 +25,13 @@ import {
   selectFirstMessageId,
   selectScheduledMessages,
   selectCurrentMessageIds,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import {
   isChatChannel,
   isUserId,
   isChatWithRepliesBot,
   isChatGroup,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import { orderBy } from '../../util/iteratees';
 import { fastRaf, debounce, onTickEnd } from '../../util/schedulers';
 import useLayoutEffectWithPrevDeps from '../../hooks/useLayoutEffectWithPrevDeps';
@@ -48,6 +48,7 @@ import renderText from '../common/helpers/renderText';
 import useLang from '../../hooks/useLang';
 import useWindowSize from '../../hooks/useWindowSize';
 import useInterval from '../../hooks/useInterval';
+import useNativeCopySelectedMessages from '../../hooks/useNativeCopySelectedMessages';
 
 import Loading from '../ui/Loading';
 import MessageListContent from './MessageListContent';
@@ -138,8 +139,8 @@ const MessageList: FC<OwnProps & StateProps> = ({
   withBottomShift,
 }) => {
   const {
-    loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions,
-  } = getDispatch();
+    loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions, copyMessagesByIds,
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
@@ -190,6 +191,8 @@ const MessageList: FC<OwnProps & StateProps> = ({
   useOnChange(() => {
     memoFocusingIdRef.current = focusingId;
   }, [focusingId]);
+
+  useNativeCopySelectedMessages(copyMessagesByIds);
 
   const messageGroups = useMemo(() => {
     if (!messageIds || !messagesById) {
@@ -339,8 +342,6 @@ const MessageList: FC<OwnProps & StateProps> = ({
   // Handles updated message list, takes care of scroll repositioning
   useLayoutEffectWithPrevDeps(([
     prevMessageIds, prevIsViewportNewest, prevContainerHeight,
-  ]: [
-    typeof messageIds, typeof isViewportNewest, typeof containerHeight,
   ]) => {
     const container = containerRef.current!;
     listItemElementsRef.current = Array.from(container.querySelectorAll<HTMLDivElement>('.message-list-item'));
@@ -463,7 +464,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
       console.timeEnd('scrollTop');
     }
     // This should match deps for `useOnChange` above
-  }, [messageIds, isViewportNewest, containerHeight, hasTools]);
+  }, [messageIds, isViewportNewest, containerHeight, hasTools] as const);
 
   useEffectWithPrevDeps(([prevIsSelectModeActive]) => {
     if (prevIsSelectModeActive !== undefined) {

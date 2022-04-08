@@ -5,8 +5,8 @@ import {
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
-import '../../../modules/actions/calls';
+import { getActions, withGlobal } from '../../../global';
+import '../../../global/actions/calls';
 
 import { IAnchorPosition } from '../../../types';
 
@@ -21,7 +21,7 @@ import {
   selectGroupCall,
   selectGroupCallParticipant,
   selectIsAdminInActiveGroupCall,
-} from '../../../modules/selectors/calls';
+} from '../../../global/selectors/calls';
 import useFlag from '../../../hooks/useFlag';
 import useLang from '../../../hooks/useLang';
 
@@ -75,7 +75,7 @@ const GroupCall: FC<OwnProps & StateProps> = ({
     toggleGroupCallPanel,
     connectToActiveGroupCall,
     playGroupCallSound,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   // eslint-disable-next-line no-null/no-null
@@ -123,10 +123,10 @@ const GroupCall: FC<OwnProps & StateProps> = ({
     }
   }, [connectionState, playGroupCallSound]);
 
-  const handleCloseConfirmLeaveModal = () => {
+  const handleCloseConfirmLeaveModal = useCallback(() => {
     closeConfirmLeaveModal();
     setIsEndGroupCallModal(false);
-  };
+  }, [closeConfirmLeaveModal]);
 
   const MainButton: FC<{ onTrigger: () => void; isOpen?: boolean }> = useMemo(() => {
     return ({ onTrigger, isOpen }) => (
@@ -153,13 +153,13 @@ const GroupCall: FC<OwnProps & StateProps> = ({
     }
   }, [closeFullscreen, isFullscreen, openFullscreen]);
 
-  const handleToggleSidebar = () => {
+  const handleToggleSidebar = useCallback(() => {
     if (isSidebarOpen) {
       closeSidebar();
     } else {
       openSidebar();
     }
-  };
+  }, [closeSidebar, isSidebarOpen, openSidebar]);
 
   const handleStreamsDoubleClick = useCallback(() => {
     if (!IS_REQUEST_FULLSCREEN_SUPPORTED) return;
@@ -180,12 +180,12 @@ const GroupCall: FC<OwnProps & StateProps> = ({
     }
   }, [closeFullscreen, isFullscreen, openFullscreen]);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     toggleGroupCallPanel();
     if (isFullscreen) {
       closeFullscreen();
     }
-  };
+  }, [closeFullscreen, isFullscreen, toggleGroupCallPanel]);
 
   useEffect(() => {
     if (!IS_REQUEST_FULLSCREEN_SUPPORTED) return undefined;
@@ -211,16 +211,16 @@ const GroupCall: FC<OwnProps & StateProps> = ({
     connectToActiveGroupCall();
   }, [connectToActiveGroupCall, groupCallId]);
 
-  const endGroupCall = () => {
+  const endGroupCall = useCallback(() => {
     setIsEndGroupCallModal(true);
     setShouldEndGroupCall(true);
     openConfirmLeaveModal();
     if (isFullscreen) {
       handleToggleFullscreen();
     }
-  };
+  }, [handleToggleFullscreen, isFullscreen, openConfirmLeaveModal]);
 
-  const handleLeaveGroupCall = () => {
+  const handleLeaveGroupCall = useCallback(() => {
     if (isAdmin && !isConfirmLeaveModalOpen) {
       openConfirmLeaveModal();
       if (isFullscreen) {
@@ -231,15 +231,18 @@ const GroupCall: FC<OwnProps & StateProps> = ({
     playGroupCallSound({ sound: 'leave' });
     setIsLeaving(true);
     closeConfirmLeaveModal();
-  };
+  }, [
+    closeConfirmLeaveModal, handleToggleFullscreen, isAdmin, isConfirmLeaveModalOpen, isFullscreen,
+    openConfirmLeaveModal, playGroupCallSound,
+  ]);
 
-  const handleCloseAnimationEnd = () => {
+  const handleCloseAnimationEnd = useCallback(() => {
     if (isLeaving) {
       leaveGroupCall({
         shouldDiscard: shouldEndGroupCall,
       });
     }
-  };
+  }, [isLeaving, leaveGroupCall, shouldEndGroupCall]);
 
   return (
     <Modal

@@ -1,18 +1,18 @@
 import React, {
   FC, memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import { GlobalState } from '../../../global/types';
 import { ApiPrivacySettings, SettingsScreens } from '../../../types';
 
 import { ALL_FOLDER_ID, ARCHIVED_FOLDER_ID } from '../../../config';
 import { unique } from '../../../util/iteratees';
-import { filterChatsByName, isChatGroup, isUserId } from '../../../modules/helpers';
+import { filterChatsByName, isUserId } from '../../../global/helpers';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import { useFolderManagerForOrderedIds } from '../../../hooks/useFolderManager';
-import { getPrivacyKey } from './helper/privacy';
+import { getPrivacyKey } from './helpers/privacy';
 
 import Picker from '../../common/Picker';
 import FloatingActionButton from '../../ui/FloatingActionButton';
@@ -39,7 +39,7 @@ const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps> = ({
   currentUserId,
   settings,
 }) => {
-  const { setPrivacySettings } = getDispatch();
+  const { setPrivacySettings } = getActions();
 
   const lang = useLang();
 
@@ -67,7 +67,8 @@ const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps> = ({
     const chatIds = unique([...folderAllOrderedIds || [], ...folderArchivedOrderedIds || []])
       .filter((chatId) => {
         const chat = chatsById[chatId];
-        return chat && ((isUserId(chat.id) && chat.id !== currentUserId) || isChatGroup(chat));
+
+        return chat && isUserId(chat.id) && chat.id !== currentUserId;
       });
 
     return unique([

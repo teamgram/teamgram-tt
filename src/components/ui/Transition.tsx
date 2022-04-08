@@ -2,7 +2,7 @@ import { RefObject } from 'react';
 import React, {
   FC, useLayoutEffect, useRef,
 } from '../../lib/teact/teact';
-import { getGlobal } from '../../lib/teact/teactn';
+import { getGlobal } from '../../global';
 import { GlobalState } from '../../global/types';
 
 import { ANIMATION_LEVEL_MIN } from '../../config';
@@ -15,7 +15,7 @@ import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck'
 
 import './Transition.scss';
 
-type ChildrenFn = (isActive: boolean, isFrom: boolean, currentKey: number) => any;
+export type ChildrenFn = (isActive: boolean, isFrom: boolean, currentKey: number) => React.ReactNode;
 export type TransitionProps = {
   ref?: RefObject<HTMLDivElement>;
   activeKey: number;
@@ -33,10 +33,8 @@ export type TransitionProps = {
   className?: string;
   onStart?: NoneToVoidFunction;
   onStop?: NoneToVoidFunction;
-  children: ChildrenFn;
+  children: React.ReactNode | ChildrenFn;
 };
-
-const CLEANED_UP = Symbol('CLEANED_UP');
 
 const classNames = {
   active: 'Transition__slide--active',
@@ -67,7 +65,7 @@ const Transition: FC<TransitionProps> = ({
     containerRef = ref;
   }
 
-  const rendersRef = useRef<Record<number, ChildrenFn | typeof CLEANED_UP>>({});
+  const rendersRef = useRef<Record<number, React.ReactNode | ChildrenFn>>({});
   const prevActiveKey = usePrevious<any>(activeKey);
   const forceUpdate = useForceUpdate();
 
@@ -81,11 +79,14 @@ const Transition: FC<TransitionProps> = ({
 
   useLayoutEffect(() => {
     function cleanup() {
-      if (!shouldCleanup || (cleanupExceptionKey !== undefined && cleanupExceptionKey === prevActiveKey)) {
+      if (!shouldCleanup) {
         return;
       }
 
-      rendersRef.current = { [prevActiveKey]: CLEANED_UP };
+      const preservedRender = cleanupExceptionKey !== undefined ? rendersRef.current[cleanupExceptionKey] : undefined;
+
+      rendersRef.current = preservedRender ? { [cleanupExceptionKey!]: preservedRender } : {};
+
       forceUpdate();
     }
 
@@ -247,15 +248,20 @@ const Transition: FC<TransitionProps> = ({
   }, [shouldRestoreHeight, children]);
 
   const renders = rendersRef.current;
-  const collection = Object.keys(renderCount ? new Array(renderCount).fill(undefined) : renders).map(Number);
-
-  const contents = collection.map((key) => {
+  const renderKeys = Object.keys(renderCount ? new Array(renderCount).fill(undefined) : renders).map(Number);
+  const contents = renderKeys.map((key) => {
     const render = renders[key];
+    if (!render) {
+      return undefined;
+    }
 
     return (
-      typeof render === 'function' ? (
-        <div key={key} teactOrderKey={key}>{render(key === activeKey, key === prevActiveKey, activeKey)}</div>
-      ) : undefined
+      <div key={key} teactOrderKey={key}>{
+        typeof render === 'function'
+          ? render(key === activeKey, key === prevActiveKey, activeKey)
+          : render
+      }
+      </div>
     );
   });
 
@@ -264,7 +270,7 @@ const Transition: FC<TransitionProps> = ({
       ref={containerRef}
       id={id}
       className={buildClassName('Transition', className, name)}
-      teactFastList={!renderCount && !shouldCleanup}
+      teactFastList={!renderCount}
     >
       {contents}
     </div>

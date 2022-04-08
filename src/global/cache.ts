@@ -1,6 +1,6 @@
-import {
-  addCallback, addReducer, getGlobal, removeCallback,
-} from '../lib/teact/teactn';
+import { addCallback, removeCallback } from '../lib/teact/teactn';
+
+import { addActionHandler, getGlobal } from './index';
 
 import { GlobalState } from './types';
 import { MAIN_THREAD_ID } from '../api/types';
@@ -10,21 +10,28 @@ import {
   DEBUG,
   GLOBAL_STATE_CACHE_DISABLED,
   GLOBAL_STATE_CACHE_KEY,
-  GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT,
-  MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN,
   GLOBAL_STATE_CACHE_USER_LIST_LIMIT,
+  GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT,
+  GLOBAL_STATE_CACHE_CHATS_WITH_MESSAGES_LIMIT,
+  MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN,
   DEFAULT_VOLUME,
   DEFAULT_PLAYBACK_RATE,
+  ALL_FOLDER_ID,
+  ARCHIVED_FOLDER_ID,
 } from '../config';
 import { IS_SINGLE_COLUMN_LAYOUT } from '../util/environment';
 import { isHeavyAnimating } from '../hooks/useHeavyAnimationCheck';
-import { pick } from '../util/iteratees';
-import { selectCurrentMessageList } from '../modules/selectors';
+import { pick, unique } from '../util/iteratees';
+import {
+  selectCurrentChat,
+  selectCurrentMessageList,
+  selectVisibleUsers,
+} from './selectors';
 import { hasStoredSession } from '../util/sessions';
-import { INITIAL_STATE } from './initial';
+import { INITIAL_STATE } from './initialState';
 import { parseLocationHash } from '../util/routing';
-import { LOCATION_HASH } from '../hooks/useHistoryBack';
-import { isUserId } from '../modules/helpers';
+import { isUserId } from './helpers';
+import { getOrderedIds } from '../util/folderManager';
 
 const UPDATE_THROTTLE = 5000;
 
@@ -38,7 +45,7 @@ export function initCache() {
     return;
   }
 
-  addReducer('saveSession', () => {
+  addActionHandler('saveSession', () => {
     if (isCaching) {
       return;
     }
@@ -46,7 +53,7 @@ export function initCache() {
     setupCaching();
   });
 
-  addReducer('reset', () => {
+  addActionHandler('reset', () => {
     localStorage.removeItem(GLOBAL_STATE_CACHE_KEY);
 
     if (!isCaching) {
@@ -112,7 +119,7 @@ function readCache(initialState: GlobalState): GlobalState {
     ...cached,
   };
 
-  const parsedMessageList = !IS_SINGLE_COLUMN_LAYOUT ? parseLocationHash(LOCATION_HASH) : undefined;
+  const parsedMessageList = !IS_SINGLE_COLUMN_LAYOUT ? parseLocationHash() : undefined;
 
   return {
     ...newState,
@@ -189,6 +196,14 @@ function migrateCache(cached: GlobalState, initialState: GlobalState) {
     cached.audioPlayer.playbackRate = DEFAULT_PLAYBACK_RATE;
   }
 
+  if (cached.mediaViewer.volume === undefined) {
+    cached.mediaViewer.volume = DEFAULT_VOLUME;
+  }
+
+  if (cached.mediaViewer.playbackRate === undefined) {
+    cached.mediaViewer.playbackRate = DEFAULT_PLAYBACK_RATE;
+  }
+
   if (!cached.groupCalls) {
     cached.groupCalls = initialState.groupCalls;
   }
@@ -239,6 +254,11 @@ function updateCache() {
       playbackRate: global.audioPlayer.playbackRate,
       isMuted: global.audioPlayer.isMuted,
     },
+    mediaViewer: {
+      volume: global.mediaViewer.volume,
+      playbackRate: global.mediaViewer.playbackRate,
+      isMuted: global.mediaViewer.isMuted,
+    },
     isChatInfoShown: reduceShowChatInfo(global),
     users: reduceUsers(global),
     chats: reduceChats(global),
@@ -263,42 +283,56 @@ function reduceShowChatInfo(global: GlobalState): boolean {
 }
 
 function reduceUsers(global: GlobalState): GlobalState['users'] {
-  const { users: { byId, statusesById, selectedId } } = global;
-  const chatIds = (global.chats.listIds.active || []).slice(0, GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT).filter(isUserId);
-  const userIds = Object.keys(byId);
-  const idsToSave = chatIds.concat(userIds).slice(0, GLOBAL_STATE_CACHE_USER_LIST_LIMIT);
+  const { users: { byId, statusesById }, currentUserId } = global;
+  const { chatId: currentChatId } = selectCurrentMessageList(global) || {};
+  const visibleUserIds = selectVisibleUsers(global)?.map(({ id }) => id);
+
+  const idsToSave = unique([
+    ...currentUserId ? [currentUserId] : [],
+    ...currentChatId && isUserId(currentChatId) ? [currentChatId] : [],
+    ...visibleUserIds || [],
+    ...global.topPeers.userIds || [],
+    ...getOrderedIds(ALL_FOLDER_ID)?.filter(isUserId) || [],
+    ...getOrderedIds(ARCHIVED_FOLDER_ID)?.filter(isUserId) || [],
+    ...global.contactList?.userIds || [],
+    ...global.globalSearch.recentlyFoundChatIds?.filter(isUserId) || [],
+    ...Object.keys(byId),
+  ]).slice(0, GLOBAL_STATE_CACHE_USER_LIST_LIMIT);
 
   return {
     byId: pick(byId, idsToSave),
     statusesById: pick(statusesById, idsToSave),
-    selectedId: window.innerWidth > MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN ? selectedId : undefined,
   };
 }
 
 function reduceChats(global: GlobalState): GlobalState['chats'] {
-  const newListIds = (global.chats.listIds.active || []).slice(0, GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT);
-  const { chatId: currentChatId } = selectCurrentMessageList(global) || {};
-  const idsToSave = newListIds.concat(currentChatId ? [currentChatId] : []);
+  const { chats: { byId }, currentUserId } = global;
+  const currentChat = selectCurrentChat(global);
+  const idsToSave = unique([
+    ...currentUserId ? [currentUserId] : [],
+    ...currentChat ? [currentChat.id] : [],
+    ...getOrderedIds(ALL_FOLDER_ID) || [],
+    ...getOrderedIds(ARCHIVED_FOLDER_ID) || [],
+    ...global.globalSearch.recentlyFoundChatIds || [],
+    ...Object.keys(byId),
+  ]).slice(0, GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT);
 
   return {
     ...global.chats,
-    byId: pick(global.chats.byId, idsToSave),
-    listIds: {
-      active: newListIds,
-    },
     isFullyLoaded: {},
-    orderedPinnedIds: {
-      active: global.chats.orderedPinnedIds.active,
-    },
+    byId: pick(global.chats.byId, idsToSave),
   };
 }
 
 function reduceMessages(global: GlobalState): GlobalState['messages'] {
+  const { currentUserId } = global;
   const byChatId: GlobalState['messages']['byChatId'] = {};
   const { chatId: currentChatId } = selectCurrentMessageList(global) || {};
-
-  const chatIds = (global.chats.listIds.active || []).slice(0, GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT);
-  const chatIdsToSave = chatIds.concat(currentChatId ? [currentChatId] : []);
+  const chatIdsToSave = [
+    ...currentChatId ? [currentChatId] : [],
+    ...currentUserId ? [currentUserId] : [],
+    ...getOrderedIds(ALL_FOLDER_ID)?.slice(0, GLOBAL_STATE_CACHE_CHATS_WITH_MESSAGES_LIMIT) || [],
+  ];
 
   chatIdsToSave.forEach((chatId) => {
     const current = global.messages.byChatId[chatId];

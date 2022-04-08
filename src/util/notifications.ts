@@ -1,27 +1,33 @@
 import { callApi } from '../api/gramjs';
 import {
-  ApiChat, ApiMediaFormat, ApiMessage, ApiUser,
+  ApiChat, ApiMediaFormat, ApiMessage, ApiUser, ApiUserReaction,
 } from '../api/types';
 import { renderActionMessageText } from '../components/common/helpers/renderActionMessageText';
 import { DEBUG, IS_TEST } from '../config';
-import { getDispatch, getGlobal, setGlobal } from '../lib/teact/teactn';
+import { getActions, getGlobal, setGlobal } from '../global';
 import {
   getChatAvatarHash,
   getChatTitle,
   getMessageAction,
+  getMessageRecentReaction,
   getMessageSenderName,
   getMessageSummaryText,
   getPrivateChatUserId,
   isActionMessage,
   isChatChannel,
-  selectIsChatMuted, selectShouldShowMessagePreview,
-} from '../modules/helpers';
-import { getTranslation } from './langProvider';
-import { addNotifyExceptions, replaceSettings } from '../modules/reducers';
+  selectIsChatMuted,
+  selectShouldShowMessagePreview,
+} from '../global/helpers';
+import { addNotifyExceptions, replaceSettings } from '../global/reducers';
 import {
-  selectChatMessage, selectNotifyExceptions, selectNotifySettings, selectUser,
-} from '../modules/selectors';
-import { IS_SERVICE_WORKER_SUPPORTED } from './environment';
+  selectChatMessage,
+  selectCurrentMessageList,
+  selectNotifyExceptions,
+  selectNotifySettings,
+  selectUser,
+} from '../global/selectors';
+import { IS_SERVICE_WORKER_SUPPORTED, IS_TOUCH_ENV } from './environment';
+import { getTranslation } from './langProvider';
 import * as mediaLoader from './mediaLoader';
 import { debounce } from './schedulers';
 
@@ -137,7 +143,7 @@ async function requestPermission() {
 
 async function unsubscribeFromPush(subscription: PushSubscription | null) {
   const global = getGlobal();
-  const dispatch = getDispatch();
+  const dispatch = getActions();
   if (subscription) {
     try {
       const deviceToken = getDeviceToken(subscription);
@@ -212,7 +218,7 @@ export async function subscribe() {
       console.log('[PUSH] Received push subscription: ', deviceToken);
     }
     await callApi('registerDevice', deviceToken);
-    getDispatch()
+    getActions()
       .setDeviceToken(deviceToken);
   } catch (error: any) {
     if (Notification.permission === 'denied' as NotificationPermission) {
@@ -247,16 +253,27 @@ function checkIfShouldNotify(chat: ApiChat) {
   if (isMuted || chat.isNotJoined || !chat.isListed) {
     return false;
   }
-
+  // On touch devices show notifications when chat is not active
+  if (IS_TOUCH_ENV) {
+    const {
+      chatId,
+      type,
+    } = selectCurrentMessageList(global) || {};
+    return !(chatId === chat.id && type === 'thread');
+  }
+  // On desktop show notifications when window is not focused
   return !document.hasFocus();
 }
 
-function getNotificationContent(chat: ApiChat, message: ApiMessage) {
+function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: ApiUserReaction) {
   const global = getGlobal();
   const {
-    senderId,
     replyToMessageId,
   } = message;
+  let {
+    senderId,
+  } = message;
+  if (reaction) senderId = reaction.userId;
 
   const messageSender = senderId ? selectUser(global, senderId) : undefined;
   const messageAction = getMessageAction(message as ApiMessage);
@@ -292,7 +309,7 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage) {
       ) as string;
     } else {
       const senderName = getMessageSenderName(getTranslation, chat.id, messageSender);
-      const summary = getMessageSummaryText(getTranslation, message);
+      const summary = getMessageSummaryText(getTranslation, message, false, 60, false);
 
       body = senderName ? `${senderName}: ${summary}` : summary;
     }
@@ -317,44 +334,50 @@ async function getAvatar(chat: ApiChat) {
   return mediaData;
 }
 
-export async function notifyAboutNewMessage({
+export async function notifyAboutMessage({
   chat,
   message,
-}: { chat: ApiChat; message: Partial<ApiMessage> }) {
+  isReaction = false,
+}: { chat: ApiChat; message: Partial<ApiMessage>; isReaction?: boolean }) {
   const { hasWebNotifications } = await loadNotificationSettings();
   if (!checkIfShouldNotify(chat)) return;
   const areNotificationsSupported = checkIfNotificationsSupported();
   if (!hasWebNotifications || !areNotificationsSupported) {
-    // only play sound if web notifications are disabled
+    // Do not play notification sound for reactions if web notifications are disabled
+    if (isReaction) return;
+    // Only play sound if web notifications are disabled
     playNotifySoundDebounced(String(message.id) || chat.id);
     return;
   }
   if (!areNotificationsSupported) return;
+
   if (!message.id) return;
+
+  const activeReaction = getMessageRecentReaction(message);
+  const icon = await getAvatar(chat);
 
   const {
     title,
     body,
-  } = getNotificationContent(chat, message as ApiMessage);
-
-  const icon = await getAvatar(chat);
+  } = getNotificationContent(chat, message as ApiMessage, activeReaction);
 
   if (checkIfPushSupported()) {
     if (navigator.serviceWorker?.controller) {
       // notify service worker about new message notification
       navigator.serviceWorker.controller.postMessage({
-        type: 'newMessageNotification',
+        type: 'showMessageNotification',
         payload: {
           title,
           body,
           icon,
           chatId: chat.id,
           messageId: message.id,
+          reaction: activeReaction?.reaction,
         },
       });
     }
   } else {
-    const dispatch = getDispatch();
+    const dispatch = getActions();
     const options: NotificationOptions = {
       body,
       icon,
@@ -374,6 +397,12 @@ export async function notifyAboutNewMessage({
         chatId: chat.id,
         messageId: message.id,
       });
+      if (activeReaction) {
+        dispatch.startActiveReaction({
+          messageId: message.id,
+          reaction: activeReaction.reaction,
+        });
+      }
       if (window.focus) {
         window.focus();
       }
@@ -381,6 +410,8 @@ export async function notifyAboutNewMessage({
 
     // Play sound when notification is displayed
     notification.onshow = () => {
+      // TODO Remove when reaction badges are implemented
+      if (isReaction) return;
       playNotifySoundDebounced(String(message.id) || chat.id);
     };
   }

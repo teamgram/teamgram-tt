@@ -21,10 +21,11 @@ import {
 } from './auth';
 import { updater } from '../updater';
 import { setMessageBuilderCurrentUserId } from '../apiBuilders/messages';
-import downloadMediaWithClient from './media';
+import downloadMediaWithClient, { parseMediaUrl } from './media';
 import { buildApiUserFromFull } from '../apiBuilders/users';
 import localDb from '../localDb';
 import { buildApiPeerId } from '../apiBuilders/peers';
+import { addMessageToLocalDb } from '../helpers';
 
 const DEFAULT_USER_AGENT = 'Unknown UserAgent';
 const DEFAULT_PLATFORM = 'Unknown platform';
@@ -168,6 +169,8 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
   request: T,
   shouldReturnTrue: true,
   shouldThrow?: boolean,
+  shouldIgnoreUpdates?: undefined,
+  dcId?: number,
 ): Promise<true | undefined>;
 
 export async function invokeRequest<T extends GramJs.AnyRequest>(
@@ -175,6 +178,7 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
   shouldReturnTrue?: boolean,
   shouldThrow?: boolean,
   shouldIgnoreUpdates?: boolean,
+  dcId?: number,
 ): Promise<T['__response'] | undefined>;
 
 export async function invokeRequest<T extends GramJs.AnyRequest>(
@@ -182,6 +186,7 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
   shouldReturnTrue = false,
   shouldThrow = false,
   shouldIgnoreUpdates = false,
+  dcId?: number,
 ) {
   if (!isConnected) {
     if (DEBUG) {
@@ -198,7 +203,7 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
       console.log(`[GramJs/client] INVOKE ${request.className}`);
     }
 
-    const result = await client.invoke(request);
+    const result = await client.invoke(request, dcId);
 
     if (DEBUG) {
       // eslint-disable-next-line no-console
@@ -262,7 +267,21 @@ export function downloadMedia(
   args: { url: string; mediaFormat: ApiMediaFormat; start?: number; end?: number; isHtmlAllowed?: boolean },
   onProgress?: ApiOnProgress,
 ) {
-  return downloadMediaWithClient(args, client, isConnected, onProgress);
+  return downloadMediaWithClient(args, client, isConnected, onProgress).catch(async (err) => {
+    if (err.message.startsWith('FILE_REFERENCE')) {
+      const isFileReferenceRepaired = await repairFileReference({ url: args.url });
+      if (!isFileReferenceRepaired) {
+        if (DEBUG) {
+          // eslint-disable-next-line no-console
+          console.error('Failed to repair file reference', args.url);
+        }
+        return undefined;
+      }
+
+      return downloadMediaWithClient(args, client, isConnected, onProgress);
+    }
+    return undefined;
+  });
 }
 
 export function uploadFile(file: File, onProgress?: ApiOnProgress) {
@@ -334,4 +353,51 @@ async function handleTerminatedSession() {
       });
     }
   }
+}
+
+export async function repairFileReference({
+  url,
+}: {
+  url: string;
+}) {
+  const parsed = parseMediaUrl(url);
+
+  if (!parsed) return undefined;
+
+  const {
+    entityType, entityId, mediaMatchType,
+  } = parsed;
+
+  if (mediaMatchType === 'file') {
+    return false;
+  }
+
+  if (entityType === 'msg') {
+    const entity = localDb.messages[entityId]!;
+    const messageId = entity.id;
+
+    const peer = 'channelId' in entity.peerId ? new GramJs.InputChannel({
+      channelId: entity.peerId.channelId,
+      accessHash: (localDb.chats[buildApiPeerId(entity.peerId.channelId, 'channel')] as GramJs.Channel).accessHash!,
+    }) : undefined;
+    const result = await invokeRequest(
+      peer
+        ? new GramJs.channels.GetMessages({
+          channel: peer,
+          id: [new GramJs.InputMessageID({ id: messageId })],
+        })
+        : new GramJs.messages.GetMessages({
+          id: [new GramJs.InputMessageID({ id: messageId })],
+        }),
+    );
+
+    if (!result || result instanceof GramJs.messages.MessagesNotModified) return false;
+
+    const message = result.messages[0];
+    if (message instanceof GramJs.MessageEmpty) return false;
+    addMessageToLocalDb(message);
+    return true;
+  }
+
+  return false;
 }

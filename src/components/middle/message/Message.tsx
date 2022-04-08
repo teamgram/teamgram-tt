@@ -6,7 +6,7 @@ import React, {
   useMemo,
   useRef,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ActiveEmojiInteraction, ActiveReaction, MessageListType } from '../../../global/types';
 import {
@@ -53,7 +53,7 @@ import {
   selectIsMessageProtected,
   selectLocalAnimatedEmojiEffect,
   selectDefaultReaction,
-} from '../../../modules/selectors';
+} from '../../../global/selectors';
 import {
   getMessageContent,
   isOwnMessage,
@@ -68,7 +68,9 @@ import {
   getSenderTitle,
   getUserColorKey,
   areReactionsEmpty,
-} from '../../../modules/helpers';
+  getMessageHtmlId,
+  isGeoLiveExpired,
+} from '../../../global/helpers';
 import buildClassName from '../../../util/buildClassName';
 import useEnsureMessage from '../../../hooks/useEnsureMessage';
 import useContextMenuHandlers from '../../../hooks/useContextMenuHandlers';
@@ -86,6 +88,7 @@ import useFlag from '../../../hooks/useFlag';
 import useFocusMessage from './hooks/useFocusMessage';
 import useOuterHandlers from './hooks/useOuterHandlers';
 import useInnerHandlers from './hooks/useInnerHandlers';
+import { getServerTime } from '../../../util/serverTime';
 
 import Button from '../../ui/Button';
 import Avatar from '../../common/Avatar';
@@ -102,6 +105,7 @@ import Contact from './Contact';
 import Poll from './Poll';
 import WebPage from './WebPage';
 import Invoice from './Invoice';
+import Location from './Location';
 import Album from './Album';
 import RoundVideo from './RoundVideo';
 import InlineButtons from './InlineButtons';
@@ -143,6 +147,7 @@ type StateProps = {
   forceSenderName?: boolean;
   chatUsername?: string;
   sender?: ApiUser | ApiChat;
+  canShowSender: boolean;
   originSender?: ApiUser | ApiChat;
   botSender?: ApiUser;
   isThreadTop?: boolean;
@@ -163,6 +168,7 @@ type StateProps = {
   isChannel?: boolean;
   canReply?: boolean;
   lastSyncTime?: number;
+  serverTimeOffset: number;
   highlight?: string;
   isSingleEmoji?: boolean;
   animatedEmoji?: ApiSticker;
@@ -185,7 +191,7 @@ type StateProps = {
   availableReactions?: ApiAvailableReaction[];
   defaultReaction?: string;
   activeReaction?: ActiveReaction;
-  activeEmojiInteraction?: ActiveEmojiInteraction;
+  activeEmojiInteractions?: ActiveEmojiInteraction[];
 };
 
 type MetaPosition =
@@ -227,6 +233,7 @@ const Message: FC<OwnProps & StateProps> = ({
   theme,
   forceSenderName,
   sender,
+  canShowSender,
   originSender,
   botSender,
   isThreadTop,
@@ -247,6 +254,7 @@ const Message: FC<OwnProps & StateProps> = ({
   isChannel,
   canReply,
   lastSyncTime,
+  serverTimeOffset,
   highlight,
   animatedEmoji,
   localSticker,
@@ -261,7 +269,7 @@ const Message: FC<OwnProps & StateProps> = ({
   availableReactions,
   defaultReaction,
   activeReaction,
-  activeEmojiInteraction,
+  activeEmojiInteractions,
   messageListType,
   isPinnedList,
   isDownloading,
@@ -275,7 +283,7 @@ const Message: FC<OwnProps & StateProps> = ({
     toggleMessageSelection,
     clickInlineButton,
     disableContextMenuHint,
-  } = getDispatch();
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);
@@ -338,7 +346,7 @@ const Message: FC<OwnProps & StateProps> = ({
     !(isContextMenuShown || isInSelectMode || isForwarding)
     && !isInDocumentGroupNotLast
   );
-  const canForward = isChannel && !isScheduled;
+  const canForward = isChannel && !isScheduled && !isProtected;
   const canFocus = Boolean(isPinnedList
     || (forwardInfo
       && (forwardInfo.isChannelPost || (isChatWithSelf && !isOwn) || isRepliesChat)
@@ -346,7 +354,7 @@ const Message: FC<OwnProps & StateProps> = ({
     ));
 
   const withCommentButton = threadInfo && !isInDocumentGroupNotLast && messageListType === 'thread' && !noComments;
-  const withQuickReactionButton = !IS_TOUCH_ENV && defaultReaction && !isInDocumentGroupNotLast;
+  const withQuickReactionButton = !IS_TOUCH_ENV && !isInSelectMode && defaultReaction && !isInDocumentGroupNotLast;
 
   const selectMessage = useCallback((e?: React.MouseEvent<HTMLDivElement, MouseEvent>, groupedId?: string) => {
     toggleMessageSelection({
@@ -357,8 +365,10 @@ const Message: FC<OwnProps & StateProps> = ({
     });
   }, [toggleMessageSelection, messageId, isAlbum, album]);
 
-  const avatarPeer = forwardInfo && (isChatWithSelf || isRepliesChat || !sender) ? originSender : sender;
-  const senderPeer = forwardInfo ? originSender : sender;
+  const messageSender = canShowSender ? sender : undefined;
+
+  const avatarPeer = forwardInfo && (isChatWithSelf || isRepliesChat || !messageSender) ? originSender : messageSender;
+  const senderPeer = forwardInfo ? originSender : messageSender;
 
   const {
     handleMouseDown,
@@ -449,6 +459,11 @@ const Message: FC<OwnProps & StateProps> = ({
     transitionClassNames,
     Boolean(activeReaction) && 'has-active-reaction',
   );
+
+  const {
+    text, photo, video, audio, voice, document, sticker, contact, poll, webPage, invoice, location,
+  } = getMessageContent(message);
+
   const contentClassName = buildContentClassName(message, {
     hasReply,
     customShape,
@@ -459,14 +474,11 @@ const Message: FC<OwnProps & StateProps> = ({
     hasComments: threadInfo && threadInfo?.messagesCount > 0,
     hasActionButton: canForward || canFocus,
     hasReactions,
+    isGeoLiveActive: location?.type === 'geoLive' && !isGeoLiveExpired(message, getServerTime(serverTimeOffset)),
   });
 
   const withAppendix = contentClassName.includes('has-appendix');
   const textParts = renderMessageText(message, highlight, isEmojiOnlyMessage(customShape));
-
-  const {
-    text, photo, video, audio, voice, document, sticker, contact, poll, webPage, invoice,
-  } = getMessageContent(message);
 
   let metaPosition!: MetaPosition;
   if (isInDocumentGroupNotLast) {
@@ -565,6 +577,7 @@ const Message: FC<OwnProps & StateProps> = ({
     const meta = (
       <MessageMeta
         message={message}
+        reactionMessage={reactionMessage}
         outgoingStatus={outgoingStatus}
         signature={signature}
         withReactions={reactionsPosition === 'in-meta'}
@@ -636,7 +649,7 @@ const Message: FC<OwnProps & StateProps> = ({
             forceLoadPreview={isLocal}
             messageId={messageId}
             chatId={chatId}
-            activeEmojiInteraction={activeEmojiInteraction}
+            activeEmojiInteractions={activeEmojiInteractions}
           />
         )}
         {localSticker && (
@@ -651,7 +664,7 @@ const Message: FC<OwnProps & StateProps> = ({
             forceLoadPreview={isLocal}
             messageId={messageId}
             chatId={chatId}
-            activeEmojiInteraction={activeEmojiInteraction}
+            activeEmojiInteractions={activeEmojiInteractions}
           />
         )}
         {isAlbum && (
@@ -763,13 +776,25 @@ const Message: FC<OwnProps & StateProps> = ({
           />
         )}
         {invoice && <Invoice message={message} />}
+        {location && (
+          <Location
+            message={message}
+            lastSyncTime={lastSyncTime}
+            isInSelectMode={isInSelectMode}
+            isSelected={isSelected}
+            theme={theme}
+            peer={sender}
+            serverTimeOffset={serverTimeOffset}
+          />
+        )}
       </div>
     );
   }
 
   function renderSenderName() {
+    const media = photo || video || location;
     const shouldRender = !(customShape && !viaBotId) && (
-      (withSenderName && !photo && !video) || asForwarded || viaBotId || forceSenderName
+      (withSenderName && !media) || asForwarded || viaBotId || forceSenderName
     ) && !isInDocumentGroupNotFirst && !(hasReply && customShape);
 
     if (!shouldRender) {
@@ -824,9 +849,8 @@ const Message: FC<OwnProps & StateProps> = ({
   return (
     <div
       ref={ref}
-      id={`message${messageId}`}
+      id={getMessageHtmlId(message.id)}
       className={containerClassName}
-      // @ts-ignore teact feature
       style={metaSafeAuthorWidth ? `--meta-safe-author-width: ${metaSafeAuthorWidth}px` : undefined}
       data-message-id={messageId}
       onMouseDown={handleMouseDown}
@@ -866,7 +890,6 @@ const Message: FC<OwnProps & StateProps> = ({
         <div
           ref={contentRef}
           className={contentClassName}
-          // @ts-ignore
           style={style}
           dir="auto"
         >
@@ -941,7 +964,9 @@ const Message: FC<OwnProps & StateProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   (global, ownProps): StateProps => {
-    const { focusedMessage, forwardMessages, lastSyncTime } = global;
+    const {
+      focusedMessage, forwardMessages, lastSyncTime, serverTimeOffset,
+    } = global;
     const {
       message, album, withSenderName, withAvatar, threadId, messageListType, isLastInDocumentGroup,
     } = ownProps;
@@ -1014,7 +1039,8 @@ export default memo(withGlobal<OwnProps>(
       theme: selectTheme(global),
       chatUsername,
       forceSenderName,
-      sender: canShowSender ? sender : undefined,
+      sender,
+      canShowSender,
       originSender,
       botSender,
       shouldHideReply,
@@ -1031,6 +1057,7 @@ export default memo(withGlobal<OwnProps>(
       isChannel,
       canReply,
       lastSyncTime,
+      serverTimeOffset,
       highlight,
       isSingleEmoji: Boolean(singleEmoji),
       animatedEmoji: singleEmoji ? selectAnimatedEmoji(global, singleEmoji) : undefined,
@@ -1054,9 +1081,9 @@ export default memo(withGlobal<OwnProps>(
       shouldLoopStickers: selectShouldLoopStickers(global),
       threadInfo: actualThreadInfo,
       availableReactions: global.availableReactions,
-      defaultReaction: selectDefaultReaction(global, chatId),
-      activeReaction: global.activeReactions[id],
-      activeEmojiInteraction: global.activeEmojiInteraction,
+      defaultReaction: isMessageLocal(message) ? undefined : selectDefaultReaction(global, chatId),
+      activeReaction: reactionMessage && global.activeReactions[reactionMessage.id],
+      activeEmojiInteractions: global.activeEmojiInteractions,
       ...(isOutgoing && { outgoingStatus: selectOutgoingStatus(global, message, messageListType === 'scheduled') }),
       ...(typeof uploadProgress === 'number' && { uploadProgress }),
       ...(isFocused && { focusDirection, noFocusHighlight, isResizingContainer }),

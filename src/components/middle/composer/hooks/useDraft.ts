@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo } from '../../../../lib/teact/teact';
-import { getDispatch } from '../../../../lib/teact/teactn';
+import { getActions } from '../../../../global';
 
 import { ApiFormattedText, ApiMessage } from '../../../../api/types';
 
-import { DRAFT_DEBOUNCE, EDITABLE_INPUT_ID } from '../../../../config';
+import { DRAFT_DEBOUNCE, EDITABLE_INPUT_CSS_SELECTOR } from '../../../../config';
 import usePrevious from '../../../../hooks/usePrevious';
 import { debounce } from '../../../../util/schedulers';
 import focusEditableElement from '../../../../util/focusEditableElement';
@@ -25,13 +25,14 @@ const useDraft = (
   setHtml: (html: string) => void,
   editedMessage: ApiMessage | undefined,
 ) => {
-  const { saveDraft, clearDraft } = getDispatch();
+  const { saveDraft, clearDraft } = getActions();
 
   const updateDraft = useCallback((draftChatId: string, draftThreadId: number) => {
     const currentHtml = htmlRef.current;
-    if (currentHtml.length && !editedMessage) {
+    if (editedMessage) return;
+    if (currentHtml.length) {
       saveDraft({ chatId: draftChatId, threadId: draftThreadId, draft: parseMessageInput(currentHtml!) });
-    } else {
+    } else if (currentHtml !== undefined) {
       clearDraft({ chatId: draftChatId, threadId: draftThreadId });
     }
   }, [clearDraft, editedMessage, htmlRef, saveDraft]);
@@ -61,7 +62,7 @@ const useDraft = (
       return;
     }
 
-    if (!draft) {
+    if (editedMessage || !draft) {
       return;
     }
 
@@ -69,11 +70,13 @@ const useDraft = (
 
     if (!IS_TOUCH_ENV) {
       requestAnimationFrame(() => {
-        const messageInput = document.getElementById(EDITABLE_INPUT_ID)!;
-        focusEditableElement(messageInput, true);
+        const messageInput = document.querySelector<HTMLDivElement>(EDITABLE_INPUT_CSS_SELECTOR);
+        if (messageInput) {
+          focusEditableElement(messageInput, true);
+        }
       });
     }
-  }, [chatId, threadId, draft, setHtml, updateDraft, prevChatId, prevThreadId]);
+  }, [chatId, threadId, draft, setHtml, updateDraft, prevChatId, prevThreadId, editedMessage]);
 
   const html = htmlRef.current;
   // Update draft when input changes

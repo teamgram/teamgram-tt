@@ -2,7 +2,7 @@ import { ChangeEvent, MutableRefObject, RefObject } from 'react';
 import React, {
   FC, memo, useCallback, useEffect, useRef, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { SettingsScreens, ThemeKey } from '../../../types';
 
@@ -11,7 +11,7 @@ import {
   getPatternColor, hex2rgb, hsb2rgb, rgb2hex, rgb2hsb,
 } from '../../../util/colors';
 import { captureEvents, RealTouchEvent } from '../../../util/captureEvents';
-import { selectTheme } from '../../../modules/selectors';
+import { selectTheme } from '../../../global/selectors';
 import useFlag from '../../../hooks/useFlag';
 import buildClassName from '../../../util/buildClassName';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -57,7 +57,7 @@ const SettingsGeneralBackground: FC<OwnProps & StateProps> = ({
   theme,
   backgroundColor,
 }) => {
-  const { setThemeSettings } = getDispatch();
+  const { setThemeSettings } = getActions();
 
   const themeRef = useRef<string>();
   themeRef.current = theme;
@@ -214,7 +214,6 @@ const SettingsGeneralBackground: FC<OwnProps & StateProps> = ({
           <canvas />
           <div
             className="handle"
-            // @ts-ignore
             style={`transform: translate(${colorPosition[0]}px, ${colorPosition[1]}px); background-color: #${hex};`}
           />
         </div>
@@ -222,7 +221,6 @@ const SettingsGeneralBackground: FC<OwnProps & StateProps> = ({
           <canvas />
           <div
             className="handle"
-            // @ts-ignore
             style={`transform: translateX(${huePosition}px); background-color: #${hueHex};`}
           />
         </div>
@@ -236,7 +234,6 @@ const SettingsGeneralBackground: FC<OwnProps & StateProps> = ({
           <div
             className={color === `#${hex}` ? 'active' : undefined}
             data-color={color}
-            // @ts-ignore
             style={`background-color: ${color};`}
             onClick={handlePredefinedColorClick}
           />

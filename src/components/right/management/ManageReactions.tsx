@@ -1,11 +1,11 @@
 import React, {
   FC, memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiAvailableReaction, ApiChat } from '../../../api/types';
 
-import { selectChat } from '../../../modules/selectors';
+import { selectChat } from '../../../global/selectors';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 
@@ -33,7 +33,7 @@ const ManageReactions: FC<OwnProps & StateProps> = ({
   isActive,
   onClose,
 }) => {
-  const { setChatEnabledReactions } = getDispatch();
+  const { setChatEnabledReactions } = getActions();
 
   const lang = useLang();
   const [isTouched, setIsTouched] = useState(false);

@@ -42,7 +42,8 @@ export interface ApiChat {
   isNotJoined?: boolean;
   isListed?: boolean;
   isCreator?: boolean;
-  isRestricted?: boolean;
+  isForbidden?: boolean; // Forbidden - can't send messages (user was kicked, for example)
+  isRestricted?: boolean; // Restricted - can't access the chat (user was banned or chat is violating rules)
   restrictionReason?: ApiRestrictionReason;
   adminRights?: ApiChatAdminRights;
   currentUserBannedRights?: ApiChatBannedRights;
@@ -53,6 +54,8 @@ export interface ApiChat {
     accessHash?: string;
   };
 
+  // Obtained from GetChatSettings
+  settings?: ApiChatSettings;
   // Obtained from GetFullChat / GetFullChannel
   fullInfo?: ApiChatFullInfo;
   // Obtained with UpdateUserTyping or UpdateChatUserTyping updates
@@ -91,8 +94,10 @@ export interface ApiChatFullInfo {
   botCommands?: ApiBotCommand[];
   enabledReactions?: string[];
   sendAsId?: string;
+  canViewStatistics?: boolean;
   recentRequesterIds?: string[];
   requestsPending?: number;
+  statisticsDcId?: number;
 }
 
 export interface ApiChatMember {
@@ -158,4 +163,11 @@ export interface ApiChatFolder {
   pinnedChatIds?: string[];
   includedChatIds: string[];
   excludedChatIds: string[];
+}
+
+export interface ApiChatSettings {
+  isAutoArchived?: boolean;
+  canReportSpam?: boolean;
+  canAddContact?: boolean;
+  canBlockContact?: boolean;
 }

@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useMemo,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiChat, ApiUser } from '../../../api/types';
 import { ApiPrivacySettings, SettingsScreens } from '../../../types';
@@ -11,7 +11,7 @@ import useHistoryBack from '../../../hooks/useHistoryBack';
 
 import ListItem from '../../ui/ListItem';
 import RadioGroup from '../../ui/RadioGroup';
-import { getPrivacyKey } from './helper/privacy';
+import { getPrivacyKey } from './helpers/privacy';
 
 type OwnProps = {
   screen: SettingsScreens;
@@ -38,7 +38,7 @@ const SettingsPrivacyVisibility: FC<OwnProps & StateProps> = ({
   blockChatIds,
   chatsById,
 }) => {
-  const { setPrivacyVisibility } = getDispatch();
+  const { setPrivacyVisibility } = getActions();
 
   const lang = useLang();
 
@@ -176,6 +176,7 @@ const SettingsPrivacyVisibility: FC<OwnProps & StateProps> = ({
           <ListItem
             narrow
             icon="add-user"
+            // eslint-disable-next-line react/jsx-no-bind
             onClick={() => {
               onScreenSelect(allowedContactsScreen);
             }}
@@ -191,6 +192,7 @@ const SettingsPrivacyVisibility: FC<OwnProps & StateProps> = ({
           <ListItem
             narrow
             icon="delete-user"
+            // eslint-disable-next-line react/jsx-no-bind
             onClick={() => {
               onScreenSelect(deniedContactsScreen);
             }}

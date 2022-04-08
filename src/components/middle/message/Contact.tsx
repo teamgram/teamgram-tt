@@ -1,9 +1,9 @@
 import React, { FC, useCallback } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiUser, ApiContact, ApiCountryCode } from '../../../api/types';
 
-import { selectUser } from '../../../modules/selectors';
+import { selectUser } from '../../../global/selectors';
 import { formatPhoneNumberWithCode } from '../../../util/phoneNumber';
 import buildClassName from '../../../util/buildClassName';
 
@@ -23,7 +23,7 @@ type StateProps = {
 const Contact: FC<OwnProps & StateProps> = ({
   contact, user, phoneCodeList,
 }) => {
-  const { openUserInfo } = getDispatch();
+  const { openChat } = getActions();
 
   const {
     firstName,
@@ -33,8 +33,8 @@ const Contact: FC<OwnProps & StateProps> = ({
   } = contact;
 
   const handleClick = useCallback(() => {
-    openUserInfo({ id: userId });
-  }, [openUserInfo, userId]);
+    openChat({ id: userId });
+  }, [openChat, userId]);
 
   return (
     <div

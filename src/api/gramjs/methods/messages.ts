@@ -229,8 +229,19 @@ export function sendMessage(
   onProgress?: ApiOnProgress,
 ) {
   const localMessage = buildLocalMessage(
-    chat, text, entities, replyingTo, attachment, sticker, gif, poll, contact, groupedId, scheduledAt,
-    sendAs, serverTimeOffset,
+    chat,
+    text,
+    entities,
+    replyingTo,
+    attachment,
+    sticker,
+    gif,
+    poll,
+    contact,
+    groupedId,
+    scheduledAt,
+    sendAs,
+    serverTimeOffset,
   );
   onUpdate({
     '@type': localMessage.isScheduled ? 'newScheduledMessage' : 'newMessage',
@@ -523,10 +534,9 @@ export async function rescheduleMessage({
 
 async function uploadMedia(localMessage: ApiMessage, attachment: ApiAttachment, onProgress: ApiOnProgress) {
   const {
-    filename, blobUrl, mimeType, quick, voice,
+    filename, blobUrl, mimeType, quick, voice, audio, previewBlobUrl,
   } = attachment;
 
-  const file = await fetchFile(blobUrl, filename);
   const patchedOnProgress: ApiOnProgress = (progress) => {
     if (onProgress.isCanceled) {
       patchedOnProgress.isCanceled = true;
@@ -534,7 +544,12 @@ async function uploadMedia(localMessage: ApiMessage, attachment: ApiAttachment, 
       onProgress(progress, localMessage.id);
     }
   };
+
+  const file = await fetchFile(blobUrl, filename);
   const inputFile = await uploadFile(file, patchedOnProgress);
+
+  const thumbFile = previewBlobUrl && await fetchFile(previewBlobUrl, filename);
+  const thumb = thumbFile ? await uploadFile(thumbFile) : undefined;
 
   const attributes: GramJs.TypeDocumentAttribute[] = [new GramJs.DocumentAttributeFilename({ fileName: filename })];
   if (quick) {
@@ -555,6 +570,15 @@ async function uploadMedia(localMessage: ApiMessage, attachment: ApiAttachment, 
     }
   }
 
+  if (audio) {
+    const { duration, title, performer } = audio;
+    attributes.push(new GramJs.DocumentAttributeAudio({
+      duration,
+      title,
+      performer,
+    }));
+  }
+
   if (voice) {
     const { duration, waveform } = voice;
     const { data: inputWaveform } = interpolateArray(waveform, INPUT_WAVEFORM_LENGTH);
@@ -569,6 +593,7 @@ async function uploadMedia(localMessage: ApiMessage, attachment: ApiAttachment, 
     file: inputFile,
     mimeType,
     attributes,
+    thumb,
   });
 }
 
@@ -834,9 +859,9 @@ export async function requestThreadInfoUpdate({
 }
 
 export async function searchMessagesLocal({
-  chatOrUser, type, query, topMessageId, minDate, maxDate, ...pagination
+  chat, type, query, topMessageId, minDate, maxDate, ...pagination
 }: {
-  chatOrUser: ApiChat | ApiUser;
+  chat: ApiChat;
   type?: ApiMessageSearchType | ApiGlobalMessageSearchType;
   query?: string;
   topMessageId?: number;
@@ -873,7 +898,7 @@ export async function searchMessagesLocal({
   }
 
   const result = await invokeRequest(new GramJs.messages.Search({
-    peer: buildInputPeer(chatOrUser.id, chatOrUser.accessHash),
+    peer: buildInputPeer(chat.id, chat.accessHash),
     filter,
     q: query || '',
     topMsgId: topMessageId,

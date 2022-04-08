@@ -1,16 +1,16 @@
 import React, {
   FC, memo, useCallback, useMemo, useRef,
 } from '../../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import { ApiChatMember, ApiUserStatus } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
 import { unique } from '../../../util/iteratees';
-import { selectChat } from '../../../modules/selectors';
+import { selectChat } from '../../../global/selectors';
 import {
   sortUserIds, isChatChannel, filterUsersByName, sortChatIds, isUserBot,
-} from '../../../modules/helpers';
+} from '../../../global/helpers';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useInfiniteScroll from '../../../hooks/useInfiniteScroll';
@@ -62,7 +62,7 @@ const ManageGroupMembers: FC<OwnProps & StateProps> = ({
   onScreenSelect,
   onChatMemberSelect,
 }) => {
-  const { openUserInfo, setUserSearchQuery, loadContactList } = getDispatch();
+  const { openChat, setUserSearchQuery, loadContactList } = getActions();
   const lang = useLang();
   // eslint-disable-next-line no-null/no-null
   const inputRef = useRef<HTMLInputElement>(null);
@@ -126,9 +126,9 @@ const ManageGroupMembers: FC<OwnProps & StateProps> = ({
       onChatMemberSelect!(id, false);
       onScreenSelect!(ManagementScreens.ChatNewAdminRights);
     } else {
-      openUserInfo({ id });
+      openChat({ id });
     }
-  }, [noAdmins, onChatMemberSelect, onScreenSelect, openUserInfo]);
+  }, [noAdmins, onChatMemberSelect, onScreenSelect, openChat]);
 
   const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setUserSearchQuery({ query: e.target.value });
@@ -172,6 +172,7 @@ const ManageGroupMembers: FC<OwnProps & StateProps> = ({
                 <ListItem
                   key={id}
                   className="chat-item-clickable scroll-item"
+                  // eslint-disable-next-line react/jsx-no-bind
                   onClick={() => handleMemberClick(id)}
                 >
                   <PrivateChatInfo userId={id} forceShowSelf />

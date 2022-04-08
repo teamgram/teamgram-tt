@@ -4,15 +4,15 @@ import React, {
   useCallback,
   useMemo,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiMessage } from '../../api/types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
-import { getMessageMediaHash } from '../../modules/helpers';
+import { getMessageMediaHash } from '../../global/helpers';
 import useLang from '../../hooks/useLang';
 import useMediaWithLoadProgress from '../../hooks/useMediaWithLoadProgress';
-import { selectIsDownloading, selectIsMessageProtected } from '../../modules/selectors';
+import { selectIsDownloading, selectIsMessageProtected } from '../../global/selectors';
 
 import Button from '../ui/Button';
 import DropdownMenu from '../ui/DropdownMenu';
@@ -54,7 +54,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
   const {
     downloadMessageMedia,
     cancelMessageMediaDownload,
-  } = getDispatch();
+  } = getActions();
 
   const { loadProgress: downloadProgress } = useMediaWithLoadProgress(
     message && getMessageMediaHash(message, 'download'),
@@ -63,9 +63,9 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
 
   const handleDownloadClick = useCallback(() => {
     if (isDownloading) {
-      cancelMessageMediaDownload({ message });
+      cancelMessageMediaDownload({ message: message! });
     } else {
-      downloadMessageMedia({ message });
+      downloadMessageMedia({ message: message! });
     }
   }, [cancelMessageMediaDownload, downloadMessageMedia, isDownloading, message]);
 
@@ -163,17 +163,15 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
   return (
     <div className="MediaViewerActions">
       {!isAvatar && !isProtected && (
-        <>
-          <Button
-            round
-            size="smaller"
-            color="translucent-white"
-            ariaLabel={lang('Forward')}
-            onClick={onForward}
-          >
-            <i className="icon-forward" />
-          </Button>
-        </>
+        <Button
+          round
+          size="smaller"
+          color="translucent-white"
+          ariaLabel={lang('Forward')}
+          onClick={onForward}
+        >
+          <i className="icon-forward" />
+        </Button>
       )}
       {renderDownloadButton()}
       <Button

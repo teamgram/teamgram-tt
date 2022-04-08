@@ -1,13 +1,13 @@
 import React, {
-  FC, memo, useEffect, useRef, useState,
+  FC, memo, useCallback, useEffect, useRef, useState,
 } from '../../../../lib/teact/teact';
-import { withGlobal } from '../../../../lib/teact/teactn';
+import { withGlobal } from '../../../../global';
 
 import { ApiSticker } from '../../../../api/types';
 import { SettingsScreens } from '../../../../types';
 
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../../../util/environment';
-import { selectAnimatedEmoji } from '../../../../modules/selectors';
+import { selectAnimatedEmoji } from '../../../../global/selectors';
 import useLang from '../../../../hooks/useLang';
 import useHistoryBack from '../../../../hooks/useHistoryBack';
 
@@ -62,7 +62,7 @@ const SettingsTwoFaEmailCode: FC<OwnProps & StateProps> = ({
 
   useHistoryBack(isActive, onReset, onScreenSelect, screen);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (error && clearError) {
       clearError();
     }
@@ -75,15 +75,15 @@ const SettingsTwoFaEmailCode: FC<OwnProps & StateProps> = ({
 
     setValue(newValue);
     e.target.value = newValue;
-  };
+  }, [clearError, codeLength, error, onSubmit]);
 
   return (
     <div className="settings-content two-fa custom-scroll">
-      <div className="settings-content-header">
+      <div className="settings-content-header no-border">
         <AnimatedEmoji sticker={animatedEmoji} size="large" />
       </div>
 
-      <div className="settings-item pt-0 no-border">
+      <div className="settings-item pt-0">
         <InputText
           value={value}
           ref={inputRef}

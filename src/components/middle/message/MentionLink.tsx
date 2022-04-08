@@ -1,14 +1,14 @@
 import React, { FC } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiChat, ApiUser } from '../../../api/types';
 
-import { selectUser } from '../../../modules/selectors';
+import { selectUser } from '../../../global/selectors';
 
 type OwnProps = {
   userId?: string;
   username?: string;
-  children: any;
+  children: React.ReactNode;
 };
 
 type StateProps = {
@@ -23,7 +23,7 @@ const MentionLink: FC<OwnProps & StateProps> = ({
   const {
     openChat,
     openChatByUsername,
-  } = getDispatch();
+  } = getActions();
 
   const handleClick = () => {
     if (userOrChat) {

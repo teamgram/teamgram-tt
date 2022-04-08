@@ -8,12 +8,13 @@ import useMedia from '../../../hooks/useMedia';
 import useFlag from '../../../hooks/useFlag';
 import useShowTransition from '../../../hooks/useShowTransition';
 import { createClassNameBuilder } from '../../../util/buildClassName';
+import { IS_COMPACT_MENU } from '../../../util/environment';
 
 import AnimatedSticker from '../../common/AnimatedSticker';
 
 import './ReactionSelectorReaction.scss';
 
-const REACTION_SIZE = 32;
+const REACTION_SIZE = IS_COMPACT_MENU ? 24 : 32;
 
 type OwnProps = {
   reaction: ApiAvailableReaction;
@@ -24,7 +25,9 @@ type OwnProps = {
 
 const cn = createClassNameBuilder('ReactionSelectorReaction');
 
-const ReactionSelectorReaction: FC<OwnProps> = ({ reaction, previewIndex, onSendReaction, isReady }) => {
+const ReactionSelectorReaction: FC<OwnProps> = ({
+  reaction, previewIndex, onSendReaction, isReady,
+}) => {
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -48,7 +51,7 @@ const ReactionSelectorReaction: FC<OwnProps> = ({ reaction, previewIndex, onSend
 
   return (
     <div
-      className={cn('&')}
+      className={cn('&', IS_COMPACT_MENU && 'compact')}
       onClick={handleClick}
       ref={containerRef}
       onMouseEnter={isReady ? activate : undefined}
@@ -59,8 +62,7 @@ const ReactionSelectorReaction: FC<OwnProps> = ({ reaction, previewIndex, onSend
             'static',
             isReady ? [staticClassNames] : undefined,
           )}
-          // @ts-ignore
-          style={`background-position-x: ${previewIndex * -32}px;`}
+          style={`background-position-x: ${previewIndex * -REACTION_SIZE}px;`}
         />
       )}
       {shouldRenderAnimated && (

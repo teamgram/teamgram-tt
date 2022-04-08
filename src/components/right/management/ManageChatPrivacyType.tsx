@@ -1,13 +1,13 @@
 import React, {
   FC, memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiChat } from '../../../api/types';
 import { ManagementProgress } from '../../../types';
 
-import { selectChat, selectManagement } from '../../../modules/selectors';
-import { isChatChannel } from '../../../modules/helpers';
+import { selectChat, selectManagement } from '../../../global/selectors';
+import { isChatChannel } from '../../../global/helpers';
 import useFlag from '../../../hooks/useFlag';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -51,7 +51,7 @@ const ManageChatPrivacyType: FC<OwnProps & StateProps> = ({
     updatePublicLink,
     updatePrivateLink,
     toggleIsProtected,
-  } = getDispatch();
+  } = getActions();
 
   const isPublic = Boolean(chat.username);
   const privateLink = chat.fullInfo?.inviteLink;
@@ -170,7 +170,7 @@ const ManageChatPrivacyType: FC<OwnProps & StateProps> = ({
           </h3>
           <RadioGroup
             selected={isProtected ? 'protected' : 'allowed'}
-            name="channel-type"
+            name="forwarding-type"
             options={forwardingOptions}
             onChange={handleForwardingOptionChange}
           />

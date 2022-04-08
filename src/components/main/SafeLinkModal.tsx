@@ -1,5 +1,5 @@
 import React, { FC, memo, useCallback } from '../../lib/teact/teact';
-import { getDispatch } from '../../lib/teact/teactn';
+import { getActions } from '../../global';
 
 import { ensureProtocol } from '../../util/ensureProtocol';
 import renderText from '../common/helpers/renderText';
@@ -13,7 +13,7 @@ export type OwnProps = {
 };
 
 const SafeLinkModal: FC<OwnProps> = ({ url }) => {
-  const { toggleSafeLinkModal } = getDispatch();
+  const { toggleSafeLinkModal } = getActions();
 
   const lang = useLang();
 

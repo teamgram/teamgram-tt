@@ -1,13 +1,13 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ManagementScreens } from '../../../types';
 import { ApiChat, ApiChatBannedRights, ApiChatMember } from '../../../api/types';
 
 import useLang from '../../../hooks/useLang';
-import { selectChat } from '../../../modules/selectors';
+import { selectChat } from '../../../global/selectors';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 
 import ListItem from '../../ui/ListItem';
@@ -62,7 +62,7 @@ const ManageGroupPermissions: FC<OwnProps & StateProps> = ({
   onClose,
   isActive,
 }) => {
-  const { updateChatDefaultBannedRights } = getDispatch();
+  const { updateChatDefaultBannedRights } = getActions();
 
   const [permissions, setPermissions] = useState<ApiChatBannedRights>({});
   const [havePermissionChanged, setHavePermissionChanged] = useState(false);
@@ -269,6 +269,7 @@ const ManageGroupPermissions: FC<OwnProps & StateProps> = ({
             <ListItem
               key={member.userId}
               className="chat-item-clickable exceptions-member"
+              // eslint-disable-next-line react/jsx-no-bind
               onClick={() => handleExceptionMemberClick(member)}
             >
               <PrivateChatInfo

@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch } from '../../../lib/teact/teactn';
+import { getActions } from '../../../global';
 
 import { SettingsScreens } from '../../../types';
 
@@ -31,7 +31,7 @@ const SettingsHeader: FC<OwnProps> = ({
   const {
     signOut,
     deleteChatFolder,
-  } = getDispatch();
+  } = getActions();
 
   const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
   const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] = useState(false);
@@ -126,7 +126,7 @@ const SettingsHeader: FC<OwnProps> = ({
       case SettingsScreens.PrivacyGroupChatsDeniedContacts:
         return <h3>{lang('NeverShareWith')}</h3>;
 
-      case SettingsScreens.PrivacyActiveSessions:
+      case SettingsScreens.ActiveSessions:
         return <h3>{lang('SessionsTitle')}</h3>;
       case SettingsScreens.PrivacyBlockedUsers:
         return <h3>{lang('BlockedUsers')}</h3>;
@@ -215,6 +215,7 @@ const SettingsHeader: FC<OwnProps> = ({
               ripple={!IS_SINGLE_COLUMN_LAYOUT}
               size="smaller"
               color="translucent"
+              // eslint-disable-next-line react/jsx-no-bind
               onClick={() => onScreenSelect(SettingsScreens.EditProfile)}
               ariaLabel={lang('lng_settings_information')}
             >

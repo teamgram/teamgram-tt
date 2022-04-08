@@ -75,6 +75,10 @@
 
         .theme-dark body.initial & {
           background-color: #0f0f0f;
+          background-image: url('../../assets/chat-bg-dark.png');
+          background-position: top left;
+          background-size: 650px;
+          background-repeat: repeat;
         }
 
         .theme-light body.initial &,
@@ -83,7 +87,7 @@
         }
       }
 
-      &.with-right-column::before {
+      html.theme-light body.animation-level-2 &.with-right-column::before {
         transform: scale(0.67);
       }
 

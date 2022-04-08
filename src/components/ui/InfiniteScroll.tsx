@@ -25,7 +25,7 @@ type OwnProps = {
   noScrollRestoreOnTop?: boolean;
   noFastList?: boolean;
   cacheBuster?: any;
-  children: any;
+  children: React.ReactNode;
 };
 
 const DEFAULT_LIST_SELECTOR = '.ListItem';
@@ -225,7 +225,6 @@ const InfiniteScroll: FC<OwnProps> = ({
       {withAbsolutePositioning && items?.length ? (
         <div
           teactFastList={!noFastList}
-          // @ts-ignore
           style={`position: relative;${IS_ANDROID ? ` height: ${maxHeight}px;` : undefined}`}
         >
           {children}

@@ -30,7 +30,7 @@ interface OwnProps {
   secondaryIcon?: string;
   className?: string;
   style?: string;
-  children: any;
+  children: React.ReactNode;
   disabled?: boolean;
   ripple?: boolean;
   narrow?: boolean;
@@ -160,7 +160,6 @@ const ListItem: FC<OwnProps> = ({
       ref={containerRef}
       className={fullClassName}
       dir={lang.isRtl ? 'rtl' : undefined}
-      // @ts-ignore
       style={style}
       onMouseDown={onMouseDown}
     >

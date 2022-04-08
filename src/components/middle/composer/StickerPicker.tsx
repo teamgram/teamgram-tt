@@ -1,7 +1,7 @@
 import React, {
   FC, useState, useEffect, memo, useRef, useMemo, useCallback,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiStickerSet, ApiSticker } from '../../../api/types';
 import { StickerSetOrRecent } from '../../../types';
@@ -12,6 +12,8 @@ import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import fastSmoothScroll from '../../../util/fastSmoothScroll';
 import buildClassName from '../../../util/buildClassName';
 import fastSmoothScrollHorizontal from '../../../util/fastSmoothScrollHorizontal';
+import { selectIsChatWithSelf } from '../../../global/selectors';
+
 import useAsyncRendering from '../../right/hooks/useAsyncRendering';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 import useHorizontalScroll from '../../../hooks/useHorizontalScroll';
@@ -33,7 +35,7 @@ type OwnProps = {
   className: string;
   loadAndPlay: boolean;
   canSendStickers: boolean;
-  onStickerSelect: (sticker: ApiSticker) => void;
+  onStickerSelect: (sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean) => void;
 };
 
 type StateProps = {
@@ -42,6 +44,7 @@ type StateProps = {
   stickerSetsById: Record<string, ApiStickerSet>;
   addedSetIds?: string[];
   shouldPlay?: boolean;
+  isSavedMessages?: boolean;
 };
 
 const SMOOTH_SCROLL_DISTANCE = 500;
@@ -61,13 +64,15 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
   addedSetIds,
   stickerSetsById,
   shouldPlay,
+  isSavedMessages,
   onStickerSelect,
 }) => {
   const {
     loadRecentStickers,
     addRecentSticker,
     unfaveSticker,
-  } = getDispatch();
+    faveSticker,
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
@@ -164,14 +169,18 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
     fastSmoothScroll(containerRef.current!, stickerSetEl, 'start', undefined, SMOOTH_SCROLL_DISTANCE);
   }, []);
 
-  const handleStickerSelect = useCallback((sticker: ApiSticker) => {
-    onStickerSelect(sticker);
+  const handleStickerSelect = useCallback((sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean) => {
+    onStickerSelect(sticker, isSilent, shouldSchedule);
     addRecentSticker({ sticker });
   }, [addRecentSticker, onStickerSelect]);
 
   const handleStickerUnfave = useCallback((sticker: ApiSticker) => {
     unfaveSticker({ sticker });
   }, [unfaveSticker]);
+
+  const handleStickerFave = useCallback((sticker: ApiSticker) => {
+    faveSticker({ sticker });
+  }, [faveSticker]);
 
   const handleMouseMove = useCallback(() => {
     sendMessageAction({ type: 'chooseSticker' });
@@ -195,6 +204,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
           round
           faded={stickerSet.id === 'recent' || stickerSet.id === 'favorite'}
           color="translucent"
+          // eslint-disable-next-line react/jsx-no-bind
           onClick={() => selectStickerSet(index)}
         >
           {stickerSet.id === 'recent' ? (
@@ -225,6 +235,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
           observeIntersection={observeIntersectionForCovers}
           onClick={selectStickerSet}
           clickArg={index}
+          noContextMenu
         />
       );
     }
@@ -269,6 +280,9 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
             shouldRender={activeSetIndex >= i - 1 && activeSetIndex <= i + 1}
             onStickerSelect={handleStickerSelect}
             onStickerUnfave={handleStickerUnfave}
+            onStickerFave={handleStickerFave}
+            favoriteStickers={favoriteStickers}
+            isSavedMessages={isSavedMessages}
           />
         ))}
       </div>
@@ -277,7 +291,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global): StateProps => {
+  (global, { chatId }): StateProps => {
     const {
       setsById,
       added,
@@ -285,12 +299,15 @@ export default memo(withGlobal<OwnProps>(
       favorite,
     } = global.stickers;
 
+    const isSavedMessages = selectIsChatWithSelf(global, chatId);
+
     return {
       recentStickers: recent.stickers,
       favoriteStickers: favorite.stickers,
       stickerSetsById: setsById,
       addedSetIds: added.setIds,
       shouldPlay: global.settings.byKey.shouldLoopStickers,
+      isSavedMessages,
     };
   },
 )(StickerPicker));

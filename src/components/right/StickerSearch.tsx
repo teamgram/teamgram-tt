@@ -1,10 +1,10 @@
 import React, {
   FC, memo, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { throttle } from '../../util/schedulers';
-import { selectCurrentStickerSearch } from '../../modules/selectors';
+import { selectCurrentStickerSearch } from '../../global/selectors';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 import useLang from '../../hooks/useLang';
 import useHistoryBack from '../../hooks/useHistoryBack';
@@ -36,7 +36,7 @@ const StickerSearch: FC<OwnProps & StateProps> = ({
   featuredIds,
   resultIds,
 }) => {
-  const { loadFeaturedStickers } = getDispatch();
+  const { loadFeaturedStickers } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);

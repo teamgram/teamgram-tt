@@ -7,6 +7,7 @@ import { IAnchorPosition } from '../../../types';
 
 import { getMessageCopyOptions } from './helpers/copyOptions';
 import { disableScrolling, enableScrolling } from '../../../util/scrollLock';
+import { getUserFullName } from '../../../global/helpers';
 import useContextMenuPosition from '../../../hooks/useContextMenuPosition';
 import useLang from '../../../hooks/useLang';
 import buildClassName from '../../../util/buildClassName';
@@ -45,6 +46,7 @@ type OwnProps = {
   canSelect?: boolean;
   isPrivate?: boolean;
   canDownload?: boolean;
+  canSaveGif?: boolean;
   isDownloading?: boolean;
   canShowSeenBy?: boolean;
   seenByRecentUsers?: ApiUser[];
@@ -63,7 +65,9 @@ type OwnProps = {
   onClose: () => void;
   onCloseAnimationEnd?: () => void;
   onCopyLink?: () => void;
+  onCopyMessages?: (messageIds: number[]) => void;
   onDownload?: () => void;
+  onSaveGif?: () => void;
   onShowSeenBy?: () => void;
   onShowReactors?: () => void;
   onSendReaction: (reaction: string | undefined, x: number, y: number) => void;
@@ -95,6 +99,7 @@ const MessageContextMenu: FC<OwnProps> = ({
   canCopyLink,
   canSelect,
   canDownload,
+  canSaveGif,
   isDownloading,
   canShowSeenBy,
   canShowReactionsCount,
@@ -117,15 +122,17 @@ const MessageContextMenu: FC<OwnProps> = ({
   onCloseAnimationEnd,
   onCopyLink,
   onDownload,
+  onSaveGif,
   onShowSeenBy,
   onShowReactors,
   onSendReaction,
+  onCopyMessages,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const menuRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
   const scrollableRef = useRef<HTMLDivElement>(null);
-  const copyOptions = getMessageCopyOptions(message, onClose, canCopyLink ? onCopyLink : undefined);
+  const copyOptions = getMessageCopyOptions(message, onClose, canCopyLink ? onCopyLink : undefined, onCopyMessages);
   const noReactions = !isPrivate && !enabledReactions?.length;
   const withReactions = canShowReactionList && !noReactions;
 
@@ -216,7 +223,6 @@ const MessageContextMenu: FC<OwnProps> = ({
 
       <div
         className="scrollable-content custom-scroll"
-        // @ts-ignore teact feature
         style={menuStyle}
         ref={scrollableRef}
       >
@@ -233,11 +239,12 @@ const MessageContextMenu: FC<OwnProps> = ({
         {canUnfaveSticker && (
           <MenuItem icon="favorite" onClick={onUnfaveSticker}>{lang('Stickers.RemoveFromFavorites')}</MenuItem>
         )}
-        {canCopy && copyOptions.map((options) => (
-          <MenuItem key={options.label} icon="copy" onClick={options.handler}>{lang(options.label)}</MenuItem>
+        {canCopy && copyOptions.map((option) => (
+          <MenuItem key={option.label} icon={option.icon} onClick={option.handler}>{lang(option.label)}</MenuItem>
         ))}
         {canPin && <MenuItem icon="pin" onClick={onPin}>{lang('DialogPin')}</MenuItem>}
         {canUnpin && <MenuItem icon="unpin" onClick={onUnpin}>{lang('DialogUnpin')}</MenuItem>}
+        {canSaveGif && <MenuItem icon="gifs" onClick={onSaveGif}>{lang('lng_context_save_gif')}</MenuItem>}
         {canDownload && (
           <MenuItem icon="download" onClick={onDownload}>
             {isDownloading ? lang('lng_context_cancel_download') : lang('lng_media_download')}
@@ -248,19 +255,28 @@ const MessageContextMenu: FC<OwnProps> = ({
         {canReport && <MenuItem icon="flag" onClick={onReport}>{lang('lng_context_report_msg')}</MenuItem>}
         {(canShowSeenBy || canShowReactionsCount) && (
           <MenuItem
+            className="MessageContextMenu--seen-by"
             icon={canShowReactionsCount ? 'reactions' : 'group'}
             onClick={canShowReactionsCount ? onShowReactors : onShowSeenBy}
             disabled={!canShowReactionsCount && !message.seenByUserIds?.length}
           >
-            {canShowReactionsCount && message.reactors?.count ? (
-              canShowSeenBy && message.seenByUserIds?.length
-                ? lang('Chat.OutgoingContextMixedReactionCount', [message.reactors.count, message.seenByUserIds.length])
-                : lang('Chat.ContextReactionCount', message.reactors.count, 'i')
-            ) : (
-              message.seenByUserIds?.length
-                ? lang('Conversation.ContextMenuSeen', message.seenByUserIds.length, 'i')
-                : lang('Conversation.ContextMenuNoViews')
-            )}
+            <span className="MessageContextMenu--seen-by-label">
+              {canShowReactionsCount && message.reactors?.count ? (
+                canShowSeenBy && message.seenByUserIds?.length
+                  ? lang(
+                    'Chat.OutgoingContextMixedReactionCount',
+                    [message.reactors.count, message.seenByUserIds.length],
+                  )
+                  : lang('Chat.ContextReactionCount', message.reactors.count, 'i')
+              ) : (
+                message.seenByUserIds?.length === 1 && seenByRecentUsers
+                  ? getUserFullName(seenByRecentUsers[0])
+                  : (message.seenByUserIds?.length
+                    ? lang('Conversation.ContextMenuSeen', message.seenByUserIds.length, 'i')
+                    : lang('Conversation.ContextMenuNoViews')
+                  )
+              )}
+            </span>
             <div className="avatars">
               {seenByRecentUsers?.map((user) => (
                 <Avatar

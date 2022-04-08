@@ -8,7 +8,7 @@ import useInfiniteScroll from '../../hooks/useInfiniteScroll';
 import useLang from '../../hooks/useLang';
 import useKeyboardListNavigation from '../../hooks/useKeyboardListNavigation';
 import useInputFocusOnOpen from '../../hooks/useInputFocusOnOpen';
-import { isUserId } from '../../modules/helpers';
+import { isUserId } from '../../global/helpers';
 
 import Loading from '../ui/Loading';
 import Modal from '../ui/Modal';
@@ -28,7 +28,7 @@ export type OwnProps = {
   filterRef: RefObject<HTMLInputElement>;
   filterPlaceholder: string;
   filter: string;
-  loadMore: NoneToVoidFunction;
+  loadMore?: NoneToVoidFunction;
   onFilterChange: (filter: string) => void;
   onSelectChatOrUser: (chatOrUserId: string) => void;
   onClose: NoneToVoidFunction;
@@ -113,6 +113,7 @@ const ChatOrUserPicker: FC<OwnProps> = ({
               key={id}
               className="chat-item-clickable force-rounded-corners"
               style={`top: ${(viewportOffset + i) * CHAT_HEIGHT_PX}px;`}
+              // eslint-disable-next-line react/jsx-no-bind
               onClick={() => onSelectChatOrUser(id)}
             >
               {isUserId(id) ? (

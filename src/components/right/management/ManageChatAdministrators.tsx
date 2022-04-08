@@ -1,13 +1,13 @@
 import React, {
   FC, memo, useCallback, useMemo,
 } from '../../../lib/teact/teact';
-import { getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getGlobal, withGlobal } from '../../../global';
 
 import { ManagementScreens } from '../../../types';
 import { ApiChat, ApiChatMember } from '../../../api/types';
 
-import { getUserFullName, isChatChannel } from '../../../modules/helpers';
-import { selectChat } from '../../../modules/selectors';
+import { getUserFullName, isChatChannel } from '../../../global/helpers';
+import { selectChat } from '../../../global/selectors';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 
@@ -42,9 +42,9 @@ const ManageChatAdministrators: FC<OwnProps & StateProps> = ({
 
   useHistoryBack(isActive, onClose);
 
-  function handleRecentActionsClick() {
+  const handleRecentActionsClick = useCallback(() => {
     onScreenSelect(ManagementScreens.GroupRecentActions);
-  }
+  }, [onScreenSelect]);
 
   const adminMembers = useMemo(() => {
     if (!chat.fullInfo || !chat.fullInfo.adminMembers) {
@@ -112,6 +112,7 @@ const ManageChatAdministrators: FC<OwnProps & StateProps> = ({
             <ListItem
               key={member.userId}
               className="chat-item-clickable"
+              // eslint-disable-next-line react/jsx-no-bind
               onClick={() => handleAdminMemberClick(member)}
             >
               <PrivateChatInfo

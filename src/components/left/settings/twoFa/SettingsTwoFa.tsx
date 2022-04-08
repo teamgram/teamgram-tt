@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect,
 } from '../../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../../global';
 
 import { GlobalState } from '../../../../global/types';
 import { SettingsScreens } from '../../../../types';
@@ -48,7 +48,7 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
     updateRecoveryEmail,
     provideTwoFaEmailCode,
     clearPassword,
-  } = getDispatch();
+  } = getActions();
 
   useEffect(() => {
     if (waitingEmailCodeLength) {

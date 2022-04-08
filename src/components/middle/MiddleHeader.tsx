@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 import cycleRestrict from '../../util/cycleRestrict';
 
 import { GlobalState, MessageListType } from '../../global/types';
@@ -10,7 +10,7 @@ import {
 } from '../../api/types';
 
 import {
-  EDITABLE_INPUT_ID,
+  EDITABLE_INPUT_CSS_SELECTOR,
   MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN,
   MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN,
   MOBILE_SCREEN_MAX_WIDTH,
@@ -20,7 +20,7 @@ import {
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TABLET_COLUMN_LAYOUT } from '../../util/environment';
 import {
   getChatTitle, getMessageKey, getSenderTitle, isUserId,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import {
   selectAllowedMessageActions,
   selectChat,
@@ -35,7 +35,7 @@ import {
   selectScheduledIds,
   selectThreadInfo,
   selectThreadTopMessageId,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import useEnsureMessage from '../../hooks/useEnsureMessage';
 import useWindowSize from '../../hooks/useWindowSize';
 import useShowTransition from '../../hooks/useShowTransition';
@@ -53,6 +53,7 @@ import HeaderActions from './HeaderActions';
 import HeaderPinnedMessage from './HeaderPinnedMessage';
 import AudioPlayer from './AudioPlayer';
 import GroupCallTopPane from '../calls/group/GroupCallTopPane';
+import ChatReportPanel from './ChatReportPanel';
 
 import './MiddleHeader.scss';
 
@@ -120,7 +121,7 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
     loadPinnedMessages,
     toggleLeftColumn,
     exitMessageSelectMode,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   const isBackButtonActive = useRef(true);
@@ -132,6 +133,7 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
     ? pinnedMessageIds.length : (pinnedMessageIds ? 1 : undefined);
   const chatTitleLength = chat && getChatTitle(lang, chat).length;
   const topMessageTitle = topMessageSender ? getSenderTitle(lang, topMessageSender) : undefined;
+  const { settings } = chat || {};
 
   useEffect(() => {
     if (threadId === MAIN_THREAD_ID && lastSyncTime && isReady) {
@@ -188,10 +190,8 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
     // Workaround for missing UI when quickly clicking the Back button
     isBackButtonActive.current = false;
     if (IS_SINGLE_COLUMN_LAYOUT) {
-      const messageInput = document.getElementById(EDITABLE_INPUT_ID);
-      if (messageInput) {
-        messageInput.blur();
-      }
+      const messageInput = document.querySelector<HTMLDivElement>(EDITABLE_INPUT_CSS_SELECTOR);
+      messageInput?.blur();
     }
 
     if (isSelectModeActive) {
@@ -232,6 +232,13 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
     windowWidth > MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN
     && windowWidth < SAFE_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN
   );
+
+  const hasChatSettings = Boolean(settings?.canAddContact || settings?.canBlockContact || settings?.canReportSpam);
+  const {
+    shouldRender: shouldShowChatReportPanel,
+    transitionClassNames: chatReportPanelClassNames,
+  } = useShowTransition(hasChatSettings);
+  const renderingChatSettings = useCurrentOrPrev(hasChatSettings ? settings : undefined, true);
 
   const {
     shouldRender: shouldRenderAudioPlayer,
@@ -371,7 +378,7 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
         name={shouldSkipHistoryAnimations ? 'none' : 'slide-fade'}
         activeKey={currentTransitionKey}
       >
-        {renderInfo}
+        {renderInfo()}
       </Transition>
 
       <GroupCallTopPane
@@ -395,6 +402,16 @@ const MiddleHeader: FC<OwnProps & StateProps> = ({
           onAllPinnedClick={handleAllPinnedClick}
         />
       )}
+
+      {shouldShowChatReportPanel && (
+        <ChatReportPanel
+          key={chatId}
+          chatId={chatId}
+          settings={renderingChatSettings}
+          className={chatReportPanelClassNames}
+        />
+      )}
+
       <div className="header-tools">
         {isAudioPlayerRendered && (
           <AudioPlayer
@@ -418,7 +435,6 @@ export default memo(withGlobal<OwnProps>(
   (global, { chatId, threadId, messageListType }): StateProps => {
     const { isLeftColumnShown, lastSyncTime, shouldSkipHistoryAnimations } = global;
     const chat = selectChat(global, chatId);
-
     const { typingStatus } = chat || {};
 
     const { chatId: audioChatId, messageId: audioMessageId } = global.audioPlayer;

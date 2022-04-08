@@ -1,13 +1,13 @@
 import React, {
-  FC, memo, useEffect, useRef, useState,
+  FC, memo, useCallback, useEffect, useRef, useState,
 } from '../../../../lib/teact/teact';
-import { withGlobal } from '../../../../lib/teact/teactn';
+import { withGlobal } from '../../../../global';
 
 import { ApiSticker } from '../../../../api/types';
 import { SettingsScreens } from '../../../../types';
 
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../../../util/environment';
-import { selectAnimatedEmoji } from '../../../../modules/selectors';
+import { selectAnimatedEmoji } from '../../../../global/selectors';
 import useFlag from '../../../../hooks/useFlag';
 import useLang from '../../../../hooks/useLang';
 import useHistoryBack from '../../../../hooks/useHistoryBack';
@@ -67,13 +67,13 @@ const SettingsTwoFaSkippableForm: FC<OwnProps & StateProps> = ({
     }
   }, []);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (error && clearError) {
       clearError();
     }
 
     setValue(e.target.value);
-  };
+  }, [clearError, error]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -85,14 +85,14 @@ const SettingsTwoFaSkippableForm: FC<OwnProps & StateProps> = ({
     onSubmit(value);
   };
 
-  const handleSkip = () => {
+  const handleSkip = useCallback(() => {
     onSubmit();
-  };
+  }, [onSubmit]);
 
-  const handleSkipConfirm = () => {
+  const handleSkipConfirm = useCallback(() => {
     unmarkIsConfirmShown();
     onSubmit();
-  };
+  }, [onSubmit, unmarkIsConfirmShown]);
 
   const lang = useLang();
 
@@ -100,11 +100,11 @@ const SettingsTwoFaSkippableForm: FC<OwnProps & StateProps> = ({
 
   return (
     <div className="settings-content two-fa custom-scroll">
-      <div className="settings-content-header">
+      <div className="settings-content-header no-border">
         <AnimatedEmoji sticker={animatedEmoji} size="large" />
       </div>
 
-      <div className="settings-item pt-0 no-border">
+      <div className="settings-item pt-0">
         <form action="" onSubmit={handleSubmit}>
           <InputText
             ref={inputRef}

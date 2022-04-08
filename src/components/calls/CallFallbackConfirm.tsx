@@ -1,11 +1,13 @@
-import React, { FC, memo, useState } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import React, {
+  FC, memo, useCallback, useState,
+} from '../../lib/teact/teact';
+import { getActions, withGlobal } from '../../global';
 
 import ConfirmDialog from '../ui/ConfirmDialog';
 import Checkbox from '../ui/Checkbox';
-import { selectCallFallbackChannelTitle } from '../../modules/selectors/calls';
-import { getUserFullName } from '../../modules/helpers';
-import { selectCurrentMessageList, selectUser } from '../../modules/selectors';
+import { selectCallFallbackChannelTitle } from '../../global/selectors/calls';
+import { getUserFullName } from '../../global/helpers';
+import { selectCurrentMessageList, selectUser } from '../../global/selectors';
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
 
 export type OwnProps = {
@@ -25,18 +27,20 @@ const CallFallbackConfirm: FC<OwnProps & StateProps> = ({
   const {
     closeCallFallbackConfirm,
     inviteToCallFallback,
-  } = getDispatch();
+  } = getActions();
 
   const [shouldRemove, setShouldRemove] = useState(true);
   const renderingUserFullName = useCurrentOrPrev(userFullName, true);
+
+  const handleConfirm = useCallback(() => {
+    inviteToCallFallback({ shouldRemove });
+  }, [inviteToCallFallback, shouldRemove]);
 
   return (
     <ConfirmDialog
       title="Start Call"
       isOpen={isOpen}
-      confirmHandler={() => {
-        inviteToCallFallback({ shouldRemove });
-      }}
+      confirmHandler={handleConfirm}
       onClose={closeCallFallbackConfirm}
     >
       <p>The call will be started in a private channel <b>{channelTitle}</b>.</p>

@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import {
   ApiChat, ApiUser, ApiMessage, ApiMessageOutgoingStatus,
@@ -15,14 +15,16 @@ import {
   getMessageMediaThumbDataUri,
   getMessageVideo,
   getMessageRoundVideo,
-} from '../../../modules/helpers';
-import { selectChat, selectUser } from '../../../modules/selectors';
+} from '../../../global/helpers';
+import { selectChat, selectUser } from '../../../global/selectors';
+import buildClassName from '../../../util/buildClassName';
 import renderText from '../../common/helpers/renderText';
-import useMedia from '../../../hooks/useMedia';
 import { formatPastTimeShort } from '../../../util/dateFormat';
+import { renderMessageSummary } from '../../common/helpers/renderMessageText';
+
+import useMedia from '../../../hooks/useMedia';
 import useLang, { LangFn } from '../../../hooks/useLang';
 import useSelectWithEnter from '../../../hooks/useSelectWithEnter';
-import { renderMessageSummary } from '../../common/helpers/renderMessageText';
 
 import Avatar from '../../common/Avatar';
 import VerifiedIcon from '../../common/VerifiedIcon';
@@ -52,7 +54,7 @@ const ChatMessage: FC<OwnProps & StateProps> = ({
   privateChatUser,
   lastSyncTime,
 }) => {
-  const { focusMessage } = getDispatch();
+  const { focusMessage } = getActions();
 
   const mediaThumbnail = getMessageMediaThumbDataUri(message);
   const mediaBlobUrl = useMedia(getMessageMediaHash(message, 'micro'));
@@ -115,7 +117,7 @@ function renderSummary(
 
   return (
     <span className="media-preview">
-      <img src={blobUrl} alt="" className={isRoundVideo ? 'round' : undefined} />
+      <img src={blobUrl} alt="" className={buildClassName('media-preview--image', isRoundVideo && 'round')} />
       {getMessageVideo(message) && <i className="icon-play" />}
       {renderMessageSummary(lang, message, true, searchQuery)}
     </span>

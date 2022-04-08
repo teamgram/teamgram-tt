@@ -6,13 +6,14 @@ import { ApiMessage } from '../../../api/types';
 import { ISettings } from '../../../types';
 import { IMediaDimensions } from './helpers/calculateAlbumLayout';
 
+import { CUSTOM_APPENDIX_ATTRIBUTE } from '../../../config';
 import {
   getMessagePhoto,
   getMessageWebPagePhoto,
   getMessageMediaHash,
   getMediaTransferState,
   isOwnMessage,
-} from '../../../modules/helpers';
+} from '../../../global/helpers';
 import { ObserveFn, useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useMediaWithLoadProgress from '../../../hooks/useMediaWithLoadProgress';
 import useShowTransition from '../../../hooks/useShowTransition';
@@ -44,8 +45,6 @@ export type OwnProps = {
   onClick?: (id: number) => void;
   onCancelUpload?: (message: ApiMessage) => void;
 };
-
-const CUSTOM_APPENDIX_ATTRIBUTE = 'data-has-custom-appendix';
 
 const Photo: FC<OwnProps> = ({
   id,
@@ -153,14 +152,12 @@ const Photo: FC<OwnProps> = ({
       id={id}
       ref={ref}
       className={className}
-      // @ts-ignore teact feature
       style={style}
       onClick={isUploading ? undefined : handleClick}
     >
       <canvas
         ref={thumbRef}
         className="thumbnail"
-        // @ts-ignore teact feature
         style={`width: ${width}px; height: ${height}px`}
       />
       <img

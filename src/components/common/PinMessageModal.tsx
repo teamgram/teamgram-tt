@@ -1,7 +1,7 @@
 import React, { FC, useCallback, memo } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
-import { selectChat, selectIsChatWithSelf, selectUser } from '../../modules/selectors';
+import { selectChat, selectIsChatWithSelf, selectUser } from '../../global/selectors';
 import {
   isUserId,
   getUserFirstOrLastName,
@@ -9,7 +9,7 @@ import {
   isChatBasicGroup,
   isChatSuperGroup,
   isChatChannel,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import useLang from '../../hooks/useLang';
 import renderText from './helpers/renderText';
 
@@ -44,7 +44,7 @@ const PinMessageModal: FC<OwnProps & StateProps> = ({
   contactName,
   onClose,
 }) => {
-  const { pinMessage } = getDispatch();
+  const { pinMessage } = getActions();
 
   const handlePinMessageForAll = useCallback(() => {
     pinMessage({

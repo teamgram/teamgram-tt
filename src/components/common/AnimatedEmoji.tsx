@@ -27,7 +27,7 @@ type OwnProps = {
   forceLoadPreview?: boolean;
   messageId?: number;
   chatId?: string;
-  activeEmojiInteraction?: ActiveEmojiInteraction;
+  activeEmojiInteractions?: ActiveEmojiInteraction[];
 };
 
 const QUALITY = 1;
@@ -43,7 +43,7 @@ const AnimatedEmoji: FC<OwnProps> = ({
   forceLoadPreview,
   messageId,
   chatId,
-  activeEmojiInteraction,
+  activeEmojiInteractions,
 }) => {
   const {
     markAnimationLoaded,
@@ -53,7 +53,7 @@ const AnimatedEmoji: FC<OwnProps> = ({
     style,
     handleClick,
     playKey,
-  } = useAnimatedEmoji(size, chatId, messageId, soundId, activeEmojiInteraction, isOwn, undefined, effect?.emoji);
+  } = useAnimatedEmoji(size, chatId, messageId, soundId, activeEmojiInteractions, isOwn, undefined, effect?.emoji);
 
   const localMediaHash = `sticker${sticker.id}`;
 
@@ -75,7 +75,6 @@ const AnimatedEmoji: FC<OwnProps> = ({
     <div
       ref={ref}
       className={buildClassName('AnimatedEmoji media-inner', sticker.id === LIKE_STICKER_ID && 'like-sticker-thumb')}
-      // @ts-ignore teact feature
       style={style}
       onClick={handleClick}
     >

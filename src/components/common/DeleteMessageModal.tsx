@@ -1,5 +1,5 @@
 import React, { FC, useCallback, memo } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiMessage } from '../../api/types';
 import { IAlbum } from '../../types';
@@ -9,14 +9,14 @@ import {
   selectChat,
   selectCurrentMessageList,
   selectUser,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import {
   isUserId,
   getUserFirstOrLastName,
   getPrivateChatUserId,
   isChatBasicGroup,
   isChatSuperGroup,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import renderText from './helpers/renderText';
 import useLang from '../../hooks/useLang';
 
@@ -52,7 +52,7 @@ const DeleteMessageModal: FC<OwnProps & StateProps> = ({
   const {
     deleteMessages,
     deleteScheduledMessages,
-  } = getDispatch();
+  } = getActions();
 
   const handleDeleteMessageForAll = useCallback(() => {
     const messageIds = album?.messages

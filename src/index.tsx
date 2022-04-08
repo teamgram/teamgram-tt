@@ -1,10 +1,11 @@
 import './util/handleError';
 import './util/setupServiceWorker';
 
-import React, { getDispatch, getGlobal } from './lib/teact/teactn';
+import React from './lib/teact/teact';
 import TeactDOM from './lib/teact/teact-dom';
 
-import './global';
+import { getActions, getGlobal } from './global';
+import './global/init';
 
 import { DEBUG } from './config';
 
@@ -17,7 +18,7 @@ if (DEBUG) {
   console.log('>>> INIT');
 }
 
-getDispatch().init();
+getActions().init();
 
 if (DEBUG) {
   // eslint-disable-next-line no-console

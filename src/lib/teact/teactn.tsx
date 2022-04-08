@@ -8,29 +8,36 @@ import generateIdFor from '../../util/generateIdFor';
 import { fastRaf, throttleWithTickEnd } from '../../util/schedulers';
 import arePropsShallowEqual, { getUnequalProps } from '../../util/arePropsShallowEqual';
 import { orderBy } from '../../util/iteratees';
-import {
-  GlobalState, GlobalActions, ActionTypes, DispatchOptions,
-} from '../../global/types';
 import { handleError } from '../../util/handleError';
 import { isHeavyAnimating } from '../../hooks/useHeavyAnimationCheck';
 
 export default React;
 
-type ActionPayload = AnyLiteral;
+type GlobalState = AnyLiteral;
+type ActionNames = string;
+type ActionPayload = any;
 
-type Reducer = (
+interface ActionOptions {
+  forceOnHeavyAnimation?: boolean;
+  // Workaround for iOS gesture history navigation
+  forceSyncOnIOs?: boolean;
+}
+
+type Actions = Record<ActionNames, (payload?: ActionPayload, options?: ActionOptions) => void>;
+
+type ActionHandler = (
   global: GlobalState,
-  actions: GlobalActions,
+  actions: Actions,
   payload: any,
-) => GlobalState | void;
+) => GlobalState | void | Promise<GlobalState | void>;
 
 type MapStateToProps<OwnProps = undefined> = ((global: GlobalState, ownProps: OwnProps) => AnyLiteral);
 
 let currentGlobal = {} as GlobalState;
 
-const reducers: Record<string, Reducer[]> = {};
+const actionHandlers: Record<string, ActionHandler[]> = {};
 const callbacks: Function[] = [updateContainers];
-const actions = {} as GlobalActions;
+const actions = {} as Actions;
 const containers = new Map<string, {
   mapStateToProps: MapStateToProps<any>;
   ownProps: Props;
@@ -52,7 +59,7 @@ function runCallbacks(forceOnHeavyAnimation = false) {
   callbacks.forEach((cb) => cb(currentGlobal));
 }
 
-export function setGlobal(newGlobal?: GlobalState, options?: DispatchOptions) {
+export function setGlobal(newGlobal?: GlobalState, options?: ActionOptions) {
   if (typeof newGlobal === 'object' && newGlobal !== currentGlobal) {
     currentGlobal = newGlobal;
     if (options?.forceSyncOnIOs) {
@@ -67,19 +74,27 @@ export function getGlobal() {
   return currentGlobal;
 }
 
-export function getDispatch() {
+export function getActions() {
   return actions;
 }
 
-function onDispatch(name: string, payload?: ActionPayload, options?: DispatchOptions) {
-  if (reducers[name]) {
-    reducers[name].forEach((reducer) => {
-      const newGlobal = reducer(currentGlobal, actions, payload);
-      if (newGlobal) {
-        setGlobal(newGlobal, options);
-      }
-    });
-  }
+function handleAction(name: string, payload?: ActionPayload, options?: ActionOptions) {
+  actionHandlers[name]?.forEach((handler) => {
+    const response = handler(currentGlobal, actions, payload);
+    if (!response) {
+      return;
+    }
+
+    if (typeof response.then === 'function') {
+      response.then((newGlobal: GlobalState | void) => {
+        if (newGlobal) {
+          setGlobal(newGlobal, options);
+        }
+      });
+    } else {
+      setGlobal(response, options);
+    }
+  });
 }
 
 function updateContainers() {
@@ -143,16 +158,16 @@ function updateContainers() {
   }
 }
 
-export function addReducer(name: ActionTypes, reducer: Reducer) {
-  if (!reducers[name]) {
-    reducers[name] = [];
+export function addActionHandler(name: ActionNames, handler: ActionHandler) {
+  if (!actionHandlers[name]) {
+    actionHandlers[name] = [];
 
-    actions[name] = (payload?: ActionPayload, options?: DispatchOptions) => {
-      onDispatch(name, payload, options);
+    actions[name] = (payload?: ActionPayload, options?: ActionOptions) => {
+      handleAction(name, payload, options);
     };
   }
 
-  reducers[name].push(reducer);
+  actionHandlers[name].push(handler);
 }
 
 export function addCallback(cb: Function) {
@@ -213,6 +228,46 @@ export function withGlobal<OwnProps>(
       // eslint-disable-next-line react/jsx-props-no-spreading
       return <Component {...container.mappedProps} {...props} />;
     };
+  };
+}
+
+export function typify<ProjectGlobalState, ActionPayloads, NonTypedActionNames extends string = never>() {
+  type NonTypedActionPayloads = {
+    [ActionName in NonTypedActionNames]: ActionPayload;
+  };
+
+  type ProjectActionTypes =
+    ActionPayloads
+    & NonTypedActionPayloads;
+
+  type ProjectActionNames = keyof ProjectActionTypes;
+
+  type ProjectActions = {
+    [ActionName in ProjectActionNames]: (
+      payload?: ProjectActionTypes[ActionName],
+      options?: ActionOptions,
+    ) => void;
+  };
+
+  type ActionHandlers = {
+    [ActionName in keyof ProjectActionTypes]: (
+      global: ProjectGlobalState,
+      actions: ProjectActions,
+      payload: ProjectActionTypes[ActionName],
+    ) => ProjectGlobalState | void | Promise<ProjectGlobalState | void>;
+  };
+
+  return {
+    getGlobal: getGlobal as () => ProjectGlobalState,
+    setGlobal: setGlobal as (state: ProjectGlobalState, options?: ActionOptions) => void,
+    getActions: getActions as () => ProjectActions,
+    addActionHandler: addActionHandler as <ActionName extends ProjectActionNames>(
+      name: ActionName,
+      handler: ActionHandlers[ActionName],
+    ) => void,
+    withGlobal: withGlobal as <OwnProps>(
+      mapStateToProps: ((global: ProjectGlobalState, ownProps: OwnProps) => AnyLiteral),
+    ) => (Component: FC) => FC,
   };
 }
 

@@ -6,11 +6,11 @@ import { downloadFile, DownloadFileParams } from './downloadFile';
 import { TwoFaParams, updateTwoFaSettings } from './2fa';
 
 declare class TelegramClient {
-    constructor(...args: any)
+    constructor(...args: any);
 
     async start(authParams: UserAuthParams | BotAuthParams);
 
-    async invoke<R extends Api.AnyRequest>(request: R): Promise<R['__response']>;
+    async invoke<R extends Api.AnyRequest>(request: R, dcId?: number): Promise<R['__response']>;
 
     async uploadFile(uploadParams: UploadFileParams): ReturnType<typeof uploadFile>;
 

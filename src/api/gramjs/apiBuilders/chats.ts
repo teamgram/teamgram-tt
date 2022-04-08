@@ -10,6 +10,7 @@ import {
   ApiRestrictionReason,
   ApiExportedInvite,
   ApiChatInviteImporter,
+  ApiChatSettings,
 } from '../../types';
 import { pick, pickTruthy } from '../../../util/iteratees';
 import {
@@ -111,10 +112,17 @@ function buildApiChatPermissions(peerEntity: GramJs.TypeUser | GramJs.TypeChat):
 
 function buildApiChatRestrictions(peerEntity: GramJs.TypeUser | GramJs.TypeChat): {
   isNotJoined?: boolean;
+  isForbidden?: boolean;
   isRestricted?: boolean;
   restrictionReason?: ApiRestrictionReason;
 } {
-  if (peerEntity instanceof GramJs.ChatForbidden || peerEntity instanceof GramJs.ChannelForbidden) {
+  if (peerEntity instanceof GramJs.ChatForbidden) {
+    return {
+      isForbidden: true,
+    };
+  }
+
+  if (peerEntity instanceof GramJs.ChannelForbidden) {
     return {
       isRestricted: true,
     };
@@ -138,7 +146,7 @@ function buildApiChatRestrictions(peerEntity: GramJs.TypeUser | GramJs.TypeChat)
   if (peerEntity instanceof GramJs.Chat) {
     Object.assign(restrictions, {
       isNotJoined: peerEntity.left,
-      isRestricted: peerEntity.kicked,
+      isForbidden: peerEntity.kicked,
     });
   }
 
@@ -432,5 +440,19 @@ export function buildChatInviteImporter(importer: GramJs.ChatInviteImporter): Ap
     date,
     about,
     isRequested: requested,
+  };
+}
+
+export function buildApiChatSettings({
+  autoarchived,
+  reportSpam,
+  addContact,
+  blockContact,
+}: GramJs.PeerSettings): ApiChatSettings {
+  return {
+    isAutoArchived: Boolean(autoarchived),
+    canReportSpam: Boolean(reportSpam),
+    canAddContact: Boolean(addContact),
+    canBlockContact: Boolean(blockContact),
   };
 }

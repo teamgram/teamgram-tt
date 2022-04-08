@@ -1,5 +1,5 @@
-import React, { FC, memo } from '../../lib/teact/teact';
-import { withGlobal } from '../../lib/teact/teactn';
+import React, { FC, memo, useCallback } from '../../lib/teact/teact';
+import { withGlobal } from '../../global';
 
 import {
   ApiChat, ApiDimensions, ApiMediaFormat, ApiMessage, ApiUser,
@@ -25,10 +25,10 @@ import {
   getVideoDimensions,
   isMessageDocumentPhoto,
   isMessageDocumentVideo,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import {
   selectChat, selectChatMessage, selectIsMessageProtected, selectScheduledMessage, selectUser,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import { AVATAR_FULL_DIMENSIONS, calculateMediaViewerDimensions } from '../common/helpers/mediaDimensions';
 import { renderMessageText } from '../common/helpers/renderMessageText';
 import stopEvent from '../../util/stopEvent';
@@ -50,6 +50,7 @@ type OwnProps = {
   animationLevel: 0 | 1 | 2;
   onClose: () => void;
   onFooterClick: () => void;
+  setIsFooterHidden?: (isHidden: boolean) => void;
   isFooterHidden?: boolean;
 };
 
@@ -63,6 +64,9 @@ type StateProps = {
   message?: ApiMessage;
   origin?: MediaViewerOrigin;
   isProtected?: boolean;
+  volume: number;
+  isMuted: boolean;
+  playbackRate: number;
 };
 
 const ANIMATION_DURATION = 350;
@@ -77,10 +81,14 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
     profilePhotoIndex,
     origin,
     animationLevel,
-    onClose,
-    onFooterClick,
     isFooterHidden,
     isProtected,
+    volume,
+    playbackRate,
+    isMuted,
+    onClose,
+    onFooterClick,
+    setIsFooterHidden,
   } = props;
   /* Content */
   const photo = message ? getMessagePhoto(message) : undefined;
@@ -139,6 +147,10 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
     isGhostAnimation && ANIMATION_DURATION,
   );
 
+  const toggleControls = useCallback((isVisible) => {
+    setIsFooterHidden?.(!isVisible);
+  }, [setIsFooterHidden]);
+
   const localBlobUrl = (photo || video) ? (photo || video)!.blobUrl : undefined;
   let bestImageData = (!isVideo && (localBlobUrl || fullMediaBlobUrl)) || previewBlobUrl || pictogramBlobUrl;
   const thumbDataUri = useBlurSync(!bestImageData && message && getMessageMediaThumbDataUri(message));
@@ -189,7 +201,7 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
       )}
       {isVideo && ((!isActive && IS_TOUCH_ENV) ? renderVideoPreview(
         bestImageData,
-        message && calculateMediaViewerDimensions(dimensions!, hasFooter, false),
+        message && calculateMediaViewerDimensions(dimensions!, hasFooter, true),
         !IS_SINGLE_COLUMN_LAYOUT && !isProtected,
       ) : (
         <VideoPlayer
@@ -197,19 +209,24 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
           url={localBlobUrl || fullMediaBlobUrl}
           isGif={isGif}
           posterData={bestImageData}
-          posterSize={message && calculateMediaViewerDimensions(dimensions!, hasFooter, false)}
+          posterSize={message && calculateMediaViewerDimensions(dimensions!, hasFooter, true)}
           loadProgress={loadProgress}
           fileSize={videoSize!}
           isMediaViewerOpen={isOpen && isActive}
+          areControlsVisible={!isFooterHidden}
+          toggleControls={toggleControls}
           noPlay={!isActive}
           onClose={onClose}
+          isMuted={isMuted}
+          volume={volume}
+          playbackRate={playbackRate}
         />
       ))}
       {textParts && (
         <MediaViewerFooter
           text={textParts}
           onClick={onFooterClick}
-          isHidden={isFooterHidden}
+          isHidden={isFooterHidden && IS_TOUCH_ENV}
           isForVideo={isVideo && !isGif}
         />
       )}
@@ -228,14 +245,20 @@ export default memo(withGlobal<OwnProps>(
       origin,
     } = ownProps;
 
+    const {
+      volume,
+      isMuted,
+      playbackRate,
+    } = global.mediaViewer;
+
     if (origin === MediaViewerOrigin.SearchResult) {
       if (!(chatId && messageId)) {
-        return {};
+        return { volume, isMuted, playbackRate };
       }
 
       const message = selectChatMessage(global, chatId, messageId);
       if (!message) {
-        return {};
+        return { volume, isMuted, playbackRate };
       }
 
       return {
@@ -245,6 +268,9 @@ export default memo(withGlobal<OwnProps>(
         origin,
         message,
         isProtected: selectIsMessageProtected(global, message),
+        volume,
+        isMuted,
+        playbackRate,
       };
     }
 
@@ -257,11 +283,14 @@ export default memo(withGlobal<OwnProps>(
         avatarOwner: sender,
         profilePhotoIndex: profilePhotoIndex || 0,
         origin,
+        volume,
+        isMuted,
+        playbackRate,
       };
     }
 
     if (!(chatId && threadId && messageId)) {
-      return {};
+      return { volume, isMuted, playbackRate };
     }
 
     let message: ApiMessage | undefined;
@@ -272,7 +301,7 @@ export default memo(withGlobal<OwnProps>(
     }
 
     if (!message) {
-      return {};
+      return { volume, isMuted, playbackRate };
     }
 
     return {
@@ -283,6 +312,9 @@ export default memo(withGlobal<OwnProps>(
       origin,
       message,
       isProtected: selectIsMessageProtected(global, message),
+      volume,
+      isMuted,
+      playbackRate,
     };
   },
 )(MediaViewerContent));
@@ -293,7 +325,6 @@ function renderPhoto(blobUrl?: string, imageSize?: ApiDimensions, canDrag?: bool
       <img
         src={blobUrl}
         alt=""
-        // @ts-ignore teact feature
         style={imageSize ? `width: ${imageSize.width}px` : ''}
         draggable={Boolean(canDrag)}
       />
@@ -301,7 +332,6 @@ function renderPhoto(blobUrl?: string, imageSize?: ApiDimensions, canDrag?: bool
     : (
       <div
         className="spinner-wrapper"
-        // @ts-ignore teact feature
         style={imageSize ? `width: ${imageSize.width}px` : ''}
       >
         <Spinner color="white" />
@@ -318,12 +348,10 @@ function renderVideoPreview(blobUrl?: string, imageSize?: ApiDimensions, canDrag
         className="VideoPlayer"
       >
         <div
-          // @ts-ignore
           style={wrapperStyle}
         >
           {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <video
-            // @ts-ignore
             style={videoStyle}
             draggable={Boolean(canDrag)}
           />
@@ -333,7 +361,6 @@ function renderVideoPreview(blobUrl?: string, imageSize?: ApiDimensions, canDrag
     : (
       <div
         className="spinner-wrapper"
-        // @ts-ignore teact feature
         style={imageSize ? `width: ${imageSize.width}px` : ''}
       >
         <Spinner color="white" />

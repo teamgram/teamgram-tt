@@ -1,14 +1,14 @@
 import React, {
   FC, memo, useMemo, useCallback,
 } from '../../../../lib/teact/teact';
-import { getDispatch, getGlobal } from '../../../../lib/teact/teactn';
+import { getGlobal } from '../../../../global';
 
 import { SettingsScreens } from '../../../../types';
 
 import { unique } from '../../../../util/iteratees';
 
 import { ALL_FOLDER_ID, ARCHIVED_FOLDER_ID } from '../../../../config';
-import { filterChatsByName } from '../../../../modules/helpers';
+import { filterChatsByName } from '../../../../global/helpers';
 import useLang from '../../../../hooks/useLang';
 import useHistoryBack from '../../../../hooks/useHistoryBack';
 import { useFolderManagerForOrderedIds } from '../../../../hooks/useFolderManager';
@@ -38,8 +38,6 @@ const SettingsFoldersChatFilters: FC<OwnProps> = ({
   onScreenSelect,
   onReset,
 }) => {
-  const { loadMoreChats } = getDispatch();
-
   const { chatFilter } = state;
   const { selectedChatIds, selectedChatTypes } = selectChatFilters(state, mode, true);
 
@@ -106,7 +104,9 @@ const SettingsFoldersChatFilters: FC<OwnProps> = ({
   }, [mode, selectedChatIds, dispatch]);
 
   useHistoryBack(
-    isActive, onReset, onScreenSelect,
+    isActive,
+    onReset,
+    onScreenSelect,
     mode === 'included' ? SettingsScreens.FoldersIncludedChats : SettingsScreens.FoldersExcludedChats,
   );
 
@@ -124,7 +124,6 @@ const SettingsFoldersChatFilters: FC<OwnProps> = ({
       onSelectedIdsChange={handleSelectedIdsChange}
       onSelectedChatTypesChange={handleSelectedChatTypesChange}
       onFilterChange={handleFilterChange}
-      onLoadMore={loadMoreChats}
     />
   );
 };

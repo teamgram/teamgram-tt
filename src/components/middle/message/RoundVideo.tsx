@@ -5,12 +5,12 @@ import React, {
   useRef,
   useState,
 } from '../../../lib/teact/teact';
-import { getDispatch } from '../../../lib/teact/teactn';
+import { getActions } from '../../../global';
 
 import { ApiMediaFormat, ApiMessage } from '../../../api/types';
 
 import { ROUND_VIDEO_DIMENSIONS_PX } from '../../common/helpers/mediaDimensions';
-import { getMessageMediaFormat, getMessageMediaHash } from '../../../modules/helpers';
+import { getMessageMediaFormat, getMessageMediaHash } from '../../../global/helpers';
 import { formatMediaDuration } from '../../../util/dateFormat';
 import buildClassName from '../../../util/buildClassName';
 import { stopCurrentAudio } from '../../../util/audioPlayer';
@@ -38,17 +38,7 @@ type OwnProps = {
   isDownloading?: boolean;
 };
 
-let currentOnRelease: NoneToVoidFunction;
-
-function createCapture(onRelease: NoneToVoidFunction) {
-  return () => {
-    if (currentOnRelease) {
-      currentOnRelease();
-    }
-
-    currentOnRelease = onRelease;
-  };
-}
+let stopPrevious: NoneToVoidFunction;
 
 const RoundVideo: FC<OwnProps> = ({
   message,
@@ -130,17 +120,24 @@ const RoundVideo: FC<OwnProps> = ({
 
   const shouldPlay = Boolean(mediaData && isIntersecting);
 
-  const stopPlaying = () => {
+  const stopPlaying = useCallback(() => {
+    if (!playerRef.current) {
+      return;
+    }
+
     setIsActivated(false);
     setProgress(0);
-    safePlay(playerRef.current!);
+    safePlay(playerRef.current);
 
     fastRaf(() => {
       playingProgressRef.current!.innerHTML = '';
     });
-  };
+  }, []);
 
-  const capturePlaying = createCapture(stopPlaying);
+  const capturePlaying = useCallback(() => {
+    stopPrevious?.();
+    stopPrevious = stopPlaying;
+  }, [stopPlaying]);
 
   useEffect(() => {
     if (!playerRef.current) {
@@ -165,7 +162,7 @@ const RoundVideo: FC<OwnProps> = ({
     }
 
     if (isDownloading) {
-      getDispatch().cancelMessageMediaDownload({ message });
+      getActions().cancelMessageMediaDownload({ message });
       return;
     }
 
@@ -207,7 +204,6 @@ const RoundVideo: FC<OwnProps> = ({
         <canvas
           ref={thumbRef}
           className="thumbnail"
-          // @ts-ignore teact feature
           style={`width: ${ROUND_VIDEO_DIMENSIONS_PX}px; height: ${ROUND_VIDEO_DIMENSIONS_PX}px`}
         />
       </div>

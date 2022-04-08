@@ -10,6 +10,7 @@ import buildClassName from '../../util/buildClassName';
 import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import useHistoryBack from '../../hooks/useHistoryBack';
 import { preventMessageInputBlurWithBubbling } from '../middle/helpers/preventMessageInputBlur';
+import { IS_BACKDROP_BLUR_SUPPORTED, IS_COMPACT_MENU } from '../../util/environment';
 
 import './Menu.scss';
 
@@ -17,9 +18,11 @@ type OwnProps = {
   ref?: RefObject<HTMLDivElement>;
   containerRef?: RefObject<HTMLElement>;
   isOpen: boolean;
+  id?: string;
   className?: string;
   style?: string;
   bubbleStyle?: string;
+  ariaLabelledBy?: string;
   transformOriginX?: number;
   transformOriginY?: number;
   positionX?: 'left' | 'right';
@@ -28,12 +31,13 @@ type OwnProps = {
   shouldSkipTransition?: boolean;
   footer?: string;
   noCloseOnBackdrop?: boolean;
+  noCompact?: boolean;
   onKeyDown?: (e: React.KeyboardEvent<any>) => void;
   onCloseAnimationEnd?: () => void;
   onClose?: () => void;
   onMouseEnter?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   onMouseLeave?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
-  children: any;
+  children: React.ReactNode;
 };
 
 const ANIMATION_DURATION = 200;
@@ -42,9 +46,11 @@ const Menu: FC<OwnProps> = ({
   ref,
   containerRef,
   isOpen,
+  id,
   className,
   style,
   bubbleStyle,
+  ariaLabelledBy,
   children,
   transformOriginX,
   transformOriginY,
@@ -53,6 +59,7 @@ const Menu: FC<OwnProps> = ({
   autoClose = false,
   footer,
   noCloseOnBackdrop = false,
+  noCompact,
   onCloseAnimationEnd,
   onClose,
   onMouseEnter,
@@ -110,12 +117,19 @@ const Menu: FC<OwnProps> = ({
 
   return (
     <div
-      className={buildClassName('Menu no-selection', className)}
+      id={id}
+      className={buildClassName(
+        'Menu no-selection',
+        !noCompact && IS_COMPACT_MENU && 'compact',
+        !IS_BACKDROP_BLUR_SUPPORTED && 'no-blur',
+        className,
+      )}
+      style={style}
+      aria-labelledby={ariaLabelledBy}
+      role={ariaLabelledBy ? 'menu' : undefined}
       onKeyDown={isOpen ? handleKeyDown : undefined}
       onMouseEnter={onMouseEnter}
       onMouseLeave={isOpen ? onMouseLeave : undefined}
-      // @ts-ignore teact feature
-      style={style}
     >
       {isOpen && (
         // This only prevents click events triggering on underlying elements
@@ -124,7 +138,6 @@ const Menu: FC<OwnProps> = ({
       <div
         ref={menuRef}
         className={bubbleClassName}
-        // @ts-ignore teact feature
         style={`transform-origin: ${transformOriginXStyle || positionX} ${transformOriginYStyle || positionY};${
           bubbleStyle || ''}`}
         onClick={autoClose ? onClose : undefined}

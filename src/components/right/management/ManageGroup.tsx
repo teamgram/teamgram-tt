@@ -2,18 +2,18 @@ import { ChangeEvent } from 'react';
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ManagementScreens, ManagementProgress } from '../../../types';
 import {
   ApiChat, ApiChatBannedRights, ApiExportedInvite, ApiMediaFormat,
 } from '../../../api/types';
 
-import { getChatAvatarHash, getHasAdminRight, isChatBasicGroup } from '../../../modules/helpers';
+import { getChatAvatarHash, getHasAdminRight, isChatBasicGroup } from '../../../global/helpers';
 import useMedia from '../../../hooks/useMedia';
 import useLang from '../../../hooks/useLang';
 import useFlag from '../../../hooks/useFlag';
-import { selectChat } from '../../../modules/selectors';
+import { selectChat } from '../../../global/selectors';
 import { formatInteger } from '../../../util/textFormat';
 import renderText from '../../common/helpers/renderText';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -80,7 +80,7 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
     openChat,
     loadExportedChatInvites,
     loadChatJoinRequests,
-  } = getDispatch();
+  } = getActions();
 
   const [isDeleteDialogOpen, openDeleteDialog, closeDeleteDialog] = useFlag();
   const currentTitle = chat.title;
@@ -93,6 +93,7 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
   const [error, setError] = useState<string | undefined>();
   const imageHash = getChatAvatarHash(chat);
   const currentAvatarBlobUrl = useMedia(imageHash, false, ApiMediaFormat.BlobUrl);
+  const isPublicGroup = chat.username || hasLinkedChannel;
   const lang = useLang();
 
   useHistoryBack(isActive, onClose);
@@ -132,13 +133,13 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
     onScreenSelect(ManagementScreens.ChatAdministrators);
   }, [onScreenSelect]);
 
-  const handleClickInvites = () => {
+  const handleClickInvites = useCallback(() => {
     onScreenSelect(ManagementScreens.Invites);
-  };
+  }, [onScreenSelect]);
 
-  const handleClickRequests = () => {
+  const handleClickRequests = useCallback(() => {
     onScreenSelect(ManagementScreens.JoinRequests);
-  };
+  }, [onScreenSelect]);
 
   const handleSetPhoto = useCallback((file: File) => {
     setPhoto(file);
@@ -233,7 +234,7 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
     closeDeleteDialog, closeManagement, leaveChannel, deleteChannel, deleteChat, openChat,
   ]);
 
-  if (chat.isRestricted) {
+  if (chat.isRestricted || chat.isForbidden) {
     return undefined;
   }
 
@@ -343,7 +344,7 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
             <span className="subtitle">{formatInteger(chat.membersCount ?? 0)}</span>
           </ListItem>
 
-          {chat.fullInfo && (
+          {!isPublicGroup && chat.fullInfo && (
             <div className="ListItem narrow no-selection">
               <Checkbox
                 checked={!chat.fullInfo.isPreHistoryHidden}

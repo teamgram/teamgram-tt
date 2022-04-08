@@ -1,12 +1,12 @@
 import React, {
   FC, useEffect, memo, useCallback,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { LangCode } from '../../types';
-import { ApiMessage } from '../../api/types';
+import { ApiMessage, ApiUpdateAuthorizationStateType, ApiUpdateConnectionStateType } from '../../api/types';
 
-import '../../modules/actions/all';
+import '../../global/actions/all';
 import {
   BASE_EMOJI_KEYWORD_LANG, DEBUG, INACTIVE_MARKER, PAGE_TITLE,
 } from '../../config';
@@ -16,7 +16,7 @@ import {
   selectIsMediaViewerOpen,
   selectIsRightColumnShown,
   selectIsServiceChatReady,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import buildClassName from '../../util/buildClassName';
 import { fastRaf } from '../../util/schedulers';
@@ -48,10 +48,13 @@ import HistoryCalendar from './HistoryCalendar.async';
 import GroupCall from '../calls/group/GroupCall.async';
 import ActiveCallHeader from '../calls/ActiveCallHeader.async';
 import CallFallbackConfirm from '../calls/CallFallbackConfirm.async';
+import NewContactModal from './NewContactModal.async';
 
 import './Main.scss';
 
 type StateProps = {
+  connectionState?: ApiUpdateConnectionStateType;
+  authState?: ApiUpdateAuthorizationStateType;
   lastSyncTime?: number;
   isLeftColumnShown: boolean;
   isRightColumnShown: boolean;
@@ -71,6 +74,8 @@ type StateProps = {
   wasTimeFormatSetManually?: boolean;
   isCallFallbackConfirmOpen: boolean;
   addedSetIds?: string[];
+  newContactUserId?: string;
+  newContactByPhoneNumber?: boolean;
 };
 
 const NOTIFICATION_INTERVAL = 1000;
@@ -81,6 +86,8 @@ let notificationInterval: number | undefined;
 let DEBUG_isLogged = false;
 
 const Main: FC<StateProps> = ({
+  connectionState,
+  authState,
   lastSyncTime,
   isLeftColumnShown,
   isRightColumnShown,
@@ -100,8 +107,11 @@ const Main: FC<StateProps> = ({
   wasTimeFormatSetManually,
   isCallFallbackConfirmOpen,
   addedSetIds,
+  newContactUserId,
+  newContactByPhoneNumber,
 }) => {
   const {
+    sync,
     loadAnimatedEmojis,
     loadNotificationSettings,
     loadNotificationExceptions,
@@ -117,13 +127,19 @@ const Main: FC<StateProps> = ({
     openStickerSetShortName,
     checkVersionNotification,
     loadAppConfig,
-  } = getDispatch();
+  } = getActions();
 
   if (DEBUG && !DEBUG_isLogged) {
     DEBUG_isLogged = true;
     // eslint-disable-next-line no-console
     console.log('>>> RENDER MAIN');
   }
+
+  useEffect(() => {
+    if (connectionState === 'connectionStateReady' && authState === 'authorizationStateReady') {
+      sync();
+    }
+  }, [connectionState, authState, sync]);
 
   // Initial API calls
   useEffect(() => {
@@ -319,6 +335,11 @@ const Main: FC<StateProps> = ({
           <ActiveCallHeader groupCallId={activeGroupCallId} />
         </>
       )}
+      <NewContactModal
+        isOpen={Boolean(newContactUserId || newContactByPhoneNumber)}
+        userId={newContactUserId}
+        isByPhoneNumber={newContactByPhoneNumber}
+      />
       <DownloadManager />
       <CallFallbackConfirm isOpen={isCallFallbackConfirmOpen} />
       <UnreadCount isForAppBadge />
@@ -356,6 +377,8 @@ export default memo(withGlobal(
       : undefined;
 
     return {
+      connectionState: global.connectionState,
+      authState: global.authState,
       lastSyncTime: global.lastSyncTime,
       isLeftColumnShown: global.isLeftColumnShown,
       isRightColumnShown: selectIsRightColumnShown(global),
@@ -375,6 +398,8 @@ export default memo(withGlobal(
       wasTimeFormatSetManually,
       isCallFallbackConfirmOpen: Boolean(global.groupCalls.isFallbackConfirmOpen),
       addedSetIds: global.stickers.added.setIds,
+      newContactUserId: global.newContact?.userId,
+      newContactByPhoneNumber: global.newContact?.isByPhoneNumber,
     };
   },
 )(Main));

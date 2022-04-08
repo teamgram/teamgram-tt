@@ -3,15 +3,10 @@ import { useState, useEffect, useCallback } from '../lib/teact/teact';
 
 import { IAnchorPosition } from '../types';
 import {
-  IS_TOUCH_ENV, IS_SINGLE_COLUMN_LAYOUT, IS_PWA, IS_IOS,
+  IS_TOUCH_ENV, IS_PWA, IS_IOS,
 } from '../util/environment';
 
 const LONG_TAP_DURATION_MS = 200;
-
-function checkIsDisabledForMobile() {
-  return IS_SINGLE_COLUMN_LAYOUT
-  && window.document.body.classList.contains('enable-symbol-menu-transforms');
-}
 
 function stopEvent(e: Event) {
   e.stopImmediatePropagation();
@@ -56,10 +51,9 @@ const useContextMenuHandlers = (
 
   const handleContextMenuHide = useCallback(() => {
     setContextMenuPosition(undefined);
-    document.body.classList.remove('no-selection');
   }, []);
 
-  // Support context menu on touch-devices
+  // Support context menu on touch devices
   useEffect(() => {
     if (isMenuDisabled || !IS_TOUCH_ENV || shouldDisableOnLongTap) {
       return undefined;
@@ -102,13 +96,12 @@ const useContextMenuHandlers = (
         }, true);
       }
 
-      document.body.classList.add('no-selection');
       setIsContextMenuOpen(true);
       setContextMenuPosition({ x: clientX, y: clientY });
     };
 
     const startLongPressTimer = (e: TouchEvent) => {
-      if (isMenuDisabled || checkIsDisabledForMobile()) {
+      if (isMenuDisabled) {
         return;
       }
       clearLongPressTimer();

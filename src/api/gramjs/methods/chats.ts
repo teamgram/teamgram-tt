@@ -26,6 +26,7 @@ import {
   buildApiChatFolder,
   buildApiChatFolderFromSuggested,
   buildApiChatBotCommands,
+  buildApiChatSettings,
 } from '../apiBuilders/chats';
 import { buildApiMessage, buildMessageDraft } from '../apiBuilders/messages';
 import { buildApiUser, buildApiUsersAndStatuses } from '../apiBuilders/users';
@@ -183,6 +184,20 @@ export function fetchFullChat(chat: ApiChat) {
     : getFullChatInfo(id);
 }
 
+export async function fetchChatSettings(chat: ApiChat) {
+  const { id, accessHash } = chat;
+
+  const result = await invokeRequest(new GramJs.messages.GetPeerSettings({
+    peer: buildInputPeer(id, accessHash),
+  }));
+
+  if (!result) {
+    return undefined;
+  }
+
+  return buildApiChatSettings(result.settings);
+}
+
 export async function searchChats({ query }: { query: string }) {
   const result = await invokeRequest(new GramJs.contacts.Search({ q: query }));
   if (!result) {
@@ -328,6 +343,7 @@ async function getFullChatInfo(chatId: string): Promise<{
   fullInfo: ApiChatFullInfo;
   users?: ApiUser[];
   groupCall?: Partial<ApiGroupCall>;
+  membersCount?: number;
 } | undefined> {
   const result = await invokeRequest(new GramJs.messages.GetFullChat({
     chatId: buildInputEntity(chatId) as BigInt.BigInteger,
@@ -380,6 +396,7 @@ async function getFullChatInfo(chatId: string): Promise<{
       version: 0,
       participants: {},
     } : undefined,
+    membersCount: members?.length,
   };
 }
 
@@ -391,6 +408,7 @@ async function getFullChannelInfo(
     fullInfo: ApiChatFullInfo;
     users?: ApiUser[];
     groupCall?: Partial<ApiGroupCall>;
+    membersCount?: number;
   } | undefined> {
   const result = await invokeRequest(new GramJs.channels.GetFullChannel({
     channel: buildInputEntity(id, accessHash) as GramJs.InputChannel,
@@ -409,6 +427,7 @@ async function getFullChannelInfo(
     migratedFromChatId,
     migratedFromMaxId,
     canViewParticipants,
+    canViewStats,
     linkedChatId,
     hiddenPrehistory,
     call,
@@ -417,6 +436,8 @@ async function getFullChannelInfo(
     defaultSendAs,
     requestsPending,
     recentRequesters,
+    statsDc,
+    participantsCount,
   } = result.fullChat;
 
   const inviteLink = exportedInvite instanceof GramJs.ChatInviteExported
@@ -460,6 +481,7 @@ async function getFullChannelInfo(
         maxMessageId: migratedFromMaxId,
       } : undefined,
       canViewMembers: canViewParticipants,
+      canViewStatistics: canViewStats,
       isPreHistoryHidden: hiddenPrehistory,
       members,
       kickedMembers,
@@ -471,6 +493,7 @@ async function getFullChannelInfo(
       sendAsId: defaultSendAs ? getApiChatIdFromMtpPeer(defaultSendAs) : undefined,
       requestsPending,
       recentRequesterIds: recentRequesters?.map((userId) => buildApiPeerId(userId, 'user')),
+      statisticsDcId: statsDc,
     },
     users: [...(users || []), ...(bannedUsers || []), ...(adminUsers || [])],
     groupCall: call ? {
@@ -483,6 +506,7 @@ async function getFullChannelInfo(
       participantsCount: 0,
       connectionState: 'disconnected',
     } : undefined,
+    membersCount: participantsCount,
   };
 }
 
@@ -800,11 +824,23 @@ export async function toggleDialogUnread({
   }
 }
 
+export async function getChatByPhoneNumber(phoneNumber: string) {
+  const result = await invokeRequest(new GramJs.contacts.ResolvePhone({
+    phone: phoneNumber,
+  }));
+
+  return processResolvedPeer(result);
+}
+
 export async function getChatByUsername(username: string) {
   const result = await invokeRequest(new GramJs.contacts.ResolveUsername({
     username,
   }));
 
+  return processResolvedPeer(result);
+}
+
+function processResolvedPeer(result?: GramJs.contacts.TypeResolvedPeer) {
   if (!result) {
     return undefined;
   }

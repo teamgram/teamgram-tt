@@ -1,10 +1,12 @@
-import React, { FC, memo, useEffect } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import React, {
+  FC, memo, useCallback, useEffect,
+} from '../../../lib/teact/teact';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiMessage } from '../../../api/types';
 
 import { IS_TOUCH_ENV } from '../../../util/environment';
-import { selectChatMessage, selectCurrentMessageList } from '../../../modules/selectors';
+import { selectChatMessage, selectCurrentMessageList } from '../../../global/selectors';
 import useMouseInside from '../../../hooks/useMouseInside';
 import useFlag from '../../../hooks/useFlag';
 
@@ -26,16 +28,16 @@ type StateProps = {
 const BotKeyboardMenu: FC<OwnProps & StateProps> = ({
   isOpen, message, onClose,
 }) => {
-  const { clickInlineButton } = getDispatch();
+  const { clickInlineButton } = getActions();
 
   const [handleMouseEnter, handleMouseLeave] = useMouseInside(isOpen, onClose);
   const { isKeyboardSingleUse } = message || {};
   const [forceOpen, markForceOpen, unmarkForceOpen] = useFlag(true);
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     unmarkForceOpen();
     onClose();
-  };
+  }, [onClose, unmarkForceOpen]);
 
   useEffect(() => {
     markForceOpen();
@@ -56,6 +58,7 @@ const BotKeyboardMenu: FC<OwnProps & StateProps> = ({
       onCloseAnimationEnd={handleClose}
       onMouseEnter={!IS_TOUCH_ENV ? handleMouseEnter : undefined}
       onMouseLeave={!IS_TOUCH_ENV ? handleMouseLeave : undefined}
+      noCompact
     >
       <div className="content">
         {message.keyboardButtons.map((row) => (
@@ -64,6 +67,7 @@ const BotKeyboardMenu: FC<OwnProps & StateProps> = ({
               <Button
                 ripple
                 disabled={button.type === 'NOT_SUPPORTED'}
+                // eslint-disable-next-line react/jsx-no-bind
                 onClick={() => clickInlineButton({ button })}
               >
                 {button.text}

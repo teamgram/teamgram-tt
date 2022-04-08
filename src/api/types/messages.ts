@@ -26,7 +26,7 @@ export interface ApiSticker {
   stickerSetAccessHash?: string;
   emoji?: string;
   isLottie: boolean;
-  isGif: boolean;
+  isVideo: boolean;
   width?: number;
   height?: number;
   thumbnail?: ApiThumbnail;
@@ -36,7 +36,7 @@ export interface ApiSticker {
 export interface ApiStickerSet {
   archived?: true;
   isLottie?: true;
-  isGifs?: true;
+  isVideos?: true;
   installedDate?: number;
   id: string;
   accessHash: string;
@@ -143,6 +143,37 @@ export interface ApiInvoice {
   isTest?: boolean;
 }
 
+interface ApiGeoPoint {
+  long: number;
+  lat: number;
+  accessHash: string;
+  accuracyRadius?: number;
+}
+
+interface ApiGeo {
+  type: 'geo';
+  geo: ApiGeoPoint;
+}
+
+interface ApiVenue {
+  type: 'venue';
+  geo: ApiGeoPoint;
+  title: string;
+  address: string;
+  provider: string;
+  venueId: string;
+  venueType: string;
+}
+
+interface ApiGeoLive {
+  type: 'geoLive';
+  geo: ApiGeoPoint;
+  heading?: number;
+  period: number;
+}
+
+export type ApiLocation = ApiGeo | ApiVenue | ApiGeoLive;
+
 export type ApiNewPoll = {
   summary: ApiPoll['summary'];
   quiz?: {
@@ -240,6 +271,7 @@ export interface ApiMessage {
     audio?: ApiAudio;
     voice?: ApiVoice;
     invoice?: ApiInvoice;
+    location?: ApiLocation;
   };
   date: number;
   isOutgoing: boolean;
@@ -350,7 +382,7 @@ export type ApiMessageSearchType = 'text' | 'media' | 'documents' | 'links' | 'a
 export type ApiGlobalMessageSearchType = 'text' | 'media' | 'documents' | 'links' | 'audio' | 'voice';
 
 export type ApiReportReason = 'spam' | 'violence' | 'pornography' | 'childAbuse'
-| 'copyright' | 'geoIrrelevant' | 'fake' | 'other';
+| 'copyright' | 'geoIrrelevant' | 'fake' | 'illegalDrugs' | 'personalDetails' | 'other';
 
 export type ApiSendMessageAction = {
   type: 'cancel' | 'typing' | 'recordAudio' | 'chooseSticker';

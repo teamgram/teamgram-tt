@@ -22,6 +22,7 @@ import {
   buildAvatarHash,
   buildApiChatFromPreview,
   buildApiChatFolder,
+  buildApiChatSettings,
 } from './apiBuilders/chats';
 import { buildApiUser, buildApiUserStatus } from './apiBuilders/users';
 import {
@@ -188,7 +189,11 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
     if (update.message instanceof GramJs.MessageService) {
       const { action } = update.message;
 
-      if (action instanceof GramJs.MessageActionChatEditTitle) {
+      if (action instanceof GramJs.MessageActionPaymentSent) {
+        onUpdate({
+          '@type': 'updatePaymentStateCompleted',
+        });
+      } else if (action instanceof GramJs.MessageActionChatEditTitle) {
         onUpdate({
           '@type': 'updateChat',
           id: message.chatId,
@@ -236,13 +241,9 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
             '@type': 'updateChat',
             id: message.chatId,
             chat: {
-              isRestricted: true,
+              isForbidden: true,
+              isNotJoined: true,
             },
-          });
-
-          onUpdate({
-            '@type': 'updateChatLeave',
-            id: message.chatId,
           });
         }
       } else if (action instanceof GramJs.MessageActionChatAddUser) {
@@ -767,7 +768,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
     });
   } else if (update instanceof GramJs.UpdatePeerSettings) {
     // eslint-disable-next-line @typescript-eslint/naming-convention
-    const { _entities } = update;
+    const { _entities, settings } = update;
     if (!_entities) {
       return;
     }
@@ -793,7 +794,10 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
           onUpdate({
             '@type': 'updateUser',
             id: user.id,
-            user,
+            user: {
+              ...user,
+              ...(settings && { settings: buildApiChatSettings(settings) }),
+            },
           });
         });
     }

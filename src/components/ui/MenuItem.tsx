@@ -2,6 +2,7 @@ import React, { FC, useCallback } from '../../lib/teact/teact';
 
 import buildClassName from '../../util/buildClassName';
 import useLang from '../../hooks/useLang';
+import { IS_COMPACT_MENU } from '../../util/environment';
 
 import './MenuItem.scss';
 
@@ -10,7 +11,7 @@ type OnClickHandler = (e: React.SyntheticEvent<HTMLDivElement | HTMLAnchorElemen
 type OwnProps = {
   icon?: string;
   className?: string;
-  children: any;
+  children: React.ReactNode;
   onClick?: OnClickHandler;
   href?: string;
   download?: string;
@@ -64,6 +65,7 @@ const MenuItem: FC<OwnProps> = (props) => {
     className,
     disabled && 'disabled',
     destructive && 'destructive',
+    IS_COMPACT_MENU && 'compact',
   );
 
   const content = (

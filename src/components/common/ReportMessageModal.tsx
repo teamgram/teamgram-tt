@@ -3,7 +3,7 @@ import { ChangeEvent } from 'react';
 import React, {
   FC, memo, useCallback, useState,
 } from '../../lib/teact/teact';
-import { getDispatch } from '../../lib/teact/teactn';
+import { getActions } from '../../global';
 
 import { ApiReportReason } from '../../api/types';
 
@@ -28,16 +28,16 @@ const ReportMessageModal: FC<OwnProps> = ({
   const {
     reportMessages,
     exitMessageSelectMode,
-  } = getDispatch();
+  } = getActions();
 
   const [selectedReason, setSelectedReason] = useState<ApiReportReason>('spam');
   const [description, setDescription] = useState('');
 
-  const handleReport = () => {
+  const handleReport = useCallback(() => {
     reportMessages({ messageIds, reason: selectedReason, description });
     exitMessageSelectMode();
     onClose();
-  };
+  }, [description, exitMessageSelectMode, messageIds, onClose, reportMessages, selectedReason]);
 
   const handleSelectReason = useCallback((value: string) => {
     setSelectedReason(value as ApiReportReason);
@@ -55,6 +55,8 @@ const ReportMessageModal: FC<OwnProps> = ({
     { value: 'pornography', label: lang('lng_report_reason_pornography') },
     { value: 'childAbuse', label: lang('lng_report_reason_child_abuse') },
     { value: 'copyright', label: lang('ReportPeer.ReasonCopyright') },
+    { value: 'illegalDrugs', label: 'Illegal Drugs' },
+    { value: 'personalDetails', label: 'Personal Details' },
     { value: 'other', label: lang('lng_report_reason_other') },
   ];
 

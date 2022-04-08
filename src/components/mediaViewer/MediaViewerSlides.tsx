@@ -49,6 +49,7 @@ const MAX_ZOOM = 4;
 const MIN_ZOOM = 0.6;
 const DOUBLE_TAP_ZOOM = 3;
 const CLICK_X_THRESHOLD = 40;
+const CLICK_Y_THRESHOLD = 80;
 let cancelAnimation: Function | undefined;
 
 type Transform = {
@@ -105,11 +106,12 @@ const MediaViewerSlides: FC<OwnProps> = ({
   const debounceActive = useDebounce(DEBOUNCE_ACTIVE, true);
 
   const handleToggleFooterVisibility = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    if (!IS_TOUCH_ENV || !hasFooter || (!isPhoto && !isGif)) return;
-    if (e.pageX < CLICK_X_THRESHOLD) return;
-    if (e.pageX > window.innerWidth - CLICK_X_THRESHOLD) return;
+    if (!IS_TOUCH_ENV) return;
+    const isFooter = window.innerHeight - e.pageY < CLICK_Y_THRESHOLD;
+    if (!isFooter && e.pageX < CLICK_X_THRESHOLD) return;
+    if (!isFooter && e.pageX > window.innerWidth - CLICK_X_THRESHOLD) return;
     setIsFooterHidden(!isFooterHidden);
-  }, [hasFooter, isFooterHidden, isGif, isPhoto]);
+  }, [isFooterHidden]);
 
   useTimeout(() => setIsFooterHidden(false), ANIMATION_DURATION - 150);
 
@@ -140,6 +142,9 @@ const MediaViewerSlides: FC<OwnProps> = ({
     const changeSlide = (e: MouseEvent) => {
       if (transformRef.current.scale !== 1) return false;
       let direction = 0;
+      if (window.innerHeight - e.pageY < CLICK_Y_THRESHOLD) {
+        return false;
+      }
       if (e.pageX < CLICK_X_THRESHOLD) {
         direction = -1;
       } else if (e.pageX > window.innerWidth - CLICK_X_THRESHOLD) {
@@ -173,8 +178,9 @@ const MediaViewerSlides: FC<OwnProps> = ({
 
     return captureEvents(containerRef.current, {
       isNotPassive: true,
-      excludedClosestSelector: '.VideoPlayerControls, .MediaViewerFooter',
-      onCapture: () => {
+      excludedClosestSelector: '.MediaViewerFooter',
+      onCapture: (e) => {
+        if (checkIfControlTarget(e)) return;
         lastGestureTime = Date.now();
         if (arePropsShallowEqual(transformRef.current, { x: 0, y: 0, scale: 1 })) {
           if (!activeSlideRef.current) return;
@@ -188,6 +194,7 @@ const MediaViewerSlides: FC<OwnProps> = ({
         dragOffsetX,
         dragOffsetY,
       }) => {
+        if (checkIfControlTarget(event)) return;
         // Avoid conflicts with swipe-to-back gestures
         if (IS_IOS) {
           const { pageX } = (captureEvent as RealTouchEvent).touches[0];
@@ -506,10 +513,13 @@ const MediaViewerSlides: FC<OwnProps> = ({
 
   return (
     <div className="MediaViewerSlides" ref={containerRef}>
-      {previousMessageId && scale === 1 && /* @ts-ignore */ (
+      {previousMessageId && scale === 1 && (
         <div className="MediaViewerSlide" style={getAnimationStyle(-window.innerWidth + offsetX - SLIDES_GAP)}>
-          {/* eslint-disable-next-line react/jsx-props-no-spreading */}
-          <MediaViewerContent {...rest} messageId={previousMessageId} isFooterHidden={isFooterHidden} />
+          <MediaViewerContent
+            /* eslint-disable-next-line react/jsx-props-no-spreading */
+            {...rest}
+            messageId={previousMessageId}
+          />
         </div>
       )}
       {activeMessageId && (
@@ -517,7 +527,6 @@ const MediaViewerSlides: FC<OwnProps> = ({
           className={`MediaViewerSlide ${isActive ? 'MediaViewerSlide--active' : ''}`}
           onClick={handleToggleFooterVisibility}
           ref={activeSlideRef}
-          /* @ts-ignore */
           style={getAnimationStyle(offsetX, offsetY, scale)}
         >
           <MediaViewerContent
@@ -525,14 +534,18 @@ const MediaViewerSlides: FC<OwnProps> = ({
             {...rest}
             messageId={activeMessageId}
             isActive={isActive && isActiveRef.current}
+            setIsFooterHidden={setIsFooterHidden}
             isFooterHidden={isFooterHidden || isZoomed || scale !== 1}
           />
         </div>
       )}
-      {nextMessageId && scale === 1 && /* @ts-ignore */ (
+      {nextMessageId && scale === 1 && (
         <div className="MediaViewerSlide" style={getAnimationStyle(window.innerWidth + offsetX + SLIDES_GAP)}>
-          {/* eslint-disable-next-line react/jsx-props-no-spreading */}
-          <MediaViewerContent {...rest} messageId={nextMessageId} isFooterHidden={isFooterHidden} />
+          <MediaViewerContent
+            /* eslint-disable-next-line react/jsx-props-no-spreading */
+            {...rest}
+            messageId={nextMessageId}
+          />
         </div>
       )}
     </div>
@@ -543,4 +556,25 @@ export default memo(MediaViewerSlides);
 
 function getAnimationStyle(x = 0, y = 0, scale = 1) {
   return `transform: translate3d(${x.toFixed(3)}px, ${y.toFixed(3)}px, 0px) scale(${scale.toFixed(3)});`;
+}
+
+function checkIfInsideSelector(element: HTMLElement, selector: string) {
+  if (!element) return false;
+  if (element.matches(selector)) return true;
+  return Boolean(element.closest(selector));
+}
+
+function checkIfControlTarget(e: TouchEvent | MouseEvent) {
+  const target = e.target as HTMLElement;
+  if (checkIfInsideSelector(target, '.VideoPlayerControls')) {
+    if (checkIfInsideSelector(
+      target,
+      '.play, .fullscreen, .volume, .volume-slider, .playback-rate, .playback-rate-menu',
+    )) {
+      return true;
+    }
+    e.preventDefault();
+    return true;
+  }
+  return false;
 }

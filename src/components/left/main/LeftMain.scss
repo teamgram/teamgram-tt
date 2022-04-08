@@ -19,6 +19,7 @@
 
     .tabs-placeholder {
       height: 2.625rem;
+      /* stylelint-disable-next-line plugin/no-low-performance-animation-properties */
       transition: height 150ms ease;
 
       &:not(.open) {
@@ -28,7 +29,7 @@
 
     .TabList {
       justify-content: flex-start;
-      padding-left: .5625rem;
+      padding-left: 0.5625rem;
       padding-bottom: 1px;
       border-bottom: 0;
       z-index: 1;
@@ -51,7 +52,9 @@
     }
   }
 
-  .RecentContacts, .LeftSearch, .search-content {
+  .RecentContacts,
+  .LeftSearch,
+  .search-content {
     height: 100%;
     overflow-y: auto;
   }

@@ -1,5 +1,5 @@
 import React, { FC, memo } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiNotification } from '../../api/types';
 
@@ -13,7 +13,7 @@ type StateProps = {
 };
 
 const Notifications: FC<StateProps> = ({ notifications }) => {
-  const { dismissNotification } = getDispatch();
+  const { dismissNotification } = getActions();
 
   if (!notifications.length) {
     return undefined;
@@ -24,6 +24,7 @@ const Notifications: FC<StateProps> = ({ notifications }) => {
       {notifications.map(({ message, localId }) => (
         <Notification
           message={renderText(message, ['emoji', 'br', 'links', 'simple_markdown'])}
+          // eslint-disable-next-line react/jsx-no-bind
           onDismiss={() => dismissNotification({ localId })}
         />
       ))}

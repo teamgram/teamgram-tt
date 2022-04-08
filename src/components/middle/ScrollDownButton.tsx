@@ -1,12 +1,12 @@
 import React, {
   FC, useCallback, memo, useRef,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { MessageListType } from '../../global/types';
 import { MAIN_THREAD_ID } from '../../api/types';
 
-import { selectChat, selectCurrentMessageList } from '../../modules/selectors';
+import { selectChat, selectCurrentMessageList } from '../../global/selectors';
 import { formatIntegerCompact } from '../../util/textFormat';
 import buildClassName from '../../util/buildClassName';
 import fastSmoothScroll from '../../util/fastSmoothScroll';
@@ -36,7 +36,7 @@ const ScrollDownButton: FC<OwnProps & StateProps> = ({
   unreadCount,
   withExtraShift,
 }) => {
-  const { focusNextReply } = getDispatch();
+  const { focusNextReply } = getActions();
 
   const lang = useLang();
   // eslint-disable-next-line no-null/no-null

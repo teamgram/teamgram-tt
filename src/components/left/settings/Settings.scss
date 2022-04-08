@@ -1,4 +1,4 @@
-@import '../../../styles/mixins';
+@import "../../../styles/mixins";
 
 #Settings {
   height: 100%;
@@ -10,7 +10,7 @@
   }
 
   .left-header {
-    padding-right: .8125rem;
+    padding-right: 0.8125rem;
   }
 }
 
@@ -33,11 +33,16 @@
 }
 
 .settings-content {
-  background: var(--color-background);
+  border-top: 1px solid var(--color-borders);
+  background-color: var(--color-background-secondary);
   height: calc(100% - var(--header-height));
 
   overflow-y: auto;
   @include overflow-y-overlay();
+
+  &.no-border, &.two-fa {
+    border-top: none;
+  }
 
   &.infinite-scroll {
     display: flex;
@@ -50,12 +55,12 @@
   }
 
   #monkey {
-    margin-top: .5rem;
+    margin-top: 0.5rem;
     margin-bottom: 1rem;
   }
 
   .AnimatedEmoji {
-    margin-top: .5rem;
+    margin-top: 0.5rem;
     margin-bottom: 1.5rem;
   }
 }
@@ -66,6 +71,14 @@
   align-items: center;
   padding: 0 1.5rem 1rem;
   text-align: center;
+  background-color: var(--color-background);
+  box-shadow: inset 0 -0.0625rem 0 0 var(--color-background-secondary-accent);
+  margin-bottom: 0.625rem;
+
+  &.no-border {
+    margin-bottom: 0;
+    box-shadow: none;
+  }
 
   .input-group {
     width: 100%;
@@ -86,32 +99,36 @@
     height: 100%;
 
     &.hidden {
-      display: none
+      display: none;
     }
   }
 }
 
 .settings-main-menu {
-  padding: 0 0.5rem .75rem;
+  padding: 0 0.5rem 0.75rem;
+  background-color: var(--color-background);
 
   > .ChatExtra {
-    padding: 0 .5rem .3125rem;
-    margin: 0 -.5rem .625rem;
-    box-shadow: inset 0 -.0625rem 0 0 var(--color-background-secondary-accent);
-    border-bottom: .625rem solid var(--color-background-secondary);
+    padding: 0 0.5rem 0.3125rem;
+    margin: 0 -0.5rem 0.625rem;
+    box-shadow: inset 0 -0.0625rem 0 0 var(--color-background-secondary-accent);
+    border-bottom: 0.625rem solid var(--color-background-secondary);
 
     .ListItem.narrow {
-      margin-bottom: .25rem;
+      margin-bottom: 0.25rem;
     }
   }
 }
 
 .settings-item {
-  border-top: 1px solid var(--color-borders);
+  background-color: var(--color-background);
   padding: 1.5rem 1.5rem 1rem;
+  box-shadow: inset 0 -0.0625rem 0 0 var(--color-background-secondary-accent);
+  margin-bottom: 0.625rem;
 
   &.no-border {
-    border-top: none;
+    margin-bottom: 0;
+    box-shadow: none;
   }
 
   &-header {
@@ -120,7 +137,7 @@
     margin-bottom: 2rem;
     position: relative;
 
-    &[dir=rtl] {
+    &[dir="rtl"] {
       text-align: right;
     }
   }
@@ -139,7 +156,12 @@
       font-size: 1rem;
     }
 
-    &[dir=rtl] {
+    .settings-edit-profile & {
+      margin-bottom: 0;
+      padding-bottom: 1.5rem;
+    }
+
+    &[dir="rtl"] {
       text-align: right;
       unicode-bidi: plaintext;
     }
@@ -152,7 +174,7 @@
     margin-top: 2rem;
     margin-bottom: 0.75rem;
 
-    &[dir=rtl] {
+    &[dir="rtl"] {
       text-align: right;
     }
   }
@@ -178,7 +200,8 @@
         color: var(--color-text-secondary);
       }
 
-      .title, .subtitle {
+      .title,
+      .subtitle {
         display: block;
         text-align: left;
       }
@@ -202,7 +225,7 @@
 
         &.tight {
           line-height: 1.3125rem;
-          margin-bottom: .1875rem;
+          margin-bottom: 0.1875rem;
         }
       }
     }
@@ -246,9 +269,10 @@
       }
     }
 
-    &[dir=rtl] {
+    &[dir="rtl"] {
       .multiline-menu-item {
-        .title, .subtitle {
+        .title,
+        .subtitle {
           text-align: right;
         }
 
@@ -265,7 +289,8 @@
     margin-bottom: 1.0625rem;
   }
 
-  .Checkbox, .radio-group {
+  .Checkbox,
+  .radio-group {
     margin: 0 -1rem 0.5rem;
   }
 
@@ -275,8 +300,16 @@
     }
   }
 
-  .Radio + .Radio, .Checkbox + .Checkbox {
+  .Radio + .Radio,
+  .Checkbox + .Checkbox {
     margin-top: 2rem;
+  }
+
+  &__current-value {
+    margin-inline-start: auto;
+    padding-inline-start: 0.5rem;
+    font-size: 0.9375rem;
+    color: var(--color-text-secondary);
   }
 }
 
@@ -309,7 +342,7 @@
 
   .ReactionStaticEmoji {
     margin-inline-end: 1rem;
-    width: 1.5rem
+    width: 1.5rem;
   }
 }
 
@@ -319,5 +352,4 @@
     height: 1.5rem;
     margin-inline-end: 2rem;
   }
-
 }

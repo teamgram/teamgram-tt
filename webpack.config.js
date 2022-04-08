@@ -2,14 +2,17 @@ const path = require('path');
 const dotenv = require('dotenv');
 
 const {
+  DefinePlugin,
   EnvironmentPlugin,
   ProvidePlugin,
 } = require('webpack');
 const HtmlPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-const TerserJSPlugin = require('terser-webpack-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
+const { GitRevisionPlugin } = require('git-revision-webpack-plugin');
+
+const appVersion = require('./package.json').version;
 
 dotenv.config();
 
@@ -87,24 +90,12 @@ module.exports = (env = {}, argv = {}) => {
           type: 'asset/resource',
         },
         {
-          test: /-extra\.json$/,
-          loader: 'file-loader',
-          type: 'javascript/auto',
-          options: {
-            name: '[name].[contenthash].[ext]',
-          },
-        },
-        {
           test: /\.wasm$/,
-          loader: 'file-loader',
-          type: 'javascript/auto',
-          options: {
-            name: '[name].[contenthash].[ext]',
-          },
+          type: 'asset/resource',
         },
         {
           test: /\.(txt|tl)$/i,
-          loader: 'raw-loader',
+          type: 'asset/source',
         },
       ],
     },
@@ -127,15 +118,22 @@ module.exports = (env = {}, argv = {}) => {
         ignoreOrder: true,
       }),
       new EnvironmentPlugin({
-        APP_NAME: 'Telegram WebZ',
-        APP_VERSION: 'dev',
         APP_ENV: 'production',
-        TELEGRAM_T_API_ID: '',
-        TELEGRAM_T_API_HASH: '',
-        TEST_SESSION: '',
+        APP_NAME: null,
+        APP_VERSION: appVersion,
+        TELEGRAM_T_API_ID: undefined,
+        TELEGRAM_T_API_HASH: undefined,
+        TEST_SESSION: null,
+      }),
+      new DefinePlugin({
+        APP_REVISION: DefinePlugin.runtimeValue(() => {
+          const { branch, commit } = getGitMetadata();
+          return JSON.stringify((!branch || branch === 'HEAD') ? commit : branch);
+        }, argv.mode === 'development' ? true : []),
       }),
       new ProvidePlugin({
         Buffer: ['buffer', 'Buffer'],
+        process: 'process/browser',
       }),
       ...(argv.mode === 'production' ? [
         new BundleAnalyzerPlugin({
@@ -153,10 +151,16 @@ module.exports = (env = {}, argv = {}) => {
       optimization: {
         minimize: !env.noMinify,
         minimizer: [
-          new TerserJSPlugin({ sourceMap: true }),
           new CssMinimizerPlugin(),
         ],
       },
     }),
   };
 };
+
+function getGitMetadata() {
+  const gitRevisionPlugin = new GitRevisionPlugin();
+  const branch = process.env.HEAD || gitRevisionPlugin.branch();
+  const commit = gitRevisionPlugin.commithash().substring(0, 7);
+  return { branch, commit };
+}

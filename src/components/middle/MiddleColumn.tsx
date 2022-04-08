@@ -1,7 +1,7 @@
 import React, {
   FC, useEffect, useState, memo, useMemo, useCallback,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiChatBannedRights, MAIN_THREAD_ID } from '../../api/types';
 import {
@@ -42,10 +42,10 @@ import {
   selectIsUserBlocked,
   selectPinnedIds,
   selectTheme,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import {
   getCanPostInChat, getMessageSendingRestrictionReason, isChatChannel, isChatSuperGroup, isUserId,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import buildClassName from '../../util/buildClassName';
 import { createMessageHash } from '../../util/routing';
@@ -106,10 +106,12 @@ type StateProps = {
   currentTransitionKey: number;
   messageLists?: GlobalMessageList[];
   isChannel?: boolean;
+  areChatSettingsLoaded?: boolean;
   canSubscribe?: boolean;
   canStartBot?: boolean;
   canRestartBot?: boolean;
-  activeEmojiInteraction?: ActiveEmojiInteraction;
+  activeEmojiInteractions?: ActiveEmojiInteraction[];
+  lastSyncTime?: number;
 };
 
 const CLOSE_ANIMATION_DURATION = IS_SINGLE_COLUMN_LAYOUT ? 450 + ANIMATION_END_DELAY : undefined;
@@ -147,15 +149,18 @@ const MiddleColumn: FC<StateProps> = ({
   shouldSkipHistoryAnimations,
   currentTransitionKey,
   isChannel,
+  areChatSettingsLoaded,
   canSubscribe,
   canStartBot,
   canRestartBot,
-  activeEmojiInteraction,
+  activeEmojiInteractions,
+  lastSyncTime,
 }) => {
   const {
     openChat,
     unpinAllMessages,
     loadUser,
+    loadChatSettings,
     closeLocalTextSearch,
     exitMessageSelectMode,
     closePaymentModal,
@@ -163,7 +168,7 @@ const MiddleColumn: FC<StateProps> = ({
     joinChannel,
     sendBotCommand,
     restartBot,
-  } = getDispatch();
+  } = getActions();
 
   const { width: windowWidth } = useWindowSize();
 
@@ -250,6 +255,12 @@ const MiddleColumn: FC<StateProps> = ({
       loadUser({ userId: chatId });
     }
   }, [chatId, isPrivate, loadUser]);
+
+  useEffect(() => {
+    if (!areChatSettingsLoaded && lastSyncTime) {
+      loadChatSettings({ chatId });
+    }
+  }, [chatId, isPrivate, areChatSettingsLoaded, lastSyncTime, loadChatSettings]);
 
   const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     if (IS_TOUCH_ENV) {
@@ -342,7 +353,10 @@ const MiddleColumn: FC<StateProps> = ({
 
   useHistoryBack(
     renderingChatId && renderingThreadId,
-    closeChat, undefined, undefined, undefined,
+    closeChat,
+    undefined,
+    undefined,
+    undefined,
     messageLists?.map(createMessageHash) || [],
   );
 
@@ -363,7 +377,6 @@ const MiddleColumn: FC<StateProps> = ({
       id="MiddleColumn"
       className={className}
       onTransitionEnd={handleOpenEnd}
-      // @ts-ignore teact-feature
       style={`
         --composer-hidden-scale: ${composerHiddenScale};
         --toolbar-hidden-scale: ${toolbarHiddenScale};
@@ -379,7 +392,6 @@ const MiddleColumn: FC<StateProps> = ({
     >
       <div
         id="middle-column-bg"
-        // @ts-ignore
         style={customBackgroundValue ? `--custom-background: ${customBackgroundValue}` : undefined}
       />
       <div id="middle-column-portals" />
@@ -399,111 +411,107 @@ const MiddleColumn: FC<StateProps> = ({
               cleanupExceptionKey={cleanupExceptionKey}
               onStop={handleSlideStop}
             >
-              {() => (
-                <>
-                  <MessageList
-                    key={`${renderingChatId}-${renderingThreadId}-${renderingMessageListType}`}
+              <MessageList
+                key={`${renderingChatId}-${renderingThreadId}-${renderingMessageListType}`}
+                chatId={renderingChatId}
+                threadId={renderingThreadId}
+                type={renderingMessageListType}
+                canPost={renderingCanPost}
+                hasTools={renderingHasTools}
+                onFabToggle={setIsFabShown}
+                onNotchToggle={setIsNotchShown}
+                isReady={isReady}
+                withBottomShift={withMessageListBottomShift}
+              />
+              <div className={footerClassName}>
+                {renderingCanPost && (
+                  <Composer
                     chatId={renderingChatId}
                     threadId={renderingThreadId}
-                    type={renderingMessageListType}
-                    canPost={renderingCanPost}
-                    hasTools={renderingHasTools}
-                    onFabToggle={setIsFabShown}
-                    onNotchToggle={setIsNotchShown}
+                    messageListType={renderingMessageListType}
+                    dropAreaState={dropAreaState}
+                    onDropHide={handleHideDropArea}
                     isReady={isReady}
-                    withBottomShift={withMessageListBottomShift}
                   />
-                  <div className={footerClassName}>
-                    {renderingCanPost && (
-                      <Composer
-                        chatId={renderingChatId}
-                        threadId={renderingThreadId}
-                        messageListType={renderingMessageListType}
-                        dropAreaState={dropAreaState}
-                        onDropHide={handleHideDropArea}
-                        isReady={isReady}
-                      />
-                    )}
-                    {isPinnedMessageList && (
-                      <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
-                        <Button
-                          size="tiny"
-                          fluid
-                          color="secondary"
-                          className="unpin-all-button"
-                          onClick={handleOpenUnpinModal}
-                        >
-                          <i className="icon-unpin" />
-                          <span>{lang('Chat.Pinned.UnpinAll', pinnedMessagesCount, 'i')}</span>
-                        </Button>
-                      </div>
-                    )}
-                    {isMessagingDisabled && (
-                      <div className={messagingDisabledClassName}>
-                        <div className="messaging-disabled-inner">
-                          <span>
-                            {messageSendingRestrictionReason}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                    {IS_SINGLE_COLUMN_LAYOUT && renderingCanSubscribe && (
-                      <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
-                        <Button
-                          size="tiny"
-                          fluid
-                          ripple
-                          className="join-subscribe-button"
-                          onClick={handleSubscribeClick}
-                        >
-                          {lang(renderingIsChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
-                        </Button>
-                      </div>
-                    )}
-                    {IS_SINGLE_COLUMN_LAYOUT && renderingCanStartBot && (
-                      <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
-                        <Button
-                          size="tiny"
-                          fluid
-                          ripple
-                          className="join-subscribe-button"
-                          onClick={handleStartBot}
-                        >
-                          {lang('BotStart')}
-                        </Button>
-                      </div>
-                    )}
-                    {IS_SINGLE_COLUMN_LAYOUT && renderingCanRestartBot && (
-                      <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
-                        <Button
-                          size="tiny"
-                          fluid
-                          ripple
-                          className="join-subscribe-button"
-                          onClick={handleRestartBot}
-                        >
-                          {lang('BotRestart')}
-                        </Button>
-                      </div>
-                    )}
-                    <MessageSelectToolbar
-                      messageListType={renderingMessageListType}
-                      isActive={isSelectModeActive}
-                      canPost={renderingCanPost}
-                    />
-                    <PaymentModal
-                      isOpen={Boolean(isPaymentModalOpen)}
-                      onClose={closePaymentModal}
-                    />
-                    <ReceiptModal
-                      isOpen={Boolean(isReceiptModalOpen)}
-                      onClose={clearReceipt}
-                    />
-                    <SeenByModal isOpen={isSeenByModalOpen} />
-                    <ReactorListModal isOpen={isReactorListModalOpen} />
+                )}
+                {isPinnedMessageList && (
+                  <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
+                    <Button
+                      size="tiny"
+                      fluid
+                      color="secondary"
+                      className="unpin-all-button"
+                      onClick={handleOpenUnpinModal}
+                    >
+                      <i className="icon-unpin" />
+                      <span>{lang('Chat.Pinned.UnpinAll', pinnedMessagesCount, 'i')}</span>
+                    </Button>
                   </div>
-                </>
-              )}
+                )}
+                {isMessagingDisabled && (
+                  <div className={messagingDisabledClassName}>
+                    <div className="messaging-disabled-inner">
+                      <span>
+                        {messageSendingRestrictionReason}
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {IS_SINGLE_COLUMN_LAYOUT && renderingCanSubscribe && (
+                  <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
+                    <Button
+                      size="tiny"
+                      fluid
+                      ripple
+                      className="join-subscribe-button"
+                      onClick={handleSubscribeClick}
+                    >
+                      {lang(renderingIsChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
+                    </Button>
+                  </div>
+                )}
+                {IS_SINGLE_COLUMN_LAYOUT && renderingCanStartBot && (
+                  <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
+                    <Button
+                      size="tiny"
+                      fluid
+                      ripple
+                      className="join-subscribe-button"
+                      onClick={handleStartBot}
+                    >
+                      {lang('BotStart')}
+                    </Button>
+                  </div>
+                )}
+                {IS_SINGLE_COLUMN_LAYOUT && renderingCanRestartBot && (
+                  <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
+                    <Button
+                      size="tiny"
+                      fluid
+                      ripple
+                      className="join-subscribe-button"
+                      onClick={handleRestartBot}
+                    >
+                      {lang('BotRestart')}
+                    </Button>
+                  </div>
+                )}
+                <MessageSelectToolbar
+                  messageListType={renderingMessageListType}
+                  isActive={isSelectModeActive}
+                  canPost={renderingCanPost}
+                />
+                <PaymentModal
+                  isOpen={Boolean(isPaymentModalOpen)}
+                  onClose={closePaymentModal}
+                />
+                <ReceiptModal
+                  isOpen={Boolean(isReceiptModalOpen)}
+                  onClose={clearReceipt}
+                />
+                <SeenByModal isOpen={isSeenByModalOpen} />
+                <ReactorListModal isOpen={isReactorListModalOpen} />
+              </div>
             </Transition>
 
             <ScrollDownButton
@@ -524,9 +532,15 @@ const MiddleColumn: FC<StateProps> = ({
           onUnpin={handleUnpinAllMessages}
         />
       )}
-      {activeEmojiInteraction && (
-        <EmojiInteractionAnimation emojiInteraction={activeEmojiInteraction} />
-      )}
+      <div teactFastList>
+        {activeEmojiInteractions?.map((activeEmojiInteraction, i) => (
+          <EmojiInteractionAnimation
+            teactOrderKey={i}
+            key={activeEmojiInteraction.id}
+            activeEmojiInteraction={activeEmojiInteraction}
+          />
+        ))}
+      </div>
     </div>
   );
 };
@@ -540,7 +554,9 @@ export default memo(withGlobal(
 
     const { messageLists } = global.messages;
     const currentMessageList = selectCurrentMessageList(global);
-    const { isLeftColumnShown, chats: { listIds }, activeEmojiInteraction } = global;
+    const {
+      isLeftColumnShown, chats: { listIds }, activeEmojiInteractions, lastSyncTime,
+    } = global;
 
     const state: StateProps = {
       theme,
@@ -558,7 +574,8 @@ export default memo(withGlobal(
       isReactorListModalOpen: Boolean(global.reactorModal),
       animationLevel: global.settings.byKey.animationLevel,
       currentTransitionKey: Math.max(0, global.messages.messageLists.length - 1),
-      activeEmojiInteraction,
+      activeEmojiInteractions,
+      lastSyncTime,
     };
 
     if (!currentMessageList || !listIds.active) {
@@ -566,6 +583,7 @@ export default memo(withGlobal(
     }
 
     const { chatId, threadId, type: messageListType } = currentMessageList;
+    const isPrivate = isUserId(chatId);
     const chat = selectChat(global, chatId);
     const bot = selectChatBot(global, chatId);
     const pinnedIds = selectPinnedIds(global, chatId);
@@ -588,7 +606,8 @@ export default memo(withGlobal(
       chatId,
       threadId,
       messageListType,
-      isPrivate: isUserId(chatId),
+      isPrivate,
+      areChatSettingsLoaded: Boolean(chat?.settings),
       canPost: !isPinnedMessageList && (!chat || canPost) && !isBotNotStarted,
       isPinnedMessageList,
       isScheduledMessageList,

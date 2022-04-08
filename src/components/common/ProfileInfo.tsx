@@ -1,17 +1,17 @@
 import React, {
   FC, useEffect, useCallback, memo, useState,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiUser, ApiChat, ApiUserStatus } from '../../api/types';
 import { GlobalState } from '../../global/types';
 import { MediaViewerOrigin } from '../../types';
 
 import { IS_TOUCH_ENV } from '../../util/environment';
-import { selectChat, selectUser, selectUserStatus } from '../../modules/selectors';
+import { selectChat, selectUser, selectUserStatus } from '../../global/selectors';
 import {
   getUserFullName, getUserStatus, isChatChannel, isUserOnline,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import renderText from './helpers/renderText';
 import { captureEvents, SwipeDirection } from '../../util/captureEvents';
 import buildClassName from '../../util/buildClassName';
@@ -53,7 +53,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
   const {
     loadFullUser,
     openMediaViewer,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
 
@@ -108,7 +108,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
     setCurrentPhotoIndex(currentPhotoIndex + 1);
   }, [currentPhotoIndex, isLast]);
 
-  // Support for swipe gestures and closing on click
+  // Swipe gestures
   useEffect(() => {
     const element = document.querySelector<HTMLDivElement>('.photo-wrapper');
     if (!element) {
@@ -191,7 +191,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
       <div className="photo-wrapper">
         {renderPhotoTabs()}
         <Transition activeKey={currentPhotoIndex} name={slideAnimation} className="profile-slide-container">
-          {renderPhoto}
+          {renderPhoto()}
         </Transition>
 
         {!isFirst && (

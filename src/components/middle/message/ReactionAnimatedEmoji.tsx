@@ -1,5 +1,5 @@
 import React, { FC, memo, useCallback } from '../../../lib/teact/teact';
-import { getDispatch } from '../../../lib/teact/teactn';
+import { getActions } from '../../../global';
 
 import { ActiveReaction } from '../../../global/types';
 import { ApiAvailableReaction, ApiMediaFormat } from '../../../api/types';
@@ -30,7 +30,7 @@ const ReactionAnimatedEmoji: FC<OwnProps> = ({
   isInMeta,
   availableReactions,
 }) => {
-  const { stopActiveReaction } = getDispatch();
+  const { stopActiveReaction } = getActions();
 
   const availableReaction = availableReactions?.find((r) => r.reaction === reaction);
   const centerIconId = availableReaction?.centerIcon?.id;

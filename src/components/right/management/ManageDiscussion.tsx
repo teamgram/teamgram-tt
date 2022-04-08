@@ -1,13 +1,13 @@
 import React, {
   FC, memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiChat } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
 import { STICKER_SIZE_DISCUSSION_GROUPS } from '../../../config';
-import { selectChat } from '../../../modules/selectors';
+import { selectChat } from '../../../global/selectors';
 import getAnimationData from '../../common/helpers/animatedAssets';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -20,7 +20,7 @@ import ConfirmDialog from '../../ui/ConfirmDialog';
 import useFlag from '../../../hooks/useFlag';
 import renderText from '../../common/helpers/renderText';
 import Avatar from '../../common/Avatar';
-import { isChatChannel } from '../../../modules/helpers';
+import { isChatChannel } from '../../../global/helpers';
 
 type OwnProps = {
   chatId: string;
@@ -52,7 +52,7 @@ const ManageDiscussion: FC<OwnProps & StateProps> = ({
     loadGroupsForDiscussion,
     linkDiscussionGroup,
     unlinkDiscussionGroup,
-  } = getDispatch();
+  } = getActions();
 
   const [linkedGroupId, setLinkedGroupId] = useState<string>();
   const [animationData, setAnimationData] = useState<string>();
@@ -210,6 +210,7 @@ const ManageDiscussion: FC<OwnProps & StateProps> = ({
                 key={id}
                 teactOrderKey={i + 1}
                 className="chat-item-clickable scroll-item"
+                // eslint-disable-next-line react/jsx-no-bind
                 onClick={() => {
                   onDiscussionClick(id);
                 }}

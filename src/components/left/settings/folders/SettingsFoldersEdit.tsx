@@ -1,13 +1,13 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useState,
 } from '../../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../../global';
 
 import { SettingsScreens } from '../../../../types';
 
 import { STICKER_SIZE_FOLDER_SETTINGS } from '../../../../config';
 import { findIntersectionWithSet } from '../../../../util/iteratees';
-import { isUserId } from '../../../../modules/helpers';
+import { isUserId } from '../../../../global/helpers';
 import getAnimationData from '../../../common/helpers/animatedAssets';
 import {
   EXCLUDED_CHAT_TYPES,
@@ -66,8 +66,7 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
   const {
     editChatFolder,
     addChatFolder,
-    loadMoreChats,
-  } = getDispatch();
+  } = getActions();
 
   const [animationData, setAnimationData] = useState<string>();
   const [isAnimationLoaded, setIsAnimationLoaded] = useState(false);
@@ -119,33 +118,18 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
     loadedActiveChatIds, loadedArchivedChatIds,
   ]);
 
-  useEffect(() => {
-    if (
-      visibleIncludedChatIds.length < includedChatIds.length
-      || visibleExcludedChatIds.length < excludedChatIds.length
-    ) {
-      loadMoreChats({ listType: 'active' });
-    }
-  }, [
-    loadMoreChats,
-    excludedChatIds.length,
-    includedChatIds.length,
-    visibleExcludedChatIds.length,
-    visibleIncludedChatIds.length,
-  ]);
-
   const lang = useLang();
 
   useHistoryBack(isActive, onBack, onScreenSelect, state.mode === 'edit'
     ? SettingsScreens.FoldersEditFolder
     : SettingsScreens.FoldersCreateFolder);
 
-  function handleChange(event: React.ChangeEvent<HTMLInputElement>) {
+  const handleChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const { currentTarget } = event;
     dispatch({ type: 'setTitle', payload: currentTarget.value.trim() });
-  }
+  }, [dispatch]);
 
-  function handleSubmit() {
+  const handleSubmit = useCallback(() => {
     const { title } = state.folder;
 
     if (!title) {
@@ -168,7 +152,7 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
     setTimeout(() => {
       onReset();
     }, SUBMIT_TIMEOUT);
-  }
+  }, [addChatFolder, dispatch, editChatFolder, includedChatIds.length, includedChatTypes, onReset, state]);
 
   function renderChatType(key: string, mode: 'included' | 'excluded') {
     const chatType = mode === 'included'
@@ -223,6 +207,7 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
           <ShowMoreButton
             count={leftChatsCount}
             itemName="chat"
+            // eslint-disable-next-line react/jsx-no-bind
             onClick={clickHandler}
           />
         )}
@@ -232,7 +217,7 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
 
   return (
     <div className="settings-fab-wrapper">
-      <div className="settings-content custom-scroll">
+      <div className="settings-content no-border custom-scroll">
         <div className="settings-content-header">
           <div className="settings-content-icon">
             {animationData && (
@@ -282,7 +267,7 @@ const SettingsFoldersEdit: FC<OwnProps & StateProps> = ({
           {renderChats('included')}
         </div>
 
-        <div className="settings-item no-border pt-3">
+        <div className="settings-item pt-3">
           <h4 className="settings-item-header mb-3" dir={lang.isRtl ? 'rtl' : undefined}>{lang('FilterExclude')}</h4>
 
           <ListItem

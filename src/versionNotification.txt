@@ -1,29 +1,29 @@
-**Telegram Web Z was updated to version v1.32**
+Telegram Web Z was updated to version 1.40
 
-**Harder**
-• Create and share Video Stickers made from .webm files.
-• 5 new reactions and interactive emoji: 🥰🤯🤔🤬👏
-• Send entire folders as a file.
-• Directly add chats to chat folders from Global Search.
+🤡 **Happy April Fool's Day!** 🤡
 
-**Better**
-• Redesigned group management pages with animated artwork.
-• ‘Forward To’ menu has smooth infinite scroll on mobile.
-• Spoiler animations re-hide text after a short period.
-• Numerous layout fixes and improvements.
+👏 **Harder**
+• Explore 37 new emoji.
+• Set Night Mode to follow your operating system in Settings > General.
+• Upload all types of audio files with cover images and meta tags.
+• Improved designs for Settings and Management pages.
 
-**Faster**
-• Media loads and scrolls faster in Shared Media and Global Search.
-• Optimized some heavy background calculations.
-• Memory usage optimizations.
+🤩 **Better**
+• Proper date formatting for all languages.
+• Changing volume in the media viewer automatically unmutes audio.
+• Groups you were restricted from now stay in your chat list.
+• Accessibility: Screen Reader support for emoji panel.
+• Removed reaction sounds.
+• Various layout improvements.
 
-**Stronger**
-• Fixed missing sticker suggestions (e.g. for ❤️ emoji).
-• Fixed infinite spinning in Sticker panel.
-• Fixed scroll jumps and missing sender names in local search results.
-• Fixed highlight color when searching in dark mode.
-• Fixed pasting text and media from clipboard on Firefox and iOS browsers.
-• Media Viewer: Fixed navigating to the origin message on mobile.
-• Media Viewer: Fixed lingering audio after moving to the next item.
-• Reactions: Fixed unexpected interaction animations.
-• Fixed jumping cursor when typing in Safari.
+🚀 **Faster**
+• Smoother transitions in Settings.
+
+💪 **Stronger**
+• Fixed error messages for ‘You must be an admin’ and ‘You can't write in this chat’.
+• Fixed calendar months that start on a Sunday.
+• Fixed duplicated files when downloading.
+• Fixed pasting URLs with non-ASCII characters.
+• Fixed forwarding protected content.
+• Fixed saving Privacy Exceptions.
+• Fixed various issues when switching between message lists.

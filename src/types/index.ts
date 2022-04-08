@@ -159,6 +159,7 @@ export enum SettingsScreens {
   Notifications,
   DataStorage,
   Language,
+  ActiveSessions,
   General,
   GeneralChatBackground,
   GeneralChatBackgroundColor,
@@ -178,7 +179,6 @@ export enum SettingsScreens {
   PrivacyForwardingDeniedContacts,
   PrivacyGroupChatsAllowedContacts,
   PrivacyGroupChatsDeniedContacts,
-  PrivacyActiveSessions,
   PrivacyBlockedUsers,
   Folders,
   FoldersCreateFolder,
@@ -208,7 +208,7 @@ export enum SettingsScreens {
 }
 
 export type StickerSetOrRecent = Pick<ApiStickerSet, (
-  'id' | 'title' | 'count' | 'stickers' | 'hasThumbnail' | 'isLottie' | 'isGifs'
+  'id' | 'title' | 'count' | 'stickers' | 'hasThumbnail' | 'isLottie' | 'isVideos'
 )>;
 
 export enum LeftColumnContent {
@@ -234,9 +234,9 @@ export enum GlobalSearchContent {
 
 export enum RightColumnContent {
   ChatInfo,
-  UserInfo,
   Search,
   Management,
+  Statistics,
   StickerSearch,
   GifSearch,
   PollResults,
@@ -319,6 +319,7 @@ export enum PaymentStep {
   Shipping,
   PaymentInfo,
   Checkout,
+  ConfirmPayment,
 }
 
 export const UPLOADING_WALLPAPER_SLUG = 'UPLOADING_WALLPAPER_SLUG';
@@ -331,6 +332,7 @@ export enum ManagementScreens {
   GroupType,
   GroupPermissions,
   GroupRemovedUsers,
+  ChannelRemovedUsers,
   GroupUserPermissionsCreate,
   GroupUserPermissions,
   ChatAdministrators,

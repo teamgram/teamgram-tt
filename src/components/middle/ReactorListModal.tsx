@@ -1,15 +1,15 @@
 import React, {
   FC, useCallback, memo, useMemo, useEffect, useState, useRef,
 } from '../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../global';
 
 import { ApiMessage } from '../../api/types';
 import { LoadMoreDirection } from '../../types';
 
 import useLang from '../../hooks/useLang';
-import { selectChatMessage } from '../../modules/selectors';
+import { selectChatMessage } from '../../global/selectors';
 import useInfiniteScroll from '../../hooks/useInfiniteScroll';
-import { getUserFullName } from '../../modules/helpers';
+import { getUserFullName } from '../../global/helpers';
 import renderText from '../common/helpers/renderText';
 import useFlag from '../../hooks/useFlag';
 import buildClassName from '../../util/buildClassName';
@@ -49,7 +49,7 @@ const ReactorListModal: FC<OwnProps & StateProps> = ({
     loadReactors,
     closeReactorListModal,
     openChat,
-  } = getDispatch();
+  } = getActions();
 
   // No need for expensive global updates on users, so we avoid them
   const usersById = getGlobal().users.byId;
@@ -124,6 +124,7 @@ const ReactorListModal: FC<OwnProps & StateProps> = ({
             className={buildClassName(!chosenTab && 'chosen')}
             size="tiny"
             ripple
+            // eslint-disable-next-line react/jsx-no-bind
             onClick={() => setChosenTab(undefined)}
           >
             <i className="icon-reaction-filled" />
@@ -136,6 +137,7 @@ const ReactorListModal: FC<OwnProps & StateProps> = ({
                 className={buildClassName(chosenTab === reaction && 'chosen')}
                 size="tiny"
                 ripple
+                // eslint-disable-next-line react/jsx-no-bind
                 onClick={() => setChosenTab(reaction)}
               >
                 <ReactionStaticEmoji reaction={reaction} className="reaction-filter-emoji" />
@@ -162,6 +164,7 @@ const ReactorListModal: FC<OwnProps & StateProps> = ({
                   <ListItem
                     key={userId}
                     className="chat-item-clickable reactors-list-item"
+                    // eslint-disable-next-line react/jsx-no-bind
                     onClick={() => handleClick(userId)}
                   >
                     <Avatar user={user} size="medium" />

@@ -1,11 +1,11 @@
 import React, {
   FC, useEffect, useCallback, useRef, memo,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiUser } from '../../../api/types';
 
-import { getUserFirstOrLastName } from '../../../modules/helpers';
+import { getUserFirstOrLastName } from '../../../global/helpers';
 import renderText from '../../common/helpers/renderText';
 import { throttle } from '../../../util/schedulers';
 import useHorizontalScroll from '../../../hooks/useHorizontalScroll';
@@ -39,7 +39,7 @@ const RecentContacts: FC<OwnProps & StateProps> = ({
   const {
     loadTopUsers, loadContactList, openChat,
     addRecentlyFoundChatId, clearRecentlyFoundChats,
-  } = getDispatch();
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const topUsersRef = useRef<HTMLDivElement>(null);

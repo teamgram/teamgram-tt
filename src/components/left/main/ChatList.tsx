@@ -1,13 +1,12 @@
 import React, {
-  FC, memo, useMemo, useCallback, useEffect,
+  FC, memo, useMemo, useEffect,
 } from '../../../lib/teact/teact';
-import { getDispatch } from '../../../lib/teact/teactn';
+import { getActions } from '../../../global';
 
 import { SettingsScreens } from '../../../types';
 import { FolderEditDispatch } from '../../../hooks/reducers/useFoldersReducer';
 
 import {
-  ALL_CHATS_PRELOAD_DISABLED,
   ALL_FOLDER_ID,
   ARCHIVED_FOLDER_ID,
   CHAT_HEIGHT_PX,
@@ -39,23 +38,16 @@ const ChatList: FC<OwnProps> = ({
   folderType,
   folderId,
   isActive,
-  lastSyncTime,
   foldersDispatch,
   onScreenSelect,
 }) => {
-  const {
-    loadMoreChats,
-    preloadTopChatMessages,
-    preloadArchivedChats,
-    openChat,
-    openNextChat,
-  } = getDispatch();
+  const { openChat, openNextChat } = getActions();
 
-  const virtualFolderId = (
+  const resolvedFolderId = (
     folderType === 'all' ? ALL_FOLDER_ID : folderType === 'archived' ? ARCHIVED_FOLDER_ID : folderId!
   );
 
-  const orderedIds = useFolderManagerForOrderedIds(virtualFolderId);
+  const orderedIds = useFolderManagerForOrderedIds(resolvedFolderId);
 
   const orderById = useMemo(() => {
     if (!orderedIds) {
@@ -80,24 +72,7 @@ const ChatList: FC<OwnProps> = ({
     });
   }, [orderById, prevOrderById]);
 
-  const loadMoreOfType = useCallback(() => {
-    loadMoreChats({ listType: folderType === 'archived' ? 'archived' : 'active' });
-  }, [loadMoreChats, folderType]);
-
-  const [viewportIds, getMore] = useInfiniteScroll(
-    lastSyncTime ? loadMoreOfType : undefined,
-    orderedIds,
-    undefined,
-    CHAT_LIST_SLICE,
-    folderType === 'all' && !ALL_CHATS_PRELOAD_DISABLED,
-  );
-
-  useEffect(() => {
-    if (lastSyncTime && folderType === 'all') {
-      preloadTopChatMessages();
-      preloadArchivedChats();
-    }
-  }, [lastSyncTime, folderType, preloadTopChatMessages, preloadArchivedChats]);
+  const [viewportIds, getMore] = useInfiniteScroll(undefined, orderedIds, undefined, CHAT_LIST_SLICE);
 
   // Support <Cmd>+<Digit> and <Alt>+<Up/Down> to navigate between chats
   useEffect(() => {
@@ -136,7 +111,7 @@ const ChatList: FC<OwnProps> = ({
 
   function renderChats() {
     const viewportOffset = orderedIds!.indexOf(viewportIds![0]);
-    const pinnedCount = getPinnedChatsCount(virtualFolderId) || 0;
+    const pinnedCount = getPinnedChatsCount(resolvedFolderId) || 0;
 
     return viewportIds!.map((id, i) => (
       <Chat
@@ -147,7 +122,6 @@ const ChatList: FC<OwnProps> = ({
         folderId={folderId}
         animationType={getAnimationType(id)}
         orderDiff={orderDiffById[id]}
-        // @ts-ignore
         style={`top: ${(viewportOffset + i) * CHAT_HEIGHT_PX}px;`}
       />
     ));

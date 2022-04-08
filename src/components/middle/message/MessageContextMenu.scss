@@ -9,11 +9,15 @@
     overscroll-behavior: contain;
   }
 
+  &.compact .scrollable-content {
+    padding: 0.25rem 0;
+  }
+
   .bubble {
-    transition: opacity .15s cubic-bezier(0.2, 0, 0.2, 1), transform .15s cubic-bezier(0.2, 0, 0.2, 1) !important;
+    transition: opacity 0.15s cubic-bezier(0.2, 0, 0.2, 1), transform 0.15s cubic-bezier(0.2, 0, 0.2, 1) !important;
     transform: scale(0.7);
     overflow: initial;
-    padding: 0;
+    padding: 0 !important;
   }
 
   &.with-reactions .bubble {
@@ -24,14 +28,24 @@
     touch-action: none;
   }
 
+  &--seen-by {
+    max-width: 14rem;
+  }
+
+  &--seen-by-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .avatars {
     display: flex;
     align-self: center;
-    margin-left: auto;
-    padding-left: 1rem;
+    margin-inline-start: auto;
+    padding-inline-start: 1rem;
 
     .Avatar {
-      border: .0625rem solid var(--color-background);
+      border: 0.0625rem solid var(--color-background);
       margin-right: 0;
       box-sizing: content-box;
 

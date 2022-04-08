@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiChat, ApiMessage, ApiUser } from '../../../api/types';
 
@@ -16,12 +16,13 @@ import {
   selectEditingId,
   selectEditingScheduledId,
   selectEditingMessage,
-} from '../../../modules/selectors';
+} from '../../../global/selectors';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
+import buildClassName from '../../../util/buildClassName';
+import { isUserId } from '../../../global/helpers';
+
 import useAsyncRendering from '../../right/hooks/useAsyncRendering';
 import useShowTransition from '../../../hooks/useShowTransition';
-import buildClassName from '../../../util/buildClassName';
-import { isUserId } from '../../../modules/helpers';
 
 import Button from '../../ui/Button';
 import EmbeddedMessage from '../../common/EmbeddedMessage';
@@ -37,22 +38,27 @@ type StateProps = {
   forwardedMessagesCount?: number;
 };
 
+type OwnProps = {
+  onClear?: () => void;
+};
+
 const FORWARD_RENDERING_DELAY = 300;
 
-const ComposerEmbeddedMessage: FC<StateProps> = ({
+const ComposerEmbeddedMessage: FC<OwnProps & StateProps> = ({
   replyingToId,
   editingId,
   message,
   sender,
   shouldAnimate,
   forwardedMessagesCount,
+  onClear,
 }) => {
   const {
     setReplyingToId,
     setEditingId,
     focusMessage,
     exitForwardMode,
-  } = getDispatch();
+  } = getActions();
 
   const isShown = Boolean(
     ((replyingToId || editingId) && message)
@@ -75,7 +81,8 @@ const ComposerEmbeddedMessage: FC<StateProps> = ({
     } else if (forwardedMessagesCount) {
       exitForwardMode();
     }
-  }, [replyingToId, editingId, forwardedMessagesCount, setReplyingToId, setEditingId, exitForwardMode]);
+    onClear?.();
+  }, [replyingToId, editingId, forwardedMessagesCount, onClear, setReplyingToId, setEditingId, exitForwardMode]);
 
   useEffect(() => (isShown ? captureEscKeyListener(clearEmbedded) : undefined), [isShown, clearEmbedded]);
 
@@ -112,7 +119,7 @@ const ComposerEmbeddedMessage: FC<StateProps> = ({
   );
 };
 
-export default memo(withGlobal(
+export default memo(withGlobal<OwnProps>(
   (global): StateProps => {
     const { chatId, threadId, type: messageListType } = selectCurrentMessageList(global) || {};
     if (!chatId || !threadId || !messageListType) {
@@ -141,10 +148,9 @@ export default memo(withGlobal(
     }
 
     let sender: ApiChat | ApiUser | undefined;
-    if (replyingToId && message) {
+    if ((isForwarding || replyingToId) && message) {
       const { forwardInfo } = message;
       const isChatWithSelf = chatId === currentUserId;
-
       if (forwardInfo && (forwardInfo.isChannelPost || isChatWithSelf)) {
         sender = selectForwardedSender(global, message);
       }
@@ -152,8 +158,10 @@ export default memo(withGlobal(
       if (!sender) {
         sender = selectSender(global, message);
       }
-    } else if (isForwarding) {
-      sender = isUserId(fromChatId!) ? selectUser(global, fromChatId!) : selectChat(global, fromChatId!);
+
+      if (!sender) {
+        sender = isUserId(fromChatId!) ? selectUser(global, fromChatId!) : selectChat(global, fromChatId!);
+      }
     }
 
     return {

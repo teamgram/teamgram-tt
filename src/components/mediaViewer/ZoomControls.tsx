@@ -36,17 +36,17 @@ const ZoomControls: FC<OwnProps> = ({ isShown, onChangeZoom }) => {
     }
   }, [isShown, prevIsShown]);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (inputRef.current) {
       setZoomLevel(Math.max(MIN_ZOOM_LEVEL, zoomLevel - 0.5));
     }
-  };
+  }, [zoomLevel]);
 
-  const handleZoomIn = () => {
+  const handleZoomIn = useCallback(() => {
     if (inputRef.current) {
       setZoomLevel(Math.min(MAX_ZOOM_LEVEL, zoomLevel + 0.5));
     }
-  };
+  }, [zoomLevel]);
 
   const handleStartSeek = useCallback(() => {
     isSeeking.current = true;
@@ -102,7 +102,6 @@ const ZoomControls: FC<OwnProps> = ({ isShown, onChangeZoom }) => {
         <div className="seekline-track">
           <div
             className="seekline-played"
-            // @ts-ignore teact feature
             style={`width: ${(zoomLevel - 1) * ONE_STEP_PERCENT}%`}
           />
           <input

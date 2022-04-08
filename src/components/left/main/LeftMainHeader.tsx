@@ -1,14 +1,14 @@
 import React, {
   FC, memo, useCallback, useMemo,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ISettings, LeftColumnContent } from '../../../types';
 import { ApiChat } from '../../../api/types';
 import { GlobalState } from '../../../global/types';
 
 import {
-  ANIMATION_LEVEL_MAX, APP_NAME, APP_VERSION, FEEDBACK_URL,
+  ANIMATION_LEVEL_MAX, APP_NAME, APP_VERSION, DEBUG, FEEDBACK_URL,
 } from '../../../config';
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import buildClassName from '../../../util/buildClassName';
@@ -16,8 +16,8 @@ import { formatDateToString } from '../../../util/dateFormat';
 import switchTheme from '../../../util/switchTheme';
 import { setPermanentWebVersion } from '../../../util/permanentWebVersion';
 import { clearWebsync } from '../../../util/websync';
-import { selectCurrentMessageList, selectTheme } from '../../../modules/selectors';
-import { isChatArchived } from '../../../modules/helpers';
+import { selectCurrentMessageList, selectTheme } from '../../../global/selectors';
+import { isChatArchived } from '../../../global/helpers';
 import useLang from '../../../hooks/useLang';
 import { disableHistoryBack } from '../../../hooks/useHistoryBack';
 import useConnectionStatus from '../../../hooks/useConnectionStatus';
@@ -54,12 +54,11 @@ type StateProps =
     theme: ISettings['theme'];
     animationLevel: 0 | 1 | 2;
     chatsById?: Record<string, ApiChat>;
-    isConnectionStatusMinimized: ISettings['isConnectionStatusMinimized'];
     isMessageListOpen: boolean;
+    isConnectionStatusMinimized: ISettings['isConnectionStatusMinimized'];
+    areChatsLoaded?: boolean;
   }
   & Pick<GlobalState, 'connectionState' | 'isSyncing'>;
-
-const ANIMATION_LEVEL_OPTIONS = [0, 1, 2];
 
 const PRODUCTION_HOSTNAME = 'web.telegram.org';
 const LEGACY_VERSION_URL = 'https://web.telegram.org/?legacy=1';
@@ -84,15 +83,17 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
   chatsById,
   connectionState,
   isSyncing,
-  isConnectionStatusMinimized,
   isMessageListOpen,
+  isConnectionStatusMinimized,
+  areChatsLoaded,
 }) => {
   const {
     openChat,
     openTipsChat,
     setGlobalSearchDate,
-    setSettingOption, setGlobalSearchChatId,
-  } = getDispatch();
+    setSettingOption,
+    setGlobalSearchChatId,
+  } = getActions();
 
   const lang = useLang();
   const hasMenu = content === LeftColumnContent.ChatList;
@@ -118,7 +119,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
   }, [hasMenu, chatsById]);
 
   const { connectionStatus, connectionStatusText, connectionStatusPosition } = useConnectionStatus(
-    lang, connectionState, isSyncing, isMessageListOpen, isConnectionStatusMinimized,
+    lang, connectionState, isSyncing, isMessageListOpen, isConnectionStatusMinimized, !areChatsLoaded,
   );
 
   const withOtherVersions = window.location.hostname === PRODUCTION_HOSTNAME;
@@ -131,6 +132,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
         size="smaller"
         color="translucent"
         className={isOpen ? 'active' : ''}
+        // eslint-disable-next-line react/jsx-no-bind
         onClick={hasMenu ? onTrigger : () => onReset()}
         ariaLabel={hasMenu ? lang('AccDescrOpenMenu2') : 'Return to chat list'}
       >
@@ -167,26 +169,15 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
     switchTheme(newTheme, animationLevel === ANIMATION_LEVEL_MAX);
   }, [animationLevel, setSettingOption, theme]);
 
-  const handleAnimationLevelChange = useCallback((e: React.SyntheticEvent<HTMLElement>) => {
-    e.stopPropagation();
-
-    const newLevel = animationLevel === 0 ? 2 : 0;
-    ANIMATION_LEVEL_OPTIONS.forEach((_, i) => {
-      document.body.classList.toggle(`animation-level-${i}`, newLevel === i);
-    });
-
-    setSettingOption({ animationLevel: newLevel });
-  }, [animationLevel, setSettingOption]);
-
-  const handleSwitchToWebK = () => {
+  const handleSwitchToWebK = useCallback(() => {
     setPermanentWebVersion('K');
     clearWebsync();
     disableHistoryBack();
-  };
+  }, []);
 
-  const handleOpenTipsChat = () => {
+  const handleOpenTipsChat = useCallback(() => {
     openTipsChat({ langCode: lang.code });
-  };
+  }, [lang.code, openTipsChat]);
 
   const isSearchFocused = (
     Boolean(globalSearchChatId)
@@ -203,7 +194,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
       <div id="LeftMainHeader" className="left-header">
         <DropdownMenu
           trigger={MainButton}
-          footer={`${APP_NAME} ${APP_VERSION}`}
+          footer={`${APP_NAME} ${DEBUG ? APP_REVISION : APP_VERSION}`}
         >
           <MenuItem
             icon="saved-messages"
@@ -242,17 +233,6 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
               label={lang(theme === 'dark' ? 'lng_settings_disable_night_theme' : 'lng_settings_enable_night_theme')}
               checked={theme === 'dark'}
               noAnimation
-            />
-          </MenuItem>
-          <MenuItem
-            icon="animations"
-            onClick={handleAnimationLevelChange}
-          >
-            <span className="menu-item-name capitalize">{lang('Appearance.Animations').toLowerCase()}</span>
-            <Switcher
-              id="animations"
-              label="Toggle Animations"
-              checked={animationLevel > 0}
             />
           </MenuItem>
           <MenuItem
@@ -328,13 +308,11 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
           isCustom
           className="connection-state-wrapper"
         >
-          {() => (
-            <ConnectionStatusOverlay
-              connectionStatus={connectionStatus}
-              connectionStatusText={connectionStatusText!}
-              onClick={toggleConnectionStatus}
-            />
-          )}
+          <ConnectionStatusOverlay
+            connectionStatus={connectionStatus}
+            connectionStatusText={connectionStatusText!}
+            onClick={toggleConnectionStatus}
+          />
         </ShowTransition>
       </div>
     </div>
@@ -361,8 +339,9 @@ export default memo(withGlobal<OwnProps>(
       animationLevel,
       connectionState,
       isSyncing,
-      isConnectionStatusMinimized,
       isMessageListOpen: Boolean(selectCurrentMessageList(global)),
+      isConnectionStatusMinimized,
+      areChatsLoaded: Boolean(global.chats.listIds.active),
     };
   },
 )(LeftMainHeader));

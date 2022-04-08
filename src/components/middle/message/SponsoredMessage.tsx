@@ -1,14 +1,14 @@
 import { RefObject } from 'react';
 import React, {
-  FC, memo, useEffect, useRef,
+  FC, memo, useCallback, useEffect, useRef,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiChat, ApiSponsoredMessage, ApiUser } from '../../../api/types';
 
 import { renderTextWithEntities } from '../../common/helpers/renderTextWithEntities';
-import { selectChat, selectSponsoredMessage, selectUser } from '../../../modules/selectors';
-import { getChatTitle, getUserFullName } from '../../../modules/helpers';
+import { selectChat, selectSponsoredMessage, selectUser } from '../../../global/selectors';
+import { getChatTitle, getUserFullName } from '../../../global/helpers';
 import renderText from '../../common/helpers/renderText';
 import useLang from '../../../hooks/useLang';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
@@ -43,7 +43,7 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
     openChatByInvite,
     startBot,
     focusMessage,
-  } = getDispatch();
+  } = getActions();
   const lang = useLang();
   // eslint-disable-next-line no-null/no-null
   const contentRef = useRef<HTMLDivElement>(null);
@@ -64,11 +64,8 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
     }) : undefined;
   }, [chatId, shouldObserve, observeIntersection, viewSponsoredMessage]);
 
-  if (!message) {
-    return undefined;
-  }
-
-  const handleClick = () => {
+  const handleClick = useCallback(() => {
+    if (!message) return;
     if (message.chatInviteHash) {
       openChatByInvite({ hash: message.chatInviteHash });
     } else if (message.channelPostId) {
@@ -83,7 +80,11 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
         });
       }
     }
-  };
+  }, [focusMessage, message, openChat, openChatByInvite, startBot]);
+
+  if (!message) {
+    return undefined;
+  }
 
   return (
     <div className="SponsoredMessage Message open" key="sponsored-message">

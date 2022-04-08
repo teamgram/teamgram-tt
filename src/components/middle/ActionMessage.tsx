@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useEffect, useMemo, useRef,
 } from '../../lib/teact/teact';
-import { withGlobal } from '../../lib/teact/teactn';
+import { withGlobal } from '../../global';
 
 import { ApiUser, ApiMessage, ApiChat } from '../../api/types';
 import { FocusDirection } from '../../types';
@@ -11,8 +11,8 @@ import {
   selectChatMessage,
   selectIsMessageFocused,
   selectChat,
-} from '../../modules/selectors';
-import { isChatChannel } from '../../modules/helpers';
+} from '../../global/selectors';
+import { getMessageHtmlId, isChatChannel } from '../../global/helpers';
 import buildClassName from '../../util/buildClassName';
 import { renderActionMessageText } from '../common/helpers/renderActionMessageText';
 import useEnsureMessage from '../../hooks/useEnsureMessage';
@@ -127,7 +127,7 @@ const ActionMessage: FC<OwnProps & StateProps> = ({
   return (
     <div
       ref={ref}
-      id={`message${message.id}`}
+      id={getMessageHtmlId(message.id)}
       className={className}
       data-message-id={message.id}
       onMouseDown={handleMouseDown}

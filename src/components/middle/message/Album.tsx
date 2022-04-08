@@ -5,8 +5,8 @@ import { ApiMessage } from '../../../api/types';
 import { IAlbum, ISettings } from '../../../types';
 import { AlbumRectPart, IAlbumLayout } from './helpers/calculateAlbumLayout';
 
-import { getMessageContent } from '../../../modules/helpers';
-import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getMessageContent, getMessageHtmlId } from '../../../global/helpers';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 import withSelectControl from './hocs/withSelectControl';
 import { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import {
@@ -14,7 +14,7 @@ import {
   selectCanAutoLoadMedia,
   selectCanAutoPlayMedia,
   selectTheme,
-} from '../../../modules/selectors';
+} from '../../../global/selectors';
 
 import Photo from './Photo';
 import Video from './Video';
@@ -54,7 +54,7 @@ const Album: FC<OwnProps & StateProps> = ({
   activeDownloadIds,
   theme,
 }) => {
-  const { cancelSendingMessage } = getDispatch();
+  const { cancelSendingMessage } = getActions();
 
   const mediaCount = album.messages.length;
 
@@ -80,7 +80,7 @@ const Album: FC<OwnProps & StateProps> = ({
 
       return (
         <PhotoWithSelect
-          id={`album-media-${message.id}`}
+          id={`album-media-${getMessageHtmlId(message.id)}`}
           message={message}
           observeIntersection={observeIntersection}
           canAutoLoad={canAutoLoad}
@@ -97,7 +97,7 @@ const Album: FC<OwnProps & StateProps> = ({
     } else if (video) {
       return (
         <VideoWithSelect
-          id={`album-media-${message.id}`}
+          id={`album-media-${getMessageHtmlId(message.id)}`}
           message={message}
           observeIntersection={observeIntersection}
           canAutoLoad={canAutoLoad}
@@ -122,7 +122,6 @@ const Album: FC<OwnProps & StateProps> = ({
   return (
     <div
       className="Album"
-      // @ts-ignore
       style={`width: ${containerWidth}px; height: ${containerHeight}px;`}
     >
       {album.messages.map(renderAlbumMessage)}

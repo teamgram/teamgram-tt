@@ -2,11 +2,11 @@ import {
   useCallback, useEffect, useRef, useState,
 } from '../../../lib/teact/teact';
 import safePlay from '../../../util/safePlay';
-import { getDispatch } from '../../../lib/teact/teactn';
+import { getActions } from '../../../global';
 import useMedia from '../../../hooks/useMedia';
 import { ActiveEmojiInteraction } from '../../../global/types';
 import useFlag from '../../../hooks/useFlag';
-import { selectLocalAnimatedEmojiEffectByName } from '../../../modules/selectors';
+import { selectLocalAnimatedEmojiEffectByName } from '../../../global/selectors';
 
 const WIDTH = {
   large: 160,
@@ -22,14 +22,14 @@ export default function useAnimatedEmoji(
   chatId?: string,
   messageId?: number,
   soundId?: string,
-  activeEmojiInteraction?: ActiveEmojiInteraction,
+  activeEmojiInteractions?: ActiveEmojiInteraction[],
   isOwn?: boolean,
   localEffect?: string,
   emoji?: string,
 ) {
   const {
     interactWithAnimatedEmoji, sendEmojiInteraction, sendWatchingEmojiInteraction,
-  } = getDispatch();
+  } = getActions();
 
   const hasEffect = localEffect || emoji;
   const [isAnimationLoaded, markAnimationLoaded] = useFlag();
@@ -120,16 +120,21 @@ export default function useAnimatedEmoji(
   useEffect(() => {
     const container = ref.current;
 
-    if (!container || !activeEmojiInteraction) return;
+    if (!container || !activeEmojiInteractions) return;
 
-    const {
-      messageId: selectedMessageId, endX, endY,
-    } = activeEmojiInteraction;
+    activeEmojiInteractions.forEach(({
+      id,
+      startSize,
+      messageId: interactionMessageId,
+    }) => {
+      if (startSize || messageId !== interactionMessageId) {
+        return;
+      }
 
-    if (!endX && !endY && selectedMessageId === messageId) {
       const { x, y } = container.getBoundingClientRect();
 
       sendWatchingEmojiInteraction({
+        id,
         chatId,
         emoticon: localEffect ? selectLocalAnimatedEmojiEffectByName(localEffect) : emoji,
         startSize: width,
@@ -138,9 +143,9 @@ export default function useAnimatedEmoji(
         isReversed: !isOwn,
       });
       play();
-    }
+    });
   }, [
-    activeEmojiInteraction, chatId, emoji, isOwn, localEffect, messageId, play, sendWatchingEmojiInteraction, width,
+    activeEmojiInteractions, chatId, emoji, isOwn, localEffect, messageId, play, sendWatchingEmojiInteraction, width,
   ]);
 
   return {

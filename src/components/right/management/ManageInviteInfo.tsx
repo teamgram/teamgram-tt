@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiChatInviteImporter, ApiExportedInvite, ApiUser } from '../../../api/types';
 
@@ -10,8 +10,8 @@ import useLang from '../../../hooks/useLang';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { getServerTime } from '../../../util/serverTime';
 import { formatFullDate, formatMediaDateTime, formatTime } from '../../../util/dateFormat';
-import { isChatChannel } from '../../../modules/helpers';
-import { selectChat } from '../../../modules/selectors';
+import { isChatChannel } from '../../../global/helpers';
+import { selectChat } from '../../../global/selectors';
 
 import PrivateChatInfo from '../../common/PrivateChatInfo';
 import ListItem from '../../ui/ListItem';
@@ -47,8 +47,8 @@ const ManageInviteInfo: FC<OwnProps & StateProps> = ({
     showNotification,
     loadChatInviteImporters,
     loadChatInviteRequesters,
-    openUserInfo,
-  } = getDispatch();
+    openChat,
+  } = getActions();
 
   const lang = useLang();
   const {
@@ -86,7 +86,8 @@ const ManageInviteInfo: FC<OwnProps & StateProps> = ({
           {importers.map((importer) => (
             <ListItem
               className="chat-item-clickable scroll-item small-icon"
-              onClick={() => openUserInfo({ id: importer.userId })}
+              // eslint-disable-next-line react/jsx-no-bind
+              onClick={() => openChat({ id: importer.userId })}
             >
               <PrivateChatInfo
                 userId={importer.userId}
@@ -111,7 +112,8 @@ const ManageInviteInfo: FC<OwnProps & StateProps> = ({
           {requesters.map((requester) => (
             <ListItem
               className="chat-item-clickable scroll-item small-icon"
-              onClick={() => openUserInfo({ id: requester.userId })}
+              // eslint-disable-next-line react/jsx-no-bind
+              onClick={() => openChat({ id: requester.userId })}
             >
               <PrivateChatInfo
                 userId={requester.userId}
@@ -155,7 +157,8 @@ const ManageInviteInfo: FC<OwnProps & StateProps> = ({
                 <p>{lang('LinkCreatedeBy')}</p>
                 <ListItem
                   className="chat-item-clickable scroll-item small-icon"
-                  onClick={() => openUserInfo({ id: adminId })}
+                  // eslint-disable-next-line react/jsx-no-bind
+                  onClick={() => openChat({ id: adminId })}
                 >
                   <PrivateChatInfo
                     userId={adminId}

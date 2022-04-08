@@ -1,10 +1,10 @@
 import React, { FC, memo } from '../../../../lib/teact/teact';
-import { withGlobal } from '../../../../lib/teact/teactn';
+import { withGlobal } from '../../../../global';
 
 import { ApiSticker } from '../../../../api/types';
 import { SettingsScreens } from '../../../../types';
 
-import { selectAnimatedEmoji } from '../../../../modules/selectors';
+import { selectAnimatedEmoji } from '../../../../global/selectors';
 import useLang from '../../../../hooks/useLang';
 import useHistoryBack from '../../../../hooks/useHistoryBack';
 
@@ -31,7 +31,7 @@ const SettingsTwoFaStart: FC<OwnProps & StateProps> = ({
 
   return (
     <div className="settings-content two-fa custom-scroll">
-      <div className="settings-content-header">
+      <div className="settings-content-header no-border">
         <AnimatedEmoji sticker={animatedEmoji} size="large" />
 
         <p className="settings-item-description mb-3" dir="auto">
@@ -39,7 +39,7 @@ const SettingsTwoFaStart: FC<OwnProps & StateProps> = ({
         </p>
       </div>
 
-      <div className="settings-item pt-0 no-border">
+      <div className="settings-item pt-0">
         <Button onClick={onStart}>{lang('EditAdminTransferSetPassword')}</Button>
       </div>
     </div>

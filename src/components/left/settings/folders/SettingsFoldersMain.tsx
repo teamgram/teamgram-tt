@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useMemo, useCallback, useState, useEffect,
 } from '../../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../../global';
 
 import { ApiChatFolder } from '../../../../api/types';
 import { SettingsScreens } from '../../../../types';
@@ -9,7 +9,7 @@ import { SettingsScreens } from '../../../../types';
 import { STICKER_SIZE_FOLDER_SETTINGS } from '../../../../config';
 import { throttle } from '../../../../util/schedulers';
 import getAnimationData from '../../../common/helpers/animatedAssets';
-import { getFolderDescriptionText } from '../../../../modules/helpers';
+import { getFolderDescriptionText } from '../../../../global/helpers';
 import useLang from '../../../../hooks/useLang';
 import useHistoryBack from '../../../../hooks/useHistoryBack';
 import { useFolderManagerForChatsCount } from '../../../../hooks/useFolderManager';
@@ -51,7 +51,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
     loadRecommendedChatFolders,
     addChatFolder,
     showDialog,
-  } = getDispatch();
+  } = getActions();
 
   const [animationData, setAnimationData] = useState<string>();
   const [isAnimationLoaded, setIsAnimationLoaded] = useState(false);
@@ -123,7 +123,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
   }, [foldersById, addChatFolder, showDialog]);
 
   return (
-    <div className="settings-content custom-scroll">
+    <div className="settings-content no-border custom-scroll">
       <div className="settings-content-header">
         <div className="settings-content-icon">
           {animationData && (
@@ -165,6 +165,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
             className="mb-2 no-icon"
             narrow
             multiline
+            // eslint-disable-next-line react/jsx-no-bind
             onClick={() => onEditFolder(foldersById[folder.id])}
           >
             <span className="title">{folder.title}</span>
@@ -187,6 +188,7 @@ const SettingsFoldersMain: FC<OwnProps & StateProps> = ({
             <ListItem
               className="mb-2"
               narrow
+              // eslint-disable-next-line react/jsx-no-bind
               onClick={() => handleCreateFolderFromRecommended(folder)}
             >
               <div className="settings-folders-recommended-item">

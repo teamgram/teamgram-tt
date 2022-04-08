@@ -5,7 +5,7 @@ import {
   getMessageSummaryText,
   getMessageText,
   TRUNCATED_SUMMARY_LENGTH,
-} from '../../../modules/helpers';
+} from '../../../global/helpers';
 import { LangFn } from '../../../hooks/useLang';
 import renderText from './renderText';
 import { renderTextWithEntities, TextPart } from './renderTextWithEntities';
@@ -45,7 +45,7 @@ export function renderMessageSummary(
   highlight?: string,
   truncateLength = TRUNCATED_SUMMARY_LENGTH,
 ): TextPart[] {
-  let { entities } = message.content.text || {};
+  const { entities } = message.content.text || {};
 
   const hasSpoilers = entities?.some((e) => e.type === ApiMessageEntityTypes.Spoiler);
   if (!hasSpoilers) {

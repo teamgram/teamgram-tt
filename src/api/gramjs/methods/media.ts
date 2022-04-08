@@ -11,13 +11,8 @@ import {
   MEDIA_CACHE_NAME_AVATARS,
 } from '../../../config';
 import localDb from '../localDb';
-import { getEntityTypeById } from '../gramjsBuilders';
 import * as cacheApi from '../../../util/cacheApi';
-
-type EntityType = (
-  'msg' | 'sticker' | 'wallpaper' | 'gif' | 'channel' | 'chat' | 'user' | 'photo' | 'stickerSet' | 'webDocument' |
-  'document'
-);
+import { getEntityTypeById } from '../gramjsBuilders';
 
 const MEDIA_ENTITY_TYPES = new Set(['msg', 'sticker', 'gif', 'wallpaper', 'photo', 'webDocument', 'document']);
 const TGS_MIME_TYPE = 'application/x-tgsticker';
@@ -64,6 +59,11 @@ export default async function downloadMedia(
   };
 }
 
+export type EntityType = (
+  'msg' | 'sticker' | 'wallpaper' | 'gif' | 'channel' | 'chat' | 'user' | 'photo' | 'stickerSet' | 'webDocument' |
+  'document'
+  );
+
 async function download(
   url: string,
   client: TelegramClient,
@@ -74,19 +74,16 @@ async function download(
   mediaFormat?: ApiMediaFormat,
   isHtmlAllowed?: boolean,
 ) {
-// eslint-disable-next-line no-console
-  console.warn(url);
-  const mediaMatch = url.startsWith('webDocument')
-    ? url.match(/(webDocument):(.+)/)
-    : url.match(
-      /(avatar|profile|photo|msg|stickerSet|sticker|wallpaper|gif|file|document)([-\d\w./]+)(?::\d+)?(\?size=\w+)?/,
-    );
-  if (!mediaMatch) {
-    return undefined;
-  }
+  const parsed = parseMediaUrl(url);
 
-  if (mediaMatch[1] === 'file') {
-    const response = await fetch(mediaMatch[2]);
+  if (!parsed) return undefined;
+
+  const {
+    entityType, entityId, sizeType, params, mediaMatchType,
+  } = parsed;
+
+  if (entityType === 'file') {
+    const response = await fetch(entityId);
     const data = await response.arrayBuffer();
     return { data };
   }
@@ -95,21 +92,29 @@ async function download(
     return Promise.reject(new Error('ERROR: Client is not connected'));
   }
 
-  let entityType: EntityType;
-  const entityId: string | number = mediaMatch[2];
-  const sizeType = mediaMatch[3] ? mediaMatch[3].replace('?size=', '') : undefined;
+  if (entityType === 'staticMap') {
+    const accessHash = entityId;
+    const parsedParams = new URLSearchParams(params);
+    const long = parsedParams.get('long');
+    const lat = parsedParams.get('lat');
+    const w = parsedParams.get('w');
+    const h = parsedParams.get('h');
+    const zoom = parsedParams.get('zoom');
+    const scale = parsedParams.get('scale');
+    const accuracyRadius = parsedParams.get('accuracy_radius');
+
+    const data = await client.downloadStaticMap(accessHash, long, lat, w, h, zoom, scale, accuracyRadius);
+    return {
+      mimeType: 'image/png',
+      data,
+    };
+  }
+
   let entity: (
     GramJs.User | GramJs.Chat | GramJs.Channel | GramJs.Photo |
     GramJs.Message | GramJs.MessageService |
     GramJs.Document | GramJs.StickerSet | GramJs.TypeWebDocument | undefined
   );
-
-  if (mediaMatch[1] === 'avatar' || mediaMatch[1] === 'profile') {
-    entityType = getEntityTypeById(entityId);
-  } else {
-    entityType = mediaMatch[1] as 'msg' | 'sticker' | 'wallpaper' | 'gif' | 'stickerSet' | 'photo' | 'webDocument' |
-    'document';
-  }
 
   switch (entityType) {
     case 'channel':
@@ -189,7 +194,7 @@ async function download(
 
     return { mimeType, data };
   } else {
-    const data = await client.downloadProfilePhoto(entity, mediaMatch[1] === 'profile');
+    const data = await client.downloadProfilePhoto(entity, mediaMatchType === 'profile');
     const mimeType = getMimeType(data);
 
     return { mimeType, data };
@@ -205,6 +210,12 @@ function getMessageMediaMimeType(message: GramJs.Message, sizeType?: string) {
     return 'image/jpeg';
   }
 
+  if (message.media instanceof GramJs.MessageMediaGeo
+    || message.media instanceof GramJs.MessageMediaVenue
+    || message.media instanceof GramJs.MessageMediaGeoLive) {
+    return 'image/png';
+  }
+
   if (message.media instanceof GramJs.MessageMediaDocument && message.media.document instanceof GramJs.Document) {
     if (sizeType) {
       return message.media.document!.attributes.some((a) => a instanceof GramJs.DocumentAttributeSticker)
@@ -218,6 +229,10 @@ function getMessageMediaMimeType(message: GramJs.Message, sizeType?: string) {
   if (message.media instanceof GramJs.MessageMediaWebPage
     && message.media.webpage instanceof GramJs.WebPage
     && message.media.webpage.document instanceof GramJs.Document) {
+    if (sizeType) {
+      return 'image/jpeg';
+    }
+
     return message.media.webpage.document.mimeType;
   }
 
@@ -279,4 +294,48 @@ function getMimeType(data: Uint8Array, fallbackMimeType = 'image/jpeg') {
   }
 
   return type;
+}
+
+export function parseMediaUrl(url: string) {
+  const mediaMatch = url.startsWith('staticMap')
+    ? url.match(/(staticMap):([0-9-]+)(\?.+)/)
+    : url.startsWith('webDocument')
+      ? url.match(/(webDocument):(.+)/)
+      : url.match(
+        /(avatar|profile|photo|msg|stickerSet|sticker|wallpaper|gif|file|document)([-\d\w./]+)(?::\d+)?(\?size=\w+)?/,
+      );
+  if (!mediaMatch) {
+    return undefined;
+  }
+
+  const mediaMatchType = mediaMatch[1];
+  const entityId: string | number = mediaMatch[2];
+
+  if (mediaMatchType === 'file') {
+    return {
+      mediaMatchType,
+      entityType: 'file',
+      entityId,
+    };
+  }
+
+  let entityType: EntityType;
+  const params = mediaMatch[3];
+  const sizeType = params?.replace('?size=', '') || undefined;
+
+  if (mediaMatch[1] === 'avatar' || mediaMatch[1] === 'profile') {
+    entityType = getEntityTypeById(entityId);
+  } else {
+    entityType = mediaMatch[1] as (
+      'msg' | 'sticker' | 'wallpaper' | 'gif' | 'stickerSet' | 'photo' | 'webDocument' | 'document'
+    );
+  }
+
+  return {
+    mediaMatchType,
+    entityType,
+    entityId,
+    sizeType,
+    params,
+  };
 }

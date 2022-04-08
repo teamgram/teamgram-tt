@@ -8,9 +8,6 @@
       margin-bottom: 0.5rem;
       margin-left: 0.5rem;
       flex-grow: 1;
-    }
-
-    .max-items-reached {
       color: var(--color-text-secondary);
     }
   }
@@ -43,7 +40,7 @@
       margin: 0;
     }
 
-    &[dir=rtl] {
+    &[dir="rtl"] {
       .Checkbox {
         margin-left: 0;
         margin-right: auto;

@@ -1,11 +1,11 @@
 import React, {
   FC, useMemo, useState, memo, useRef, useCallback,
 } from '../../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import { ApiChat } from '../../../api/types';
 
-import { filterUsersByName } from '../../../modules/helpers';
+import { filterUsersByName } from '../../../global/helpers';
 import useLang from '../../../hooks/useLang';
 
 import ChatOrUserPicker from '../../common/ChatOrUserPicker';
@@ -29,7 +29,7 @@ const RemoveGroupUserModal: FC<OwnProps & StateProps> = ({
   const {
     loadMoreMembers,
     deleteChatMember,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   const [filter, setFilter] = useState('');

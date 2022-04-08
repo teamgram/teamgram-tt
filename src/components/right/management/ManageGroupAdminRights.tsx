@@ -1,13 +1,13 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, getGlobal, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import { ApiChat, ApiChatAdminRights, ApiUser } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
-import { selectChat } from '../../../modules/selectors';
-import { getUserFullName, isChatBasicGroup, isChatChannel } from '../../../modules/helpers';
+import { selectChat } from '../../../global/selectors';
+import { getUserFullName, isChatBasicGroup, isChatChannel } from '../../../global/helpers';
 import useLang from '../../../hooks/useLang';
 import useFlag from '../../../hooks/useFlag';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -54,7 +54,7 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
   onClose,
   isActive,
 }) => {
-  const { updateChatAdmin } = getDispatch();
+  const { updateChatAdmin } = getActions();
 
   const [permissions, setPermissions] = useState<ApiChatAdminRights>({});
   const [isTouched, setIsTouched] = useState(Boolean(isNewAdmin));

@@ -1,13 +1,13 @@
 import React, {
   FC, memo, useCallback, useMemo,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { withGlobal } from '../../../global';
 
 import { ApiChatMember, ApiUser, ApiUserStatus } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
-import { selectChat } from '../../../modules/selectors';
-import { sortUserIds, isChatChannel } from '../../../modules/helpers';
+import { selectChat } from '../../../global/selectors';
+import { sortUserIds, isChatChannel } from '../../../global/helpers';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 
 import PrivateChatInfo from '../../common/PrivateChatInfo';
@@ -72,6 +72,7 @@ const ManageGroupUserPermissionsCreate: FC<OwnProps & StateProps> = ({
                 key={id}
                 teactOrderKey={i}
                 className="chat-item-clickable scroll-item"
+                // eslint-disable-next-line react/jsx-no-bind
                 onClick={() => handleExceptionMemberClick(id)}
               >
                 <PrivateChatInfo userId={id} forceShowSelf />

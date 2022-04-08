@@ -1,4 +1,4 @@
-import { getGlobal } from '../lib/teact/teactn';
+import { getGlobal } from '../global';
 
 import { FocusDirection } from '../types';
 

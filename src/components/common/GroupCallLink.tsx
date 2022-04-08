@@ -5,18 +5,18 @@ import { ApiGroupCall } from '../../api/types';
 import buildClassName from '../../util/buildClassName';
 
 import Link from '../ui/Link';
-import { getDispatch } from '../../lib/teact/teactn';
+import { getActions } from '../../global';
 
 type OwnProps = {
   className?: string;
   groupCall?: Partial<ApiGroupCall>;
-  children: any;
+  children: React.ReactNode;
 };
 
 const GroupCallLink: FC<OwnProps> = ({
   className, groupCall, children,
 }) => {
-  const { joinGroupCall } = getDispatch();
+  const { joinGroupCall } = getActions();
 
   const handleClick = useCallback(() => {
     if (groupCall) {

@@ -1,5 +1,5 @@
 import React, { FC, memo, useCallback } from '../../lib/teact/teact';
-import { getDispatch } from '../../lib/teact/teactn';
+import { getActions } from '../../global';
 import convertPunycode from '../../lib/punycode';
 
 import {
@@ -12,7 +12,7 @@ type OwnProps = {
   url?: string;
   text: string;
   className?: string;
-  children?: any;
+  children?: React.ReactNode;
   isRtl?: boolean;
 };
 
@@ -23,7 +23,7 @@ const SafeLink: FC<OwnProps> = ({
   children,
   isRtl,
 }) => {
-  const { toggleSafeLinkModal, openTelegramLink } = getDispatch();
+  const { toggleSafeLinkModal, openTelegramLink } = getActions();
 
   const content = children || text;
   const isNotSafe = url !== content;

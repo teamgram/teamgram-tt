@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { LeftColumnContent, SettingsScreens } from '../../types';
 
@@ -57,7 +57,7 @@ const LeftColumn: FC<StateProps> = ({
     clearTwoFaError,
     setLeftColumnWidth,
     resetLeftColumnWidth,
-  } = getDispatch();
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const resizeRef = useRef<HTMLDivElement>(null);
@@ -117,6 +117,7 @@ const LeftColumn: FC<StateProps> = ({
         case SettingsScreens.Notifications:
         case SettingsScreens.DataStorage:
         case SettingsScreens.Privacy:
+        case SettingsScreens.ActiveSessions:
         case SettingsScreens.Language:
           setSettingsScreen(SettingsScreens.Main);
           return;
@@ -134,7 +135,6 @@ const LeftColumn: FC<StateProps> = ({
         case SettingsScreens.PrivacyProfilePhoto:
         case SettingsScreens.PrivacyForwarding:
         case SettingsScreens.PrivacyGroupChats:
-        case SettingsScreens.PrivacyActiveSessions:
         case SettingsScreens.PrivacyBlockedUsers:
         case SettingsScreens.TwoFaDisabled:
         case SettingsScreens.TwoFaEnabled:
@@ -286,10 +286,10 @@ const LeftColumn: FC<StateProps> = ({
     initResize, resetResize, handleMouseUp,
   } = useResize(resizeRef, setLeftColumnWidth, resetLeftColumnWidth, leftColumnWidth);
 
-  const handleSettingsScreenSelect = (screen: SettingsScreens) => {
+  const handleSettingsScreenSelect = useCallback((screen: SettingsScreens) => {
     setContent(LeftColumnContent.Settings);
     setSettingsScreen(screen);
-  };
+  }, []);
 
   return (
     <div

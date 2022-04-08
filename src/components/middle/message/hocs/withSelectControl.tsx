@@ -5,7 +5,7 @@ import React, {
   useMemo,
   memo,
 } from '../../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../../global';
 
 import { OwnProps as PhotoProps } from '../Photo';
 import { OwnProps as VideoProps } from '../Video';
@@ -14,7 +14,7 @@ import buildClassName from '../../../../util/buildClassName';
 import {
   selectIsInSelectMode,
   selectIsMessageSelected,
-} from '../../../../modules/selectors';
+} from '../../../../global/selectors';
 
 type OwnProps =
   PhotoProps
@@ -33,7 +33,7 @@ export default function withSelectControl(WrappedComponent: FC) {
       message,
       dimensions,
     } = props;
-    const { toggleMessageSelection } = getDispatch();
+    const { toggleMessageSelection } = getActions();
 
     const handleMessageSelect = useCallback((e: ReactMouseEvent<HTMLDivElement, MouseEvent>) => {
       e.stopPropagation();
@@ -41,23 +41,23 @@ export default function withSelectControl(WrappedComponent: FC) {
     }, [toggleMessageSelection, message]);
 
     const newProps = useMemo(() => {
+      const { dimensions: dims, onClick } = props;
       return {
         ...props,
         isInSelectMode,
         isSelected,
         dimensions: {
-          ...props.dimensions,
+          ...dims,
           x: 0,
           y: 0,
         },
-        onClick: isInSelectMode ? undefined : props.onClick,
+        onClick: isInSelectMode ? undefined : onClick,
       };
     }, [props, isInSelectMode, isSelected]);
 
     return (
       <div
         className={buildClassName('album-item-select-wrapper', isSelected && 'is-selected')}
-        // @ts-ignore
         style={dimensions ? `left: ${dimensions.x}px; top: ${dimensions.y}px;` : ''}
         onClick={isInSelectMode ? handleMessageSelect : undefined}
       >

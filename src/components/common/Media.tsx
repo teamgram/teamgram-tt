@@ -1,14 +1,17 @@
-import React, { FC, memo, useCallback, useRef } from '../../lib/teact/teact';
+import React, {
+  FC, memo, useCallback, useRef,
+} from '../../lib/teact/teact';
 
 import { ApiMessage } from '../../api/types';
 
 import { formatMediaDuration } from '../../util/dateFormat';
 import stopEvent from '../../util/stopEvent';
 import {
+  getMessageHtmlId,
   getMessageMediaHash,
   getMessageMediaThumbDataUri,
   getMessageVideo,
-} from '../../modules/helpers';
+} from '../../global/helpers';
 import buildClassName from '../../util/buildClassName';
 import useMedia from '../../hooks/useMedia';
 import useMediaTransition from '../../hooks/useMediaTransition';
@@ -48,7 +51,7 @@ const Media: FC<OwnProps> = ({
   return (
     <div
       ref={ref}
-      id={`${idPrefix}${message.id}`}
+      id={`${idPrefix}${getMessageHtmlId(message.id)}`}
       className="Media scroll-item"
       onClick={onClick ? handleClick : undefined}
     >

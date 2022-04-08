@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect, useLayoutEffect, useRef, useState,
 } from '../../../lib/teact/teact';
-import { withGlobal } from '../../../lib/teact/teactn';
+import { withGlobal } from '../../../global';
 
 import { ApiSticker, ApiVideo } from '../../../api/types';
 
@@ -34,8 +34,10 @@ export type OwnProps = {
   onLoad: () => void;
   onClose: () => void;
   onEmojiSelect: (emoji: string) => void;
-  onStickerSelect: (sticker: ApiSticker, shouldPreserveInput?: boolean) => void;
-  onGifSelect: (gif: ApiVideo) => void;
+  onStickerSelect: (
+    sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean, shouldPreserveInput?: boolean
+  ) => void;
+  onGifSelect: (gif: ApiVideo, isSilent?: boolean, shouldSchedule?: boolean) => void;
   onRemoveSymbol: () => void;
   onSearchOpen: (type: 'stickers' | 'gifs') => void;
   addRecentEmoji: AnyToVoidFunction;
@@ -126,8 +128,8 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
     onSearchOpen(type);
   }, [onClose, onSearchOpen]);
 
-  const handleStickerSelect = useCallback((sticker: ApiSticker) => {
-    onStickerSelect(sticker, true);
+  const handleStickerSelect = useCallback((sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean) => {
+    onStickerSelect(sticker, isSilent, shouldSchedule, true);
   }, [onStickerSelect]);
 
   const lang = useLang();
@@ -232,6 +234,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
       onMouseEnter={!IS_TOUCH_ENV ? handleMouseEnter : undefined}
       onMouseLeave={!IS_TOUCH_ENV ? handleMouseLeave : undefined}
       noCloseOnBackdrop={!IS_TOUCH_ENV}
+      noCompact
     >
       {content}
     </Menu>

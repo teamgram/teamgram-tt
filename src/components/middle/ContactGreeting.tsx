@@ -1,14 +1,14 @@
 import React, {
   FC, memo, useCallback, useEffect, useRef,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiSticker, ApiUpdateConnectionStateType } from '../../api/types';
 
-import { selectChat } from '../../modules/selectors';
+import { selectChat } from '../../global/selectors';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 import useLang from '../../hooks/useLang';
-import { getUserIdDividend } from '../../modules/helpers';
+import { getUserIdDividend } from '../../global/helpers';
 
 import StickerButton from '../common/StickerButton';
 
@@ -35,7 +35,7 @@ const ContactGreeting: FC<OwnProps & StateProps> = ({
     loadGreetingStickers,
     sendMessage,
     markMessageListRead,
-  } = getDispatch();
+  } = getActions();
 
   const lang = useLang();
   // eslint-disable-next-line no-null/no-null
@@ -83,6 +83,7 @@ const ContactGreeting: FC<OwnProps & StateProps> = ({
               observeIntersection={observeIntersection}
               size={160}
               className="large"
+              noContextMenu
             />
           )}
         </div>

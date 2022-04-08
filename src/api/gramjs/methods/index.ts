@@ -1,5 +1,5 @@
 export {
-  destroy, disconnect, downloadMedia, fetchCurrentUser,
+  destroy, disconnect, downloadMedia, fetchCurrentUser, repairFileReference,
 } from './client';
 
 export {
@@ -7,7 +7,7 @@ export {
 } from './auth';
 
 export {
-  fetchChats, fetchFullChat, searchChats, requestChatUpdate,
+  fetchChats, fetchFullChat, searchChats, requestChatUpdate, fetchChatSettings,
   saveDraft, clearDraft, fetchChat, updateChatMutedState,
   createChannel, joinChannel, deleteChatUser, deleteChat, leaveChannel, deleteChannel, createGroupChat, editChatPhoto,
   toggleChatPinned, toggleChatArchived, toggleDialogUnread, setChatEnabledReactions,
@@ -15,6 +15,7 @@ export {
   getChatByUsername, togglePreHistoryHidden, updateChatDefaultBannedRights, updateChatMemberBannedRights,
   updateChatTitle, updateChatAbout, toggleSignatures, updateChatAdmin, fetchGroupsForDiscussion, setDiscussionGroup,
   migrateChat, openChatByInvite, fetchMembers, importChatInvite, addChatMembers, deleteChatMember, toggleIsProtected,
+  getChatByPhoneNumber,
 } from './chats';
 
 export {
@@ -28,12 +29,12 @@ export {
 
 export {
   fetchFullUser, fetchNearestCountry, fetchTopUsers, fetchContactList, fetchUsers,
-  addContact, updateContact, deleteContact, fetchProfilePhotos, fetchCommonChats,
+  updateContact, importContact, deleteContact, fetchProfilePhotos, fetchCommonChats, reportSpam,
 } from './users';
 
 export {
   fetchStickerSets, fetchRecentStickers, fetchFavoriteStickers, fetchFeaturedStickers,
-  faveSticker, fetchStickers, fetchSavedGifs, searchStickers, installStickerSet, uninstallStickerSet,
+  faveSticker, fetchStickers, fetchSavedGifs, saveGif, searchStickers, installStickerSet, uninstallStickerSet,
   searchGifs, fetchAnimatedEmojis, fetchStickersForEmoji, fetchEmojiKeywords, fetchAnimatedEmojiEffects,
 } from './symbols';
 
@@ -41,6 +42,7 @@ export {
   checkChatUsername, setChatUsername, updatePrivateLink,
   fetchExportedChatInvites, editExportedChatInvite, exportChatInvite, deleteExportedChatInvite,
   deleteRevokedExportedChatInvites, fetchChatInviteImporters, hideChatJoinRequest, hideAllChatJoinRequests,
+  hideChatReportPanel,
 } from './management';
 
 export {
@@ -74,3 +76,5 @@ export {
   getAvailableReactions, sendReaction, sendEmojiInteraction, fetchMessageReactionsList,
   setDefaultReaction, fetchMessageReactions, sendWatchingEmojiInteraction,
 } from './reactions';
+
+export { fetchChannelStatistics, fetchGroupStatistics, fetchStatisticsAsyncGraph } from './statistics';

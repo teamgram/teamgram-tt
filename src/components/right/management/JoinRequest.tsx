@@ -1,11 +1,11 @@
 import React, { FC, memo, useCallback } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiUser } from '../../../api/types';
 
 import useLang from '../../../hooks/useLang';
-import { getUserFullName } from '../../../modules/helpers';
-import { selectUser } from '../../../modules/selectors';
+import { getUserFullName } from '../../../global/helpers';
+import { selectUser } from '../../../global/selectors';
 import { formatHumanDate, formatTime, isToday } from '../../../util/dateFormat';
 import { getServerTime } from '../../../util/serverTime';
 import { createClassNameBuilder } from '../../../util/buildClassName';
@@ -38,7 +38,7 @@ const JoinRequest: FC<OwnProps & StateProps> = ({
   serverTimeOffset,
   chatId,
 }) => {
-  const { openUserInfo, hideChatJoinRequest } = getDispatch();
+  const { openChat, hideChatJoinRequest } = getActions();
 
   const buildClassName = createClassNameBuilder('JoinRequest');
   const lang = useLang();
@@ -50,7 +50,7 @@ const JoinRequest: FC<OwnProps & StateProps> = ({
     ? formatTime(lang, fixedDate) : formatHumanDate(lang, fixedDate, true, false, true);
 
   const handleUserClick = () => {
-    openUserInfo({ id: userId });
+    openChat({ id: userId });
   };
 
   const handleAcceptRequest = useCallback(() => {

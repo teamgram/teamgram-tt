@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useRef, useCallback,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiChat, ApiVideo } from '../../api/types';
 
@@ -11,12 +11,15 @@ import {
   selectChat,
   selectIsChatWithBot,
   selectCurrentMessageList,
-} from '../../modules/selectors';
-import { getAllowedAttachmentOptions } from '../../modules/helpers';
+  selectCanScheduleUntilOnline,
+  selectIsChatWithSelf,
+} from '../../global/selectors';
+import { getAllowedAttachmentOptions, getCanPostInChat } from '../../global/helpers';
 import buildClassName from '../../util/buildClassName';
 import { useIntersectionObserver } from '../../hooks/useIntersectionObserver';
 import useLang from '../../hooks/useLang';
 import useHistoryBack from '../../hooks/useHistoryBack';
+import useSchedule from '../../hooks/useSchedule';
 
 import InfiniteScroll from '../ui/InfiniteScroll';
 import GifButton from '../common/GifButton';
@@ -34,43 +37,57 @@ type StateProps = {
   results?: ApiVideo[];
   chat?: ApiChat;
   isChatWithBot?: boolean;
+  canScheduleUntilOnline?: boolean;
+  isSavedMessages?: boolean;
+  canPostInChat?: boolean;
 };
 
 const PRELOAD_BACKWARDS = 96; // GIF Search bot results are multiplied by 24
 const INTERSECTION_DEBOUNCE = 300;
 
 const GifSearch: FC<OwnProps & StateProps> = ({
-  onClose,
   isActive,
   query,
   results,
   chat,
   isChatWithBot,
+  canScheduleUntilOnline,
+  isSavedMessages,
+  canPostInChat,
+  onClose,
 }) => {
   const {
     searchMoreGifs,
     sendMessage,
     setGifSearchQuery,
-  } = getDispatch();
+  } = getActions();
 
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const [requestCalendar, calendar] = useSchedule(canScheduleUntilOnline);
 
   const {
     observe: observeIntersection,
   } = useIntersectionObserver({ rootRef: containerRef, debounceMs: INTERSECTION_DEBOUNCE });
 
-  const { canSendGifs } = getAllowedAttachmentOptions(chat, isChatWithBot);
+  const canSendGifs = canPostInChat && getAllowedAttachmentOptions(chat, isChatWithBot).canSendGifs;
 
-  const handleGifClick = useCallback((gif: ApiVideo) => {
+  const handleGifClick = useCallback((gif: ApiVideo, isSilent?: boolean, shouldSchedule?: boolean) => {
     if (canSendGifs) {
-      sendMessage({ gif });
+      if (shouldSchedule) {
+        requestCalendar((scheduledAt) => {
+          sendMessage({ gif, scheduledAt, isSilent });
+        });
+      } else {
+        sendMessage({ gif, isSilent });
+      }
     }
 
     if (IS_TOUCH_ENV) {
       setGifSearchQuery({ query: undefined });
     }
-  }, [canSendGifs, sendMessage, setGifSearchQuery]);
+  }, [canSendGifs, requestCalendar, sendMessage, setGifSearchQuery]);
 
   const lang = useLang();
 
@@ -98,7 +115,8 @@ const GifSearch: FC<OwnProps & StateProps> = ({
         key={gif.id}
         gif={gif}
         observeIntersection={observeIntersection}
-        onClick={handleGifClick}
+        onClick={canSendGifs ? handleGifClick : undefined}
+        isSavedMessages={isSavedMessages}
       />
     ));
   }
@@ -118,6 +136,7 @@ const GifSearch: FC<OwnProps & StateProps> = ({
       >
         {renderContent()}
       </InfiniteScroll>
+      {calendar}
     </div>
   );
 };
@@ -126,15 +145,20 @@ export default memo(withGlobal(
   (global): StateProps => {
     const currentSearch = selectCurrentGifSearch(global);
     const { query, results } = currentSearch || {};
-    const { chatId } = selectCurrentMessageList(global) || {};
+    const { chatId, threadId } = selectCurrentMessageList(global) || {};
     const chat = chatId ? selectChat(global, chatId) : undefined;
     const isChatWithBot = chat ? selectIsChatWithBot(global, chat) : undefined;
+    const isSavedMessages = Boolean(chatId) && selectIsChatWithSelf(global, chatId);
+    const canPostInChat = Boolean(chat) && Boolean(threadId) && getCanPostInChat(chat, threadId);
 
     return {
       query,
       results,
       chat,
       isChatWithBot,
+      isSavedMessages,
+      canPostInChat,
+      canScheduleUntilOnline: Boolean(chatId) && selectCanScheduleUntilOnline(global, chatId),
     };
   },
 )(GifSearch));

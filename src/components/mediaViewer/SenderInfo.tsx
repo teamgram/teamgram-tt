@@ -1,10 +1,10 @@
 import React, { FC, useCallback } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiChat, ApiMessage, ApiUser } from '../../api/types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
-import { getSenderTitle, isUserId } from '../../modules/helpers';
+import { getSenderTitle, isUserId } from '../../global/helpers';
 import { formatMediaDateTime } from '../../util/dateFormat';
 import renderText from '../common/helpers/renderText';
 import {
@@ -12,7 +12,7 @@ import {
   selectChatMessage,
   selectSender,
   selectUser,
-} from '../../modules/selectors';
+} from '../../global/selectors';
 import useLang from '../../hooks/useLang';
 
 import Avatar from '../common/Avatar';
@@ -43,7 +43,7 @@ const SenderInfo: FC<OwnProps & StateProps> = ({
     closeMediaViewer,
     focusMessage,
     toggleChatInfo,
-  } = getDispatch();
+  } = getActions();
 
   const handleFocusMessage = useCallback(() => {
     closeMediaViewer();

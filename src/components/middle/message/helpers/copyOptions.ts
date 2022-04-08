@@ -9,16 +9,21 @@ import {
   getMessageWebPagePhoto,
   getMessageWebPageVideo,
   hasMessageLocalBlobUrl,
-} from '../../../../modules/helpers';
+} from '../../../../global/helpers';
 import { CLIPBOARD_ITEM_SUPPORTED, copyImageToClipboard, copyTextToClipboard } from '../../../../util/clipboard';
+import getMessageIdsForSelectedText from '../../../../util/getMessageIdsForSelectedText';
 
 type ICopyOptions = {
   label: string;
+  icon: string;
   handler: () => void;
 }[];
 
 export function getMessageCopyOptions(
-  message: ApiMessage, afterEffect?: () => void, onCopyLink?: () => void,
+  message: ApiMessage,
+  afterEffect?: () => void,
+  onCopyLink?: () => void,
+  onCopyMessages?: (messageIds: number[]) => void,
 ): ICopyOptions {
   const options: ICopyOptions = [];
   const text = getMessageText(message);
@@ -31,6 +36,7 @@ export function getMessageCopyOptions(
   if (canImageBeCopied) {
     options.push({
       label: 'lng_context_copy_image',
+      icon: 'copy-media',
       handler: () => {
         Promise.resolve(mediaHash ? mediaLoader.fetch(mediaHash, ApiMediaFormat.BlobUrl) : photo!.blobUrl)
           .then(copyImageToClipboard);
@@ -52,9 +58,15 @@ export function getMessageCopyOptions(
 
     options.push({
       label: getCopyLabel(hasSelection),
+      icon: 'copy',
       handler: () => {
-        const clipboardText = hasSelection && selection ? selection.toString() : getMessageTextWithSpoilers(message)!;
-        copyTextToClipboard(clipboardText);
+        const messageIds = getMessageIdsForSelectedText();
+        if (messageIds?.length && onCopyMessages) {
+          onCopyMessages(messageIds);
+        } else {
+          const clipboardText = hasSelection && selection ? selection.toString() : getMessageTextWithSpoilers(message)!;
+          copyTextToClipboard(clipboardText);
+        }
 
         if (afterEffect) {
           afterEffect();
@@ -66,6 +78,7 @@ export function getMessageCopyOptions(
   if (onCopyLink) {
     options.push({
       label: 'lng_context_copy_message_link',
+      icon: 'link',
       handler: () => {
         onCopyLink();
 

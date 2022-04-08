@@ -1,8 +1,5 @@
-export const PAGE_TITLE = 'Telegram';
-export const INACTIVE_MARKER = ' [Inactive]';
-
 export const APP_NAME = process.env.APP_NAME || 'Telegram WebZ';
-export const APP_VERSION = process.env.APP_VERSION || 'dev';
+export const APP_VERSION = process.env.APP_VERSION!;
 
 export const DEBUG = (
   process.env.APP_ENV !== 'production' && process.env.APP_ENV !== 'perf' && process.env.APP_ENV !== 'test'
@@ -15,13 +12,19 @@ export const IS_PERF = process.env.APP_ENV === 'perf';
 export const DEBUG_ALERT_MSG = 'Shoot!\nSomething went wrong, please see the error details in Dev Tools Console.';
 export const DEBUG_GRAMJS = false;
 
+export const PAGE_TITLE = 'Telegram';
+export const INACTIVE_MARKER = ' [Inactive]';
+
+export const DEBUG_PAYMENT_SMART_GLOCAL = false;
+
 export const SESSION_USER_KEY = 'user_auth';
 export const LEGACY_SESSION_KEY = 'GramJs:sessionId';
 
 export const GLOBAL_STATE_CACHE_DISABLED = false;
 export const GLOBAL_STATE_CACHE_KEY = 'tt-global-state';
-export const GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT = 30;
-export const GLOBAL_STATE_CACHE_USER_LIST_LIMIT = 5000;
+export const GLOBAL_STATE_CACHE_USER_LIST_LIMIT = 500;
+export const GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT = 200;
+export const GLOBAL_STATE_CACHE_CHATS_WITH_MESSAGES_LIMIT = 30;
 
 export const MEDIA_CACHE_DISABLED = false;
 export const MEDIA_CACHE_NAME = 'tt-media';
@@ -30,7 +33,7 @@ export const MEDIA_PROGRESSIVE_CACHE_DISABLED = false;
 export const MEDIA_PROGRESSIVE_CACHE_NAME = 'tt-media-progressive';
 export const MEDIA_CACHE_MAX_BYTES = 512 * 1024; // 512 KB
 export const CUSTOM_BG_CACHE_NAME = 'tt-custom-bg';
-export const LANG_CACHE_NAME = 'tt-lang-packs-v7';
+export const LANG_CACHE_NAME = 'tt-lang-packs-v8';
 export const ASSET_CACHE_NAME = 'tt-assets';
 export const AUTODOWNLOAD_FILESIZE_MB_LIMITS = [1, 5, 10, 50, 100, 500];
 
@@ -61,7 +64,6 @@ export const GROUP_CALL_PARTICIPANTS_LIMIT = 100;
 export const REACTION_LIST_LIMIT = 100;
 
 export const TOP_CHAT_MESSAGES_PRELOAD_LIMIT = 20;
-export const ALL_CHATS_PRELOAD_DISABLED = false;
 
 export const SPONSORED_MESSAGE_CACHE_MS = 300000; // 5 min
 
@@ -82,6 +84,10 @@ export const SEND_MESSAGE_ACTION_INTERVAL = 3000; // 3s
 
 export const EDITABLE_INPUT_ID = 'editable-message-text';
 export const EDITABLE_INPUT_MODAL_ID = 'editable-message-text-modal';
+// eslint-disable-next-line max-len
+export const EDITABLE_INPUT_CSS_SELECTOR = `.Transition__slide--active #${EDITABLE_INPUT_ID}, .Transition > .to #${EDITABLE_INPUT_ID}`;
+
+export const CUSTOM_APPENDIX_ATTRIBUTE = 'data-has-custom-appendix';
 
 // Screen width where Pinned Message / Audio Player in the Middle Header can be safely displayed
 export const SAFE_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN = 1440; // px
@@ -134,6 +140,7 @@ export const MENU_TRANSITION_DURATION = 200;
 export const SLIDE_TRANSITION_DURATION = 450;
 
 export const VIDEO_MOV_TYPE = 'video/quicktime';
+export const VIDEO_WEBM_TYPE = 'video/webm';
 
 export const SUPPORTED_IMAGE_CONTENT_TYPES = new Set([
   'image/png', 'image/gif', 'image/jpeg',
@@ -141,6 +148,18 @@ export const SUPPORTED_IMAGE_CONTENT_TYPES = new Set([
 
 export const SUPPORTED_VIDEO_CONTENT_TYPES = new Set([
   'video/mp4', // video/quicktime added dynamically in environment.ts
+]);
+
+export const SUPPORTED_AUDIO_CONTENT_TYPES = new Set([
+  'audio/mp3',
+  'audio/ogg',
+  'audio/wav',
+  'audio/mpeg',
+  'audio/flac',
+  'audio/aac',
+  'audio/m4a',
+  'audio/mp4',
+  'audio/x-m4a',
 ]);
 
 export const CONTENT_TYPES_WITH_PREVIEW = new Set([

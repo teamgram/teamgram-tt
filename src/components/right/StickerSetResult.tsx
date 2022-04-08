@@ -1,13 +1,13 @@
 import React, {
   FC, useEffect, memo, useMemo, useCallback,
 } from '../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../global';
 
 import { ApiStickerSet } from '../../api/types';
 import { ObserveFn } from '../../hooks/useIntersectionObserver';
 
 import { STICKER_SIZE_SEARCH } from '../../config';
-import { selectShouldLoopStickers, selectStickerSet } from '../../modules/selectors';
+import { selectShouldLoopStickers, selectStickerSet } from '../../global/selectors';
 import useFlag from '../../hooks/useFlag';
 import useOnChange from '../../hooks/useOnChange';
 import useLang from '../../hooks/useLang';
@@ -35,7 +35,7 @@ const StickerSetResult: FC<OwnProps & StateProps> = ({
   stickerSetId, observeIntersection, set, shouldPlay,
   isSomeModalOpen, onModalToggle,
 }) => {
-  const { loadStickers, toggleStickerSet } = getDispatch();
+  const { loadStickers, toggleStickerSet } = getActions();
 
   const lang = useLang();
   const isAdded = set && Boolean(set.installedDate);
@@ -101,7 +101,9 @@ const StickerSetResult: FC<OwnProps & StateProps> = ({
             size={STICKER_SIZE_SEARCH}
             observeIntersection={observeIntersection}
             noAnimate={!shouldPlay || isModalOpen || isSomeModalOpen}
+            clickArg={undefined}
             onClick={openModal}
+            noContextMenu
           />
         ))}
       </div>

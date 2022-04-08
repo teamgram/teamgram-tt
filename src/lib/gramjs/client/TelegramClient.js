@@ -642,7 +642,6 @@ class TelegramClient {
         throw new Error('not implemented');
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async _downloadWebDocument(media) {
         try {
             const buff = [];
@@ -679,24 +678,77 @@ class TelegramClient {
         }
     }
 
+    async downloadStaticMap(accessHash, long, lat, w, h, zoom, scale, accuracyRadius) {
+        try {
+            const buff = [];
+            let offset = 0;
+            while (true) {
+                try {
+                    const downloaded = new requests.upload.GetWebFile({
+                        location: new constructors.InputWebFileGeoPointLocation({
+                            geoPoint: new constructors.InputGeoPoint({
+                                lat,
+                                long,
+                                accuracyRadius,
+                            }),
+                            accessHash,
+                            w,
+                            h,
+                            zoom,
+                            scale,
+                        }),
+                        offset,
+                        limit: WEBDOCUMENT_REQUEST_PART_SIZE,
+                    });
+                    const sender = await this._borrowExportedSender(WEBDOCUMENT_DC_ID);
+                    const res = await sender.send(downloaded);
+                    offset += 131072;
+                    if (res.bytes.length) {
+                        buff.push(res.bytes);
+                        if (res.bytes.length < WEBDOCUMENT_REQUEST_PART_SIZE) {
+                            break;
+                        }
+                    } else {
+                        break;
+                    }
+                } catch (err) {
+                    if (err instanceof errors.FloodWaitError) {
+                        // eslint-disable-next-line no-console
+                        console.warn(`getWebFile: sleeping for ${err.seconds}s on flood wait`);
+                        await sleep(err.seconds * 1000);
+                        continue;
+                    }
+                }
+            }
+            return Buffer.concat(buff);
+        } catch (e) {
+            // the file is no longer saved in telegram's cache.
+            if (e.message === 'WEBFILE_NOT_AVAILABLE') {
+                return Buffer.alloc(0);
+            } else {
+                throw e;
+            }
+        }
+    }
+
     // region Invoking Telegram request
     /**
      * Invokes a MTProtoRequest (sends and receives it) and returns its result
      * @param request
+     * @param dcId Optional dcId to use when sending the request
      * @returns {Promise}
      */
 
-    async invoke(request) {
+    async invoke(request, dcId) {
         if (request.classType !== 'request') {
             throw new Error('You can only invoke MTProtoRequests');
         }
-        // This causes issues for now because not enough utils
-        // await request.resolve(this, utils)
 
+        const sender = dcId === undefined ? this._sender : await this.getSender(dcId);
         this._lastRequest = new Date().getTime();
         let attempt = 0;
         for (attempt = 0; attempt < this._requestRetries; attempt++) {
-            const promise = this._sender.sendWithInvokeSupport(request);
+            const promise = sender.sendWithInvokeSupport(request);
             try {
                 const result = await promise.promise;
                 return result;

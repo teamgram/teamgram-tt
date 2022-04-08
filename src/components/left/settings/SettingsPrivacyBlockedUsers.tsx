@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ApiChat, ApiCountryCode, ApiUser } from '../../../api/types';
 import { SettingsScreens } from '../../../types';
@@ -10,7 +10,7 @@ import { CHAT_HEIGHT_PX } from '../../../config';
 import { formatPhoneNumberWithCode } from '../../../util/phoneNumber';
 import {
   getChatTitle, getUserFullName, isUserId,
-} from '../../../modules/helpers';
+} from '../../../global/helpers';
 import renderText from '../../common/helpers/renderText';
 import buildClassName from '../../../util/buildClassName';
 import useLang from '../../../hooks/useLang';
@@ -45,7 +45,7 @@ const SettingsPrivacyBlockedUsers: FC<OwnProps & StateProps> = ({
   blockedIds,
   phoneCodeList,
 }) => {
-  const { unblockContact } = getDispatch();
+  const { unblockContact } = getActions();
 
   const lang = useLang();
   const [isBlockUserModalOpen, openBlockUserModal, closeBlockUserModal] = useFlag();
@@ -97,7 +97,7 @@ const SettingsPrivacyBlockedUsers: FC<OwnProps & StateProps> = ({
   return (
     <div className="settings-fab-wrapper">
       <div className="settings-content infinite-scroll">
-        <div className="settings-item">
+        <div className="settings-item no-border">
           <p className="settings-item-description-larger mt-0 mb-2" dir={lang.isRtl ? 'rtl' : undefined}>
             {lang('BlockedUsersInfo')}
           </p>

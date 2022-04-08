@@ -6,11 +6,11 @@ import setTooltipItemVisible from '../../../util/setTooltipItemVisible';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
 import { IS_TOUCH_ENV } from '../../../util/environment';
 import renderText from '../../common/helpers/renderText';
-import { getUserFullName, isUserId } from '../../../modules/helpers';
+import { getUserFullName, isUserId } from '../../../global/helpers';
 import useMouseInside from '../../../hooks/useMouseInside';
 import useLang from '../../../hooks/useLang';
 import buildClassName from '../../../util/buildClassName';
-import { getDispatch, getGlobal } from '../../../lib/teact/teactn';
+import { getActions, getGlobal } from '../../../global';
 
 import ListItem from '../../ui/ListItem';
 import Avatar from '../../common/Avatar';
@@ -33,7 +33,7 @@ const SendAsMenu: FC<OwnProps> = ({
   selectedSendAsId,
   sendAsIds,
 }) => {
-  const { saveDefaultSendAs } = getDispatch();
+  const { saveDefaultSendAs } = getActions();
 
   // No need for expensive global updates on users and chats, so we avoid them
   const usersById = getGlobal().users.byId;
@@ -86,6 +86,7 @@ const SendAsMenu: FC<OwnProps> = ({
       onMouseEnter={!IS_TOUCH_ENV ? handleMouseEnter : undefined}
       onMouseLeave={!IS_TOUCH_ENV ? handleMouseLeave : undefined}
       noCloseOnBackdrop={!IS_TOUCH_ENV}
+      noCompact
     >
       <div className="send-as-title" dir="auto">{lang('SendMessageAsTitle')}</div>
       {usersById && chatsById && sendAsIds?.map((id, index) => {
@@ -97,6 +98,7 @@ const SendAsMenu: FC<OwnProps> = ({
           <ListItem
             key={id}
             className="SendAsItem chat-item-clickable scroll-item with-avatar"
+            // eslint-disable-next-line react/jsx-no-bind
             onClick={() => handleUserSelect(id)}
             focus={selectedSendAsIndex === index}
           >

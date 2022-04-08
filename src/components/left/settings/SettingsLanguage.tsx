@@ -1,7 +1,7 @@
 import React, {
   FC, memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
-import { getDispatch, withGlobal } from '../../../lib/teact/teactn';
+import { getActions, withGlobal } from '../../../global';
 
 import { ISettings, LangCode, SettingsScreens } from '../../../types';
 import { ApiLanguage } from '../../../api/types';
@@ -31,7 +31,7 @@ const SettingsLanguage: FC<OwnProps & StateProps> = ({
   const {
     loadLanguages,
     setSettingOption,
-  } = getDispatch();
+  } = getActions();
 
   const [selectedLanguage, setSelectedLanguage] = useState<string>(language);
   const [isLoading, markIsLoading, unmarkIsLoading] = useFlag();
@@ -59,7 +59,7 @@ const SettingsLanguage: FC<OwnProps & StateProps> = ({
   useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.Language);
 
   return (
-    <div className="settings-content settings-item settings-language custom-scroll">
+    <div className="settings-content settings-item settings-language custom-scroll settings-item--first">
       {options ? (
         <RadioGroup
           name="keyboard-send-settings"
