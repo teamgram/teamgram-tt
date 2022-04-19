@@ -22,7 +22,7 @@ module.exports = (env = {}, argv = {}) => {
     entry: './src/index.tsx',
     target: 'web',
     devServer: {
-      port: 1234,
+      port: 10234,
       host: '0.0.0.0',
       allowedHosts: "all",
       hot: false,

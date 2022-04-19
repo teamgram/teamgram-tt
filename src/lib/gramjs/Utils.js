@@ -618,8 +618,8 @@ function getDC(dcId, downloadDC = false) {
         case 1:
             return {
                 id: 1,
-                ipAddress: `47.103.102.219`,
-                // ipAddress: `127.0.0.1`,
+                // ipAddress: `47.103.102.219`,
+                ipAddress: `127.0.0.1`,
                 port: 11443,
             };
     // switch (dcId) {
