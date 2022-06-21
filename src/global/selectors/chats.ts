@@ -1,5 +1,6 @@
-import { ApiChat, MAIN_THREAD_ID } from '../../api/types';
-import { GlobalState } from '../types';
+import type { ApiChat, ApiUser } from '../../api/types';
+import { MAIN_THREAD_ID } from '../../api/types';
+import type { GlobalState } from '../types';
 
 import {
   getPrivateChatUserId, isChatChannel, isUserId, isHistoryClearMessage, isUserBot, isUserOnline,
@@ -66,6 +67,10 @@ export function selectChatBot(global: GlobalState, chatId: string) {
   }
 
   return user;
+}
+
+export function selectIsTrustedBot(global: GlobalState, bot: ApiUser) {
+  return bot.isVerified || global.trustedBotIds.includes(bot.id);
 }
 
 export function selectIsChatBotNotStarted(global: GlobalState, chatId: string) {
@@ -164,4 +169,11 @@ export function selectSendAs(global: GlobalState, chatId: string) {
   if (!id) return undefined;
 
   return selectUser(global, id) || selectChat(global, id);
+}
+
+export function selectRequestedText(global: GlobalState, chatId: string) {
+  if (global.openChatWithText?.chatId === chatId) {
+    return global.openChatWithText.text;
+  }
+  return undefined;
 }

@@ -1,15 +1,15 @@
-import React, { FC, memo, useCallback } from '../../../../lib/teact/teact';
-import { withGlobal } from '../../../../global';
+import type { FC } from '../../../../lib/teact/teact';
+import React, { memo, useCallback } from '../../../../lib/teact/teact';
 
-import { ApiSticker } from '../../../../api/types';
 import { SettingsScreens } from '../../../../types';
 
-import { selectAnimatedEmoji } from '../../../../global/selectors';
+import { STICKER_SIZE_TWO_FA } from '../../../../config';
+import { LOCAL_TGS_URLS } from '../../../common/helpers/animatedAssets';
 import useLang from '../../../../hooks/useLang';
 import useHistoryBack from '../../../../hooks/useHistoryBack';
 
 import Button from '../../../ui/Button';
-import AnimatedEmoji from '../../../common/AnimatedEmoji';
+import AnimatedIcon from '../../../common/AnimatedIcon';
 
 type OwnProps = {
   isActive?: boolean;
@@ -17,12 +17,8 @@ type OwnProps = {
   onReset: () => void;
 };
 
-type StateProps = {
-  animatedEmoji: ApiSticker;
-};
-
-const SettingsTwoFaCongratulations: FC<OwnProps & StateProps> = ({
-  isActive, onReset, animatedEmoji, onScreenSelect,
+const SettingsTwoFaCongratulations: FC<OwnProps> = ({
+  isActive, onReset, onScreenSelect,
 }) => {
   const lang = useLang();
 
@@ -30,12 +26,19 @@ const SettingsTwoFaCongratulations: FC<OwnProps & StateProps> = ({
     onScreenSelect(SettingsScreens.Privacy);
   }, [onScreenSelect]);
 
-  useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.TwoFaCongratulations);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   return (
     <div className="settings-content two-fa custom-scroll">
       <div className="settings-content-header no-border">
-        <AnimatedEmoji sticker={animatedEmoji} size="large" />
+        <AnimatedIcon
+          size={STICKER_SIZE_TWO_FA}
+          tgsUrl={LOCAL_TGS_URLS.Congratulations}
+          className="settings-content-icon"
+        />
 
         <p className="settings-item-description mb-3" dir="auto">
           {lang('TwoStepVerificationPasswordSetInfo')}
@@ -49,8 +52,4 @@ const SettingsTwoFaCongratulations: FC<OwnProps & StateProps> = ({
   );
 };
 
-export default memo(withGlobal<OwnProps>((global) => {
-  return {
-    animatedEmoji: selectAnimatedEmoji(global, '🥳'),
-  };
-})(SettingsTwoFaCongratulations));
+export default memo(SettingsTwoFaCongratulations);

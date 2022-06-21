@@ -1,7 +1,9 @@
-import React, { FC, memo, useCallback } from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import React, { memo, useCallback } from '../../lib/teact/teact';
 
-import { ApiMessage, ApiWebPage } from '../../api/types';
-import { ObserveFn } from '../../hooks/useIntersectionObserver';
+import type { ApiMessage, ApiWebPage } from '../../api/types';
+import type { TextPart } from '../../types';
+import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 
 import {
   getFirstLinkInMessage, getMessageText,
@@ -12,7 +14,7 @@ import trimText from '../../util/trimText';
 import renderText from './helpers/renderText';
 import { formatPastTimeShort } from '../../util/dateFormat';
 import useLang from '../../hooks/useLang';
-import { renderMessageSummary, TextPart } from './helpers/renderMessageText';
+import { renderMessageSummary } from './helpers/renderMessageText';
 
 import Media from './Media';
 import Link from '../ui/Link';

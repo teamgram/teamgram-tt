@@ -1,9 +1,10 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useMemo, useRef,
+  memo, useCallback, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
-import { ApiChatMember, ApiUserStatus } from '../../../api/types';
+import type { ApiChatMember, ApiUserStatus } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
 import { unique } from '../../../util/iteratees';
@@ -62,7 +63,7 @@ const ManageGroupMembers: FC<OwnProps & StateProps> = ({
   onScreenSelect,
   onChatMemberSelect,
 }) => {
-  const { openChat, setUserSearchQuery, loadContactList } = getActions();
+  const { openChat, setUserSearchQuery, closeManagement } = getActions();
   const lang = useLang();
   // eslint-disable-next-line no-null/no-null
   const inputRef = useRef<HTMLInputElement>(null);
@@ -119,16 +120,17 @@ const ManageGroupMembers: FC<OwnProps & StateProps> = ({
     );
   }, [memberIds, localContactIds, searchQuery, localUserIds, globalUserIds, isChannel, noAdmins, adminIds]);
 
-  const [viewportIds, getMore] = useInfiniteScroll(loadContactList, displayedIds, Boolean(searchQuery));
+  const [viewportIds, getMore] = useInfiniteScroll(undefined, displayedIds, Boolean(searchQuery));
 
   const handleMemberClick = useCallback((id: string) => {
     if (noAdmins) {
       onChatMemberSelect!(id, false);
       onScreenSelect!(ManagementScreens.ChatNewAdminRights);
     } else {
+      closeManagement();
       openChat({ id });
     }
-  }, [noAdmins, onChatMemberSelect, onScreenSelect, openChat]);
+  }, [closeManagement, noAdmins, onChatMemberSelect, onScreenSelect, openChat]);
 
   const handleFilterChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setUserSearchQuery({ query: e.target.value });
@@ -139,7 +141,10 @@ const ManageGroupMembers: FC<OwnProps & StateProps> = ({
     }
   }, '.ListItem-button', true);
 
-  useHistoryBack(isActive, onClose);
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
 
   function renderSearchField() {
     return (

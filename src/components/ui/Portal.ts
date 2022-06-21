@@ -1,12 +1,11 @@
-import {
-  FC, useRef, useLayoutEffect, VirtualElement,
-} from '../../lib/teact/teact';
+import type { FC, VirtualElement } from '../../lib/teact/teact';
+import { useRef, useLayoutEffect } from '../../lib/teact/teact';
 import TeactDOM from '../../lib/teact/teact-dom';
 
 type OwnProps = {
   containerId?: string;
   className?: string;
-  children: React.ReactNode;
+  children: VirtualElement;
 };
 
 const Portal: FC<OwnProps> = ({ containerId, className, children }) => {
@@ -34,7 +33,7 @@ const Portal: FC<OwnProps> = ({ containerId, className, children }) => {
     };
   }, [className, containerId]);
 
-  return TeactDOM.render(children as VirtualElement, elementRef.current);
+  return TeactDOM.render(children, elementRef.current);
 };
 
 export default Portal;

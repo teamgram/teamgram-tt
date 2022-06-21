@@ -1,10 +1,11 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, useEffect, useCallback, memo, useState,
+  useEffect, useCallback, memo, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { ApiUser, ApiChat, ApiUserStatus } from '../../api/types';
-import { GlobalState } from '../../global/types';
+import type { ApiUser, ApiChat, ApiUserStatus } from '../../api/types';
+import type { GlobalState } from '../../global/types';
 import { MediaViewerOrigin } from '../../types';
 
 import { IS_TOUCH_ENV } from '../../util/environment';
@@ -21,6 +22,7 @@ import useLang from '../../hooks/useLang';
 import VerifiedIcon from './VerifiedIcon';
 import ProfilePhoto from './ProfilePhoto';
 import Transition from '../ui/Transition';
+import FakeIcon from './FakeIcon';
 
 import './ProfileInfo.scss';
 
@@ -185,6 +187,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
   }
 
   const isVerifiedIconShown = (user || chat)?.isVerified;
+  const fakeType = (user || chat)?.fakeType;
 
   return (
     <div className={buildClassName('ProfileInfo', forceShowSelf && 'self')} dir={lang.isRtl ? 'rtl' : undefined}>
@@ -221,6 +224,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
           <div className="title">
             <h3 dir="auto">{fullName && renderText(fullName)}</h3>
             {isVerifiedIconShown && <VerifiedIcon />}
+            {fakeType && <FakeIcon fakeType={fakeType} />}
           </div>
         )}
         {!isSavedMessages && renderStatus()}

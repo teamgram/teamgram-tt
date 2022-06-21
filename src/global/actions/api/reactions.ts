@@ -1,16 +1,19 @@
-import { addActionHandler, getGlobal } from '../../index';
+import { addActionHandler, getGlobal, setGlobal } from '../../index';
 import { callApi } from '../../../api/gramjs';
 import * as mediaLoader from '../../../util/mediaLoader';
-import { ApiAppConfig, ApiMediaFormat } from '../../../api/types';
+import type { ApiAppConfig } from '../../../api/types';
+import { ApiMediaFormat } from '../../../api/types';
 import {
   selectChat,
-  selectChatMessage,
+  selectChatMessage, selectCurrentChat,
   selectDefaultReaction,
   selectLocalAnimatedEmojiEffectByName,
   selectMessageIdsByGroupId,
 } from '../../selectors';
-import { addMessageReaction, subtractXForEmojiInteraction } from '../../reducers/reactions';
-import { addUsers, updateChatMessage } from '../../reducers';
+import { addMessageReaction, subtractXForEmojiInteraction, updateUnreadReactions } from '../../reducers/reactions';
+import {
+  addChatMessagesById, addChats, addUsers, updateChatMessage,
+} from '../../reducers';
 import { buildCollectionByKey, omit } from '../../../util/iteratees';
 import { ANIMATION_LEVEL_MAX } from '../../../config';
 import { isMessageLocal } from '../../helpers';
@@ -22,23 +25,23 @@ let interactionLocalId = 0;
 addActionHandler('loadAvailableReactions', async () => {
   const result = await callApi('getAvailableReactions');
   if (!result) {
-    return undefined;
+    return;
   }
 
   // Preload animations
   result.forEach((availableReaction) => {
     if (availableReaction.aroundAnimation) {
-      mediaLoader.fetch(`sticker${availableReaction.aroundAnimation.id}`, ApiMediaFormat.Lottie);
+      mediaLoader.fetch(`sticker${availableReaction.aroundAnimation.id}`, ApiMediaFormat.BlobUrl);
     }
     if (availableReaction.centerIcon) {
-      mediaLoader.fetch(`sticker${availableReaction.centerIcon.id}`, ApiMediaFormat.Lottie);
+      mediaLoader.fetch(`sticker${availableReaction.centerIcon.id}`, ApiMediaFormat.BlobUrl);
     }
   });
 
-  return {
+  setGlobal({
     ...getGlobal(),
     availableReactions: result,
-  };
+  });
 });
 
 addActionHandler('interactWithAnimatedEmoji', (global, actions, payload) => {
@@ -156,30 +159,6 @@ addActionHandler('openChat', (global) => {
   };
 });
 
-addActionHandler('startActiveReaction', (global, actions, payload) => {
-  const { messageId, reaction } = payload;
-  const { animationLevel } = global.settings.byKey;
-
-  if (animationLevel !== ANIMATION_LEVEL_MAX) return global;
-
-  if (global.activeReactions[messageId]?.reaction === reaction) {
-    return global;
-  }
-
-  return {
-    ...global,
-    activeReactions: {
-      ...(reaction ? global.activeReactions : omit(global.activeReactions, [messageId])),
-      ...(reaction && {
-        [messageId]: {
-          reaction,
-          messageId,
-        },
-      }),
-    },
-  };
-});
-
 addActionHandler('stopActiveReaction', (global, actions, payload) => {
   const { messageId, reaction } = payload;
 
@@ -198,16 +177,16 @@ addActionHandler('setDefaultReaction', async (global, actions, payload) => {
 
   const result = await callApi('setDefaultReaction', { reaction });
   if (!result) {
-    return undefined;
+    return;
   }
 
-  return {
+  setGlobal({
     ...getGlobal(),
     appConfig: {
       ...global.appConfig,
       defaultReaction: reaction,
     } as ApiAppConfig,
-  };
+  });
 });
 
 addActionHandler('stopActiveEmojiInteraction', (global, actions, payload) => {
@@ -224,7 +203,7 @@ addActionHandler('loadReactors', async (global, actions, payload) => {
   const chat = selectChat(global, chatId);
   const message = selectChatMessage(global, chatId, messageId);
   if (!chat || !message) {
-    return undefined;
+    return;
   }
 
   const offset = message.reactors?.nextOffset;
@@ -236,7 +215,7 @@ addActionHandler('loadReactors', async (global, actions, payload) => {
   });
 
   if (!result) {
-    return undefined;
+    return;
   }
 
   global = getGlobal();
@@ -247,7 +226,7 @@ addActionHandler('loadReactors', async (global, actions, payload) => {
 
   const { nextOffset, count, reactions } = result;
 
-  return updateChatMessage(global, chatId, messageId, {
+  setGlobal(updateChatMessage(global, chatId, messageId, {
     reactors: {
       nextOffset,
       count,
@@ -256,7 +235,7 @@ addActionHandler('loadReactors', async (global, actions, payload) => {
         ...reactions,
       ],
     },
-  });
+  }));
 });
 
 addActionHandler('loadMessageReactions', (global, actions, payload) => {
@@ -299,4 +278,111 @@ addActionHandler('sendWatchingEmojiInteraction', (global, actions, payload) => {
       return activeEmojiInteraction;
     }),
   };
+});
+
+addActionHandler('fetchUnreadReactions', async (global, actions, payload) => {
+  const { chatId, offsetId } = payload;
+  const chat = selectChat(global, chatId);
+  if (!chat) return;
+
+  const result = await callApi('fetchUnreadReactions', { chat, offsetId, addOffset: offsetId ? -1 : undefined });
+
+  // Server side bug, when server returns unread reactions count > 0 for deleted messages
+  if (!result || !result.messages.length) {
+    global = getGlobal();
+    global = updateUnreadReactions(global, chatId, {
+      unreadReactionsCount: 0,
+    });
+
+    setGlobal(global);
+    return;
+  }
+
+  const { messages, chats, users } = result;
+
+  const byId = buildCollectionByKey(messages, 'id');
+  const ids = Object.keys(byId).map(Number);
+
+  global = getGlobal();
+  global = addChatMessagesById(global, chat.id, byId);
+  global = addUsers(global, buildCollectionByKey(users, 'id'));
+  global = addChats(global, buildCollectionByKey(chats, 'id'));
+  global = updateUnreadReactions(global, chatId, {
+    unreadReactions: [...(chat.unreadReactions || []), ...ids],
+  });
+
+  setGlobal(global);
+});
+
+addActionHandler('animateUnreadReaction', (global, actions, payload) => {
+  const { messageIds } = payload;
+
+  const { animationLevel } = global.settings.byKey;
+
+  const chat = selectCurrentChat(global);
+  if (!chat) return undefined;
+
+  if (chat.unreadReactionsCount) {
+    const unreadReactionsCount = chat.unreadReactionsCount - messageIds.length;
+    const unreadReactions = (chat.unreadReactions || []).filter((id) => !messageIds.includes(id));
+
+    global = updateUnreadReactions(global, chat.id, {
+      unreadReactions,
+    });
+
+    setGlobal(global);
+
+    if (!unreadReactions.length && unreadReactionsCount) {
+      actions.fetchUnreadReactions({ chatId: chat.id, offsetId: Math.min(...messageIds) });
+    }
+  }
+
+  actions.markMessagesRead({ messageIds });
+
+  if (animationLevel !== ANIMATION_LEVEL_MAX) return undefined;
+
+  global = getGlobal();
+
+  return {
+    ...global,
+    activeReactions: {
+      ...global.activeReactions,
+      ...Object.fromEntries(messageIds.map((messageId) => {
+        const message = selectChatMessage(global, chat.id, messageId);
+
+        if (!message) return undefined;
+
+        const unread = message.reactions?.recentReactions?.find((l) => l.isUnread);
+
+        if (!unread) return undefined;
+
+        const reaction = unread?.reaction;
+
+        return [messageId, {
+          messageId,
+          reaction,
+        }];
+      }).filter(Boolean)),
+    },
+  };
+});
+
+addActionHandler('focusNextReaction', (global, actions) => {
+  const chat = selectCurrentChat(global);
+
+  if (!chat?.unreadReactions) return;
+
+  actions.focusMessage({ chatId: chat.id, messageId: chat.unreadReactions[0] });
+});
+
+addActionHandler('readAllReactions', (global) => {
+  const chat = selectCurrentChat(global);
+  if (!chat) return undefined;
+
+  callApi('readAllReactions', { chat });
+
+  return updateUnreadReactions(global, chat.id, {
+    unreadReactionsCount: undefined,
+    unreadReactions: undefined,
+  });
 });

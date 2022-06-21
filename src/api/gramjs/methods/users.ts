@@ -1,6 +1,6 @@
 import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
-import {
+import type {
   OnApiUpdate, ApiUser, ApiChat, ApiPhoto,
 } from '../../types';
 
@@ -119,8 +119,11 @@ export async function fetchContactList() {
     }
   });
 
+  const { users, userStatusesById } = buildApiUsersAndStatuses(result.users);
+
   return {
-    users: result.users.map(buildApiUser).filter<ApiUser>(Boolean as any),
+    users,
+    userStatusesById,
     chats: result.users.map((user) => buildApiChatFromPreview(user)).filter<ApiChat>(Boolean as any),
   };
 }

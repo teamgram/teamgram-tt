@@ -2,7 +2,7 @@ import { addCallback, removeCallback } from '../lib/teact/teactn';
 
 import { addActionHandler, getGlobal } from './index';
 
-import { GlobalState } from './types';
+import type { GlobalState } from './types';
 import { MAIN_THREAD_ID } from '../api/types';
 
 import { onBeforeUnload, onIdle, throttle } from '../util/schedulers';
@@ -32,6 +32,8 @@ import { INITIAL_STATE } from './initialState';
 import { parseLocationHash } from '../util/routing';
 import { isUserId } from './helpers';
 import { getOrderedIds } from '../util/folderManager';
+import { clearGlobalForLockScreen } from './reducers';
+import { encryptSession } from '../util/passcode';
 
 const UPDATE_THROTTLE = 5000;
 
@@ -45,6 +47,16 @@ export function initCache() {
     return;
   }
 
+  const resetCache = () => {
+    localStorage.removeItem(GLOBAL_STATE_CACHE_KEY);
+
+    if (!isCaching) {
+      return;
+    }
+
+    clearCaching();
+  };
+
   addActionHandler('saveSession', () => {
     if (isCaching) {
       return;
@@ -53,15 +65,7 @@ export function initCache() {
     setupCaching();
   });
 
-  addActionHandler('reset', () => {
-    localStorage.removeItem(GLOBAL_STATE_CACHE_KEY);
-
-    if (!isCaching) {
-      return;
-    }
-
-    clearCaching();
-  });
+  addActionHandler('reset', resetCache);
 }
 
 export function loadCache(initialState: GlobalState): GlobalState | undefined {
@@ -69,10 +73,12 @@ export function loadCache(initialState: GlobalState): GlobalState | undefined {
     return undefined;
   }
 
-  if (hasStoredSession(true)) {
+  const cache = readCache(initialState);
+
+  if (cache.passcode.hasPasscode || hasStoredSession(true)) {
     setupCaching();
 
-    return readCache(initialState);
+    return cache;
   } else {
     clearCaching();
 
@@ -219,19 +225,71 @@ function migrateCache(cached: GlobalState, initialState: GlobalState) {
   if (!cached.activeReactions) {
     cached.activeReactions = {};
   }
+
+  if (!cached.pollModal) {
+    cached.pollModal = {
+      isOpen: false,
+    };
+  }
+
+  if (!cached.attachMenu) {
+    cached.attachMenu = {
+      bots: {},
+    };
+  }
+
+  if (!cached.trustedBotIds) {
+    cached.trustedBotIds = [];
+  }
+
+  if (!cached.passcode) {
+    cached.passcode = {};
+  }
+
+  if (cached.activeSessions?.byHash === undefined) {
+    cached.activeSessions = {
+      byHash: {},
+      orderedHashes: [],
+    };
+  }
+
+  if (!cached.activeWebSessions) {
+    cached.activeWebSessions = {
+      byHash: {},
+      orderedHashes: [],
+    };
+  }
 }
 
 function updateCache() {
-  if (!isCaching || isHeavyAnimating()) {
-    return;
-  }
-
   const global = getGlobal();
-
-  if (global.isLoggingOut) {
+  if (!isCaching || global.isLoggingOut || isHeavyAnimating()) {
     return;
   }
 
+  forceUpdateCache();
+}
+
+export function forceUpdateCache(noEncrypt = false) {
+  const global = getGlobal();
+  const { hasPasscode, isScreenLocked } = global.passcode;
+  const serializedGlobal = serializeGlobal(global);
+
+  if (hasPasscode) {
+    if (!isScreenLocked && !noEncrypt) {
+      void encryptSession(undefined, serializedGlobal);
+    }
+
+    const serializedGlobalClean = JSON.stringify(clearGlobalForLockScreen(global));
+    localStorage.setItem(GLOBAL_STATE_CACHE_KEY, serializedGlobalClean);
+
+    return;
+  }
+
+  localStorage.setItem(GLOBAL_STATE_CACHE_KEY, serializedGlobal);
+}
+
+export function serializeGlobal(global: GlobalState) {
   const reducedGlobal: GlobalState = {
     ...INITIAL_STATE,
     ...pick(global, [
@@ -270,10 +328,16 @@ function updateCache() {
     chatFolders: reduceChatFolders(global),
     groupCalls: reduceGroupCalls(global),
     availableReactions: reduceAvailableReactions(global),
+    isCallPanelVisible: undefined,
+    trustedBotIds: global.trustedBotIds,
+    passcode: pick(global.passcode, [
+      'isScreenLocked',
+      'hasPasscode',
+      'invalidAttemptsCount',
+    ]),
   };
 
-  const json = JSON.stringify(reducedGlobal);
-  localStorage.setItem(GLOBAL_STATE_CACHE_KEY, json);
+  return JSON.stringify(reducedGlobal);
 }
 
 function reduceShowChatInfo(global: GlobalState): boolean {
@@ -327,7 +391,7 @@ function reduceChats(global: GlobalState): GlobalState['chats'] {
 function reduceMessages(global: GlobalState): GlobalState['messages'] {
   const { currentUserId } = global;
   const byChatId: GlobalState['messages']['byChatId'] = {};
-  const { chatId: currentChatId } = selectCurrentMessageList(global) || {};
+  const { chatId: currentChatId, threadId, type } = selectCurrentMessageList(global) || {};
   const chatIdsToSave = [
     ...currentChatId ? [currentChatId] : [],
     ...currentUserId ? [currentUserId] : [],
@@ -355,7 +419,7 @@ function reduceMessages(global: GlobalState): GlobalState['messages'] {
 
   return {
     byChatId,
-    messageLists: [],
+    messageLists: currentChatId && threadId && type ? [{ chatId: currentChatId, threadId, type }] : [],
     sponsoredByChatId: {},
   };
 }
@@ -383,8 +447,6 @@ function reduceGroupCalls(global: GlobalState): GlobalState['groupCalls'] {
     ...global.groupCalls,
     byId: {},
     activeGroupCallId: undefined,
-    isGroupCallPanelHidden: undefined,
-    isFallbackConfirmOpen: undefined,
   };
 }
 

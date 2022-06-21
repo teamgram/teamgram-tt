@@ -5,6 +5,7 @@ module.exports = {
       '<rootDir>/tests/staticFileMock.js',
   },
   testPathIgnorePatterns: [
+    '<rootDir>/tests/playwright/',
     '<rootDir>/node_modules/',
     '<rootDir>/legacy_notes_and_workbook/',
     '<rootDir>/client/src/stylesheets/',
@@ -13,5 +14,8 @@ module.exports = {
   transform: {
     '\\.(jsx?|tsx?)$': 'babel-jest',
     '\\.txt$': 'jest-raw-loader',
+  },
+  globals: {
+    APP_REVISION: "jest-test",
   },
 };

@@ -1,9 +1,10 @@
 import { callApi } from '../api/gramjs';
-import {
-  ApiChat, ApiMediaFormat, ApiMessage, ApiUser, ApiUserReaction,
+import type {
+  ApiChat, ApiMessage, ApiPhoneCall, ApiUser, ApiUserReaction,
 } from '../api/types';
+import { ApiMediaFormat } from '../api/types';
 import { renderActionMessageText } from '../components/common/helpers/renderActionMessageText';
-import { DEBUG, IS_TEST } from '../config';
+import { APP_NAME, DEBUG, IS_TEST } from '../config';
 import { getActions, getGlobal, setGlobal } from '../global';
 import {
   getChatAvatarHash,
@@ -12,7 +13,7 @@ import {
   getMessageRecentReaction,
   getMessageSenderName,
   getMessageSummaryText,
-  getPrivateChatUserId,
+  getPrivateChatUserId, getUserFullName,
   isActionMessage,
   isChatChannel,
   selectIsChatMuted,
@@ -275,6 +276,7 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
   } = message;
   if (reaction) senderId = reaction.userId;
 
+  const { isScreenLocked } = global.passcode;
   const messageSender = senderId ? selectUser(global, senderId) : undefined;
   const messageAction = getMessageAction(message as ApiMessage);
   const actionTargetMessage = messageAction && replyToMessageId
@@ -293,7 +295,10 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
   const privateChatUser = privateChatUserId ? selectUser(global, privateChatUserId) : undefined;
 
   let body: string;
-  if (selectShouldShowMessagePreview(chat, selectNotifySettings(global), selectNotifyExceptions(global))) {
+  if (
+    !isScreenLocked
+    && selectShouldShowMessagePreview(chat, selectNotifySettings(global), selectNotifyExceptions(global))
+  ) {
     if (isActionMessage(message)) {
       const isChat = chat && (isChatChannel(chat) || message.senderId === message.chatId);
 
@@ -318,12 +323,12 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
   }
 
   return {
-    title: getChatTitle(getTranslation, chat, privateChatUser),
+    title: isScreenLocked ? APP_NAME : getChatTitle(getTranslation, chat, privateChatUser),
     body,
   };
 }
 
-async function getAvatar(chat: ApiChat) {
+async function getAvatar(chat: ApiChat | ApiUser) {
   const imageHash = getChatAvatarHash(chat);
   if (!imageHash) return undefined;
   let mediaData = mediaLoader.getFromMemory(imageHash);
@@ -332,6 +337,39 @@ async function getAvatar(chat: ApiChat) {
     mediaData = mediaLoader.getFromMemory(imageHash);
   }
   return mediaData;
+}
+
+export async function notifyAboutCall({
+  call, user,
+}: {
+  call: ApiPhoneCall; user: ApiUser;
+}) {
+  const { hasWebNotifications } = await loadNotificationSettings();
+  if (document.hasFocus() || !hasWebNotifications) return;
+  const areNotificationsSupported = checkIfNotificationsSupported();
+  if (!areNotificationsSupported) return;
+
+  const icon = await getAvatar(user);
+
+  const options: NotificationOptions = {
+    body: getUserFullName(user),
+    icon,
+    badge: icon,
+    tag: `call_${call.id}`,
+  };
+
+  if ('vibrate' in navigator) {
+    options.vibrate = [200, 100, 200];
+  }
+
+  const notification = new Notification(getTranslation('VoipIncoming'), options);
+
+  notification.onclick = () => {
+    notification.close();
+    if (window.focus) {
+      window.focus();
+    }
+  };
 }
 
 export async function notifyAboutMessage({
@@ -354,6 +392,9 @@ export async function notifyAboutMessage({
   if (!message.id) return;
 
   const activeReaction = getMessageRecentReaction(message);
+  // Do not notify about reactions on messages that are not outgoing
+  if (isReaction && !activeReaction) return;
+
   const icon = await getAvatar(chat);
 
   const {
@@ -372,6 +413,7 @@ export async function notifyAboutMessage({
           icon,
           chatId: chat.id,
           messageId: message.id,
+          shouldReplaceHistory: true,
           reaction: activeReaction?.reaction,
         },
       });
@@ -396,13 +438,8 @@ export async function notifyAboutMessage({
       dispatch.focusMessage({
         chatId: chat.id,
         messageId: message.id,
+        shouldReplaceHistory: true,
       });
-      if (activeReaction) {
-        dispatch.startActiveReaction({
-          messageId: message.id,
-          reaction: activeReaction.reaction,
-        });
-      }
       if (window.focus) {
         window.focus();
       }

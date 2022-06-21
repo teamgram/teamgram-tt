@@ -1,10 +1,12 @@
 import {
-  TelegramClient, sessions, Api as GramJs, connection,
+  sessions, Api as GramJs, connection,
 } from '../../../lib/gramjs';
-import { Logger as GramJsLogger } from '../../../lib/gramjs/extensions/index';
-import { TwoFaParams } from '../../../lib/gramjs/client/2fa';
+import TelegramClient from '../../../lib/gramjs/client/TelegramClient';
 
-import {
+import { Logger as GramJsLogger } from '../../../lib/gramjs/extensions/index';
+import type { TwoFaParams } from '../../../lib/gramjs/client/2fa';
+
+import type {
   ApiInitialArgs,
   ApiMediaFormat,
   ApiOnProgress,
@@ -13,7 +15,7 @@ import {
 } from '../../types';
 
 import {
-  DEBUG, DEBUG_GRAMJS, UPLOAD_WORKERS, IS_TEST, APP_VERSION,
+  DEBUG, DEBUG_GRAMJS, UPLOAD_WORKERS, IS_TEST, APP_VERSION, SUPPORTED_VIDEO_CONTENT_TYPES, VIDEO_MOV_TYPE,
 } from '../../../config';
 import {
   onRequestPhoneNumber, onRequestCode, onRequestPassword, onRequestRegistration,
@@ -23,7 +25,7 @@ import { updater } from '../updater';
 import { setMessageBuilderCurrentUserId } from '../apiBuilders/messages';
 import downloadMediaWithClient, { parseMediaUrl } from './media';
 import { buildApiUserFromFull } from '../apiBuilders/users';
-import localDb from '../localDb';
+import localDb, { clearLocalDb } from '../localDb';
 import { buildApiPeerId } from '../apiBuilders/peers';
 import { addMessageToLocalDb } from '../helpers';
 
@@ -54,6 +56,8 @@ export async function init(_onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) 
 
   // eslint-disable-next-line no-restricted-globals
   (self as any).isMovSupported = isMovSupported;
+  // Hacky way to update this set inside GramJS worker
+  if (isMovSupported) SUPPORTED_VIDEO_CONTENT_TYPES.add(VIDEO_MOV_TYPE);
   // eslint-disable-next-line no-restricted-globals
   (self as any).isWebmSupported = isWebmSupported;
 
@@ -95,12 +99,13 @@ export async function init(_onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) 
         qrCode: onRequestQrCode,
         onError: onAuthError,
         initialMethod: platform === 'iOS' || platform === 'Android' ? 'phoneNumber' : 'qrCode',
+        shouldThrowIfUnauthorized: Boolean(sessionData),
       });
     } catch (err: any) {
       // eslint-disable-next-line no-console
       console.error(err);
 
-      if (err.message !== 'Disconnect') {
+      if (err.message !== 'Disconnect' && err.message !== 'Cannot send requests while disconnected') {
         onUpdate({
           '@type': 'updateConnectionState',
           connectionState: 'connectionStateBroken',
@@ -132,8 +137,13 @@ export async function init(_onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) 
   }
 }
 
-export async function destroy() {
-  await invokeRequest(new GramJs.auth.LogOut());
+export async function destroy(noLogOut = false) {
+  if (!noLogOut) {
+    await invokeRequest(new GramJs.auth.LogOut());
+  }
+
+  clearLocalDb();
+
   await client.destroy();
 }
 

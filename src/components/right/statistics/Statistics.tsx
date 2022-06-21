@@ -1,19 +1,22 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useState, useEffect, useRef, useMemo,
+  memo, useState, useEffect, useRef, useMemo,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import { callApi } from '../../../api/gramjs';
-import {
+import type {
   ApiMessage,
   ApiChannelStatistics,
   ApiGroupStatistics,
   StatisticsRecentMessage as StatisticsRecentMessageType,
+  StatisticsGraph,
 } from '../../../api/types';
 import { selectChat, selectStatistics } from '../../../global/selectors';
 
 import buildClassName from '../../../util/buildClassName';
 import useLang from '../../../hooks/useLang';
+import useForceUpdate from '../../../hooks/useForceUpdate';
 
 import Loading from '../../ui/Loading';
 import StatisticsOverview from './StatisticsOverview';
@@ -58,7 +61,6 @@ const GROUP_GRAPHS = Object.keys(GROUP_GRAPHS_TITLES) as (keyof ApiGroupStatisti
 
 export type OwnProps = {
   chatId: string;
-  isActive: boolean;
 };
 
 export type StateProps = {
@@ -69,7 +71,6 @@ export type StateProps = {
 
 const Statistics: FC<OwnProps & StateProps> = ({
   chatId,
-  isActive,
   statistics,
   dcId,
   isGroup,
@@ -81,16 +82,11 @@ const Statistics: FC<OwnProps & StateProps> = ({
   const loadedCharts = useRef<string[]>([]);
 
   const { loadStatistics, loadStatisticsAsyncGraph } = getActions();
+  const forceUpdate = useForceUpdate();
 
   useEffect(() => {
     loadStatistics({ chatId, isGroup });
   }, [chatId, loadStatistics, isGroup]);
-
-  useEffect(() => {
-    if (!isActive) {
-      loadedCharts.current = [];
-    }
-  }, [isActive]);
 
   const graphs = useMemo(() => {
     return isGroup ? GROUP_GRAPHS : CHANNEL_GRAPHS;
@@ -131,7 +127,7 @@ const Statistics: FC<OwnProps & StateProps> = ({
         return;
       }
 
-      if (!statistics) {
+      if (!statistics || !containerRef.current) {
         return;
       }
 
@@ -143,24 +139,36 @@ const Statistics: FC<OwnProps & StateProps> = ({
           return;
         }
 
+        if (!graph) {
+          loadedCharts.current.push(name);
+
+          return;
+        }
+
         const { zoomToken } = graph;
 
         LovelyChart.create(
           containerRef.current!.children[index],
           {
             title: lang((graphTitles as Record<string, string>)[name]),
-            ...zoomToken && {
+            ...zoomToken ? {
               onZoom: (x: number) => callApi('fetchStatisticsAsyncGraph', { token: zoomToken, x, dcId }),
               zoomOutLabel: lang('Graph.ZoomOut'),
-            },
-            ...graph,
+            } : {},
+            ...graph as StatisticsGraph,
           },
         );
 
         loadedCharts.current.push(name);
+
+        containerRef.current!.children[index].classList.remove('hidden');
       });
+
+      forceUpdate();
     })();
-  }, [graphs, graphTitles, isReady, statistics, lang, chatId, loadStatisticsAsyncGraph, dcId]);
+  }, [
+    graphs, graphTitles, isReady, statistics, lang, chatId, loadStatisticsAsyncGraph, dcId, forceUpdate,
+  ]);
 
   if (!isReady || !statistics) {
     return <Loading />;
@@ -174,7 +182,7 @@ const Statistics: FC<OwnProps & StateProps> = ({
 
       <div ref={containerRef}>
         {graphs.map((graph) => (
-          <div className={buildClassName('Statistics__graph', !loadedCharts.current.includes(graph) && 'hidden')} />
+          <div key={graph} className="Statistics__graph hidden" />
         ))}
       </div>
 
@@ -198,6 +206,8 @@ export default memo(withGlobal<OwnProps>(
     const dcId = chat?.fullInfo?.statisticsDcId;
     const isGroup = chat?.type === 'chatTypeSuperGroup';
 
-    return { statistics, dcId, isGroup };
+    return {
+      statistics, dcId, isGroup,
+    };
   },
 )(Statistics));

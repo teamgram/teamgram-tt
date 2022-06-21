@@ -1,4 +1,5 @@
-import { ApiPrivacyKey, SettingsScreens } from '../../../../types';
+import type { ApiPrivacyKey } from '../../../../types';
+import { SettingsScreens } from '../../../../types';
 
 export function getPrivacyKey(screen: SettingsScreens): ApiPrivacyKey | undefined {
   switch (screen) {
@@ -22,6 +23,14 @@ export function getPrivacyKey(screen: SettingsScreens): ApiPrivacyKey | undefine
     case SettingsScreens.PrivacyGroupChatsAllowedContacts:
     case SettingsScreens.PrivacyGroupChatsDeniedContacts:
       return 'chatInvite';
+    case SettingsScreens.PrivacyPhoneCall:
+    case SettingsScreens.PrivacyPhoneCallAllowedContacts:
+    case SettingsScreens.PrivacyPhoneCallDeniedContacts:
+      return 'phoneCall';
+    case SettingsScreens.PrivacyPhoneP2P:
+    case SettingsScreens.PrivacyPhoneP2PAllowedContacts:
+    case SettingsScreens.PrivacyPhoneP2PDeniedContacts:
+      return 'phoneP2P';
   }
 
   return undefined;

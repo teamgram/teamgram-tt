@@ -1,4 +1,7 @@
-import { ApiMessage, ApiMessageEntityTypes } from '../../../api/types';
+import type { ApiMessage } from '../../../api/types';
+import { ApiMessageEntityTypes } from '../../../api/types';
+import type { TextPart } from '../../../types';
+
 import {
   getMessageSummaryDescription,
   getMessageSummaryEmoji,
@@ -6,12 +9,10 @@ import {
   getMessageText,
   TRUNCATED_SUMMARY_LENGTH,
 } from '../../../global/helpers';
-import { LangFn } from '../../../hooks/useLang';
+import type { LangFn } from '../../../hooks/useLang';
 import renderText from './renderText';
-import { renderTextWithEntities, TextPart } from './renderTextWithEntities';
+import { renderTextWithEntities } from './renderTextWithEntities';
 import trimText from '../../../util/trimText';
-
-export type { TextPart };
 
 export function renderMessageText(
   message: ApiMessage,
@@ -19,6 +20,7 @@ export function renderMessageText(
   shouldRenderHqEmoji?: boolean,
   isSimple?: boolean,
   truncateLength?: number,
+  isProtected?: boolean,
 ) {
   const { text, entities } = message.content.text || {};
 
@@ -35,6 +37,7 @@ export function renderMessageText(
     undefined,
     message.id,
     isSimple,
+    isProtected,
   );
 }
 

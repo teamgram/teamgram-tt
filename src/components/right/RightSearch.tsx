@@ -1,9 +1,8 @@
-import React, {
-  FC, useMemo, memo, useRef,
-} from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import React, { useMemo, memo, useRef } from '../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../global';
 
-import { ApiMessage, ApiUser, ApiChat } from '../../api/types';
+import type { ApiMessage, ApiUser, ApiChat } from '../../api/types';
 
 import { MEMO_EMPTY_ARRAY } from '../../util/memo';
 import {
@@ -66,7 +65,10 @@ const RightSearch: FC<OwnProps & StateProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const lang = useLang();
-  useHistoryBack(isActive, onClose);
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
 
   const [viewportIds, getMore] = useInfiniteScroll(searchTextMessagesLocal, foundIds);
 

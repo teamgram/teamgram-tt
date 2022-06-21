@@ -1,4 +1,5 @@
-import React, { FC, memo, useCallback } from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import React, { memo, useCallback } from '../../lib/teact/teact';
 import { getActions } from '../../global';
 
 import { ensureProtocol } from '../../util/ensureProtocol';
@@ -18,7 +19,7 @@ const SafeLinkModal: FC<OwnProps> = ({ url }) => {
   const lang = useLang();
 
   const handleOpen = useCallback(() => {
-    window.open(ensureProtocol(url));
+    window.open(ensureProtocol(url), '_blank', 'noopener');
     toggleSafeLinkModal({ url: undefined });
   }, [toggleSafeLinkModal, url]);
 

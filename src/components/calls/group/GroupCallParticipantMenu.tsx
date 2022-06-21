@@ -1,17 +1,20 @@
-import { GroupCallParticipant } from '../../../lib/secret-sauce';
+import type { GroupCallParticipant } from '../../../lib/secret-sauce';
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useState,
+  memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { IAnchorPosition } from '../../../types';
+import type { IAnchorPosition } from '../../../types';
 
+import { GROUP_CALL_DEFAULT_VOLUME, GROUP_CALL_VOLUME_MULTIPLIER } from '../../../config';
+import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 import buildClassName from '../../../util/buildClassName';
-import useThrottle from '../../../hooks/useThrottle';
+import buildStyle from '../../../util/buildStyle';
+import useRunThrottled from '../../../hooks/useRunThrottled';
 import useFlag from '../../../hooks/useFlag';
 import useLang from '../../../hooks/useLang';
 import { selectIsAdminInActiveGroupCall } from '../../../global/selectors/calls';
-import { GROUP_CALL_DEFAULT_VOLUME, GROUP_CALL_VOLUME_MULTIPLIER } from '../../../config';
 
 import Menu from '../../ui/Menu';
 import MenuItem from '../../ui/MenuItem';
@@ -80,7 +83,7 @@ const GroupCallParticipantMenu: FC<OwnProps & StateProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  const runThrottled = useThrottle(VOLUME_CHANGE_THROTTLE);
+  const runThrottled = useRunThrottled(VOLUME_CHANGE_THROTTLE);
 
   const handleRemove = useCallback((e: React.SyntheticEvent<any>) => {
     e.stopPropagation();
@@ -146,7 +149,7 @@ const GroupCallParticipantMenu: FC<OwnProps & StateProps> = ({
         isOpen={isDropdownOpen}
         positionX="right"
         autoClose
-        style={anchor ? `right: 1rem; top: ${anchor.y}px;` : undefined}
+        style={buildStyle(anchor && `right: 1rem; top: ${anchor.y}px`)}
         onClose={closeDropdown}
         className="participant-menu"
       >
@@ -169,7 +172,7 @@ const GroupCallParticipantMenu: FC<OwnProps & StateProps> = ({
               />
               <div className="info">
                 <AnimatedIcon
-                  name="Speaker"
+                  tgsUrl={LOCAL_TGS_URLS.Speaker}
                   playSegment={speakerIconPlaySegment}
                   size={SPEAKER_ICON_SIZE}
                 />

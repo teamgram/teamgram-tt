@@ -1,5 +1,6 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useState, useMemo, useRef,
+  memo, useCallback, useState, useMemo, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
@@ -76,7 +77,10 @@ const LeftSearch: FC<OwnProps & StateProps> = ({
     setGlobalSearchDate({ date: value.getTime() / 1000 });
   }, [setGlobalSearchDate]);
 
-  useHistoryBack(isActive, onReset, undefined, undefined, true);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);

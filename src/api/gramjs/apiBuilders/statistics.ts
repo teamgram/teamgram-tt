@@ -1,12 +1,16 @@
-import { Api as GramJs } from '../../../lib/gramjs';
-import {
+import type { Api as GramJs } from '../../../lib/gramjs';
+import type {
   ApiChannelStatistics,
   ApiGroupStatistics,
+  ApiMessageStatistics,
+  ApiMessagePublicForward,
   StatisticsGraph,
   StatisticsOverviewItem,
   StatisticsOverviewPercentage,
   StatisticsOverviewPeriod,
 } from '../../types';
+import { buildAvatarHash } from './chats';
+import { buildApiPeerId } from './peers';
 
 export function buildChannelStatistics(stats: GramJs.stats.BroadcastStats): ApiChannelStatistics {
   return {
@@ -54,9 +58,42 @@ export function buildGroupStatistics(stats: GramJs.stats.MegagroupStats): ApiGro
   };
 }
 
-export function buildGraph(result: GramJs.TypeStatsGraph, isPercentage?: boolean): StatisticsGraph {
+export function buildMessageStatistics(stats: GramJs.stats.MessageStats): ApiMessageStatistics {
+  return {
+    viewsGraph: buildGraph(stats.viewsGraph),
+  };
+}
+
+export function buildMessagePublicForwards(
+  result: GramJs.messages.TypeMessages,
+): ApiMessagePublicForward[] | undefined {
+  if (!result || !('messages' in result)) {
+    return undefined;
+  }
+
+  return result.messages.map((message) => {
+    const peerId = buildApiPeerId((message.peerId as GramJs.PeerChannel).channelId, 'channel');
+    const channel = result.chats.find((p) => buildApiPeerId(p.id, 'channel') === peerId);
+
+    return {
+      messageId: message.id,
+      views: (message as GramJs.Message).views,
+      title: (channel as GramJs.Channel).title,
+      chat: {
+        id: peerId,
+        type: 'chatTypeChannel',
+        username: (channel as GramJs.Channel).username,
+        avatarHash: buildAvatarHash((channel as GramJs.Channel).photo),
+      },
+    };
+  });
+}
+
+export function buildGraph(
+  result: GramJs.TypeStatsGraph, isPercentage?: boolean,
+): StatisticsGraph | undefined {
   if ((result as GramJs.StatsGraphError).error) {
-    throw new Error((result as GramJs.StatsGraphError).error);
+    return undefined;
   }
 
   const data = JSON.parse((result as GramJs.StatsGraph).json.data);

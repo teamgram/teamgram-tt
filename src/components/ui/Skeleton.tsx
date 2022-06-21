@@ -1,4 +1,5 @@
-import React, { FC } from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import React from '../../lib/teact/teact';
 
 import buildClassName from '../../util/buildClassName';
 
@@ -13,7 +14,11 @@ type OwnProps = {
 };
 
 const Skeleton: FC<OwnProps> = ({
-  variant = 'rectangular', animation = 'wave', width, height, className,
+  variant = 'rectangular',
+  animation = 'wave',
+  width,
+  height,
+  className,
 }) => {
   const classNames = buildClassName('Skeleton', variant, animation, className);
   const style = (width ? `width: ${width}px;` : '') + (height ? `height: ${height}px;` : '');

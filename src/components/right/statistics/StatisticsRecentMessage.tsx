@@ -1,8 +1,11 @@
-import React, { FC, memo } from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useCallback } from '../../../lib/teact/teact';
 
-import useLang, { LangFn } from '../../../hooks/useLang';
+import type { LangFn } from '../../../hooks/useLang';
+import useLang from '../../../hooks/useLang';
+import { getActions } from '../../../global';
 
-import { ApiMessage, StatisticsRecentMessage as StatisticsRecentMessageType } from '../../../api/types';
+import type { ApiMessage, StatisticsRecentMessage as StatisticsRecentMessageType } from '../../../api/types';
 
 import buildClassName from '../../../util/buildClassName';
 import { formatDateTimeToString } from '../../../util/dateFormat';
@@ -23,19 +26,30 @@ export type OwnProps = {
 
 const StatisticsRecentMessage: FC<OwnProps> = ({ message }) => {
   const lang = useLang();
+  const { toggleMessageStatistics } = getActions();
 
   const mediaThumbnail = getMessageMediaThumbDataUri(message);
   const mediaBlobUrl = useMedia(getMessageMediaHash(message, 'micro'));
   const isRoundVideo = Boolean(getMessageRoundVideo(message));
 
+  const handleClick = useCallback(() => {
+    toggleMessageStatistics({ messageId: message.id });
+  }, [toggleMessageStatistics, message.id]);
+
   return (
-    <p className="StatisticsRecentMessage">
+    <div
+      className={buildClassName(
+        'StatisticsRecentMessage',
+        Boolean(mediaBlobUrl || mediaThumbnail) && 'StatisticsRecentMessage--with-image',
+      )}
+      onClick={handleClick}
+    >
       <div className="StatisticsRecentMessage__title">
         <div className="StatisticsRecentMessage__summary">
           {renderSummary(lang, message, mediaBlobUrl || mediaThumbnail, isRoundVideo)}
         </div>
         <div className="StatisticsRecentMessage__meta">
-          {lang('ChannelStats.ViewsCount', message.views)}
+          {lang('ChannelStats.ViewsCount', message.views, 'i')}
         </div>
       </div>
 
@@ -47,7 +61,7 @@ const StatisticsRecentMessage: FC<OwnProps> = ({ message }) => {
           {message.forwards ? lang('ChannelStats.SharesCount', message.forwards) : 'No shares'}
         </div>
       </div>
-    </p>
+    </div>
   );
 };
 

@@ -1,6 +1,7 @@
-import { ApiMessage, ApiPhoto } from './messages';
-import { ApiBotCommand } from './bots';
-import { ApiChatInviteImporter } from './misc';
+import type { ApiMessage, ApiPhoto, ApiStickerSet } from './messages';
+import type { ApiBotCommand } from './bots';
+import type { ApiChatInviteImporter } from './misc';
+import type { ApiFakeType } from './users';
 
 type ApiChatType = (
   'chatTypePrivate' | 'chatTypeSecret' |
@@ -19,6 +20,7 @@ export interface ApiChat {
   lastReadInboxMessageId?: number;
   unreadCount?: number;
   unreadMentionsCount?: number;
+  unreadReactionsCount?: number;
   isVerified?: boolean;
   isMuted?: boolean;
   isSignaturesShown?: boolean;
@@ -33,6 +35,7 @@ export interface ApiChat {
   photos?: ApiPhoto[];
   draftDate?: number;
   isProtected?: boolean;
+  fakeType?: ApiFakeType;
 
   // Calls
   isCallActive?: boolean;
@@ -63,6 +66,9 @@ export interface ApiChat {
 
   joinRequests?: ApiChatInviteImporter[];
   sendAsIds?: string[];
+
+  unreadReactions?: number[];
+  unreadMentions?: number[];
 }
 
 export interface ApiTypingStatus {
@@ -98,6 +104,7 @@ export interface ApiChatFullInfo {
   recentRequesterIds?: string[];
   requestsPending?: number;
   statisticsDcId?: number;
+  stickerSet?: ApiStickerSet;
 }
 
 export interface ApiChatMember {

@@ -1,4 +1,4 @@
-import { GlobalState } from './types';
+import type { GlobalState } from './types';
 import { NewChatMembersProgress } from '../types';
 
 import {
@@ -138,7 +138,15 @@ export const INITIAL_STATE: GlobalState = {
 
   dialogs: [],
 
-  activeSessions: [],
+  activeSessions: {
+    byHash: {},
+    orderedHashes: [],
+  },
+
+  activeWebSessions: {
+    byHash: {},
+    orderedHashes: [],
+  },
 
   settings: {
     byKey: {
@@ -189,6 +197,7 @@ export const INITIAL_STATE: GlobalState = {
   },
 
   twoFaSettings: {},
+  passcode: {},
   activeReactions: {},
 
   shouldShowContextMenuHint: true,
@@ -201,5 +210,15 @@ export const INITIAL_STATE: GlobalState = {
 
   statistics: {
     byChatId: {},
+  },
+
+  pollModal: {
+    isOpen: false,
+  },
+
+  trustedBotIds: [],
+
+  attachMenu: {
+    bots: {},
   },
 };

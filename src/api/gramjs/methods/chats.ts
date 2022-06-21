@@ -1,6 +1,6 @@
-import BigInt from 'big-integer';
+import type BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
-import {
+import type {
   OnApiUpdate,
   ApiChat,
   ApiMessage,
@@ -12,6 +12,7 @@ import {
   ApiChatBannedRights,
   ApiChatAdminRights,
   ApiGroupCall,
+  ApiUserStatus,
 } from '../../types';
 
 import {
@@ -43,6 +44,15 @@ import {
 import { addEntitiesWithPhotosToLocalDb, addMessageToLocalDb, addPhotoToLocalDb } from '../helpers';
 import { buildApiPeerId, getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 import { buildApiPhoto } from '../apiBuilders/common';
+import { buildStickerSet } from '../apiBuilders/symbols';
+
+type FullChatData = {
+  fullInfo: ApiChatFullInfo;
+  users?: ApiUser[];
+  userStatusesById: { [userId: string]: ApiUserStatus };
+  groupCall?: Partial<ApiGroupCall>;
+  membersCount?: number;
+};
 
 const MAX_INT_32 = 2 ** 31 - 1;
 let onUpdate: OnApiUpdate;
@@ -339,12 +349,7 @@ export function clearDraft(chat: ApiChat) {
   }));
 }
 
-async function getFullChatInfo(chatId: string): Promise<{
-  fullInfo: ApiChatFullInfo;
-  users?: ApiUser[];
-  groupCall?: Partial<ApiGroupCall>;
-  membersCount?: number;
-} | undefined> {
+async function getFullChatInfo(chatId: string): Promise<FullChatData | undefined> {
   const result = await invokeRequest(new GramJs.messages.GetFullChat({
     chatId: buildInputEntity(chatId) as BigInt.BigInteger,
   }));
@@ -369,6 +374,7 @@ async function getFullChatInfo(chatId: string): Promise<{
   const members = buildChatMembers(participants);
   const adminMembers = members ? members.filter(({ isAdmin, isOwner }) => isAdmin || isOwner) : undefined;
   const botCommands = botInfo ? buildApiChatBotCommands(botInfo) : undefined;
+  const { users, userStatusesById } = buildApiUsersAndStatuses(result.users);
 
   return {
     fullInfo: {
@@ -385,7 +391,8 @@ async function getFullChatInfo(chatId: string): Promise<{
       requestsPending,
       recentRequesterIds: recentRequesters?.map((userId) => buildApiPeerId(userId, 'user')),
     },
-    users: result.users.map(buildApiUser).filter<ApiUser>(Boolean as any),
+    users,
+    userStatusesById,
     groupCall: call ? {
       chatId,
       isLoaded: false,
@@ -404,12 +411,7 @@ async function getFullChannelInfo(
   id: string,
   accessHash: string,
   adminRights?: ApiChatAdminRights,
-): Promise<{
-    fullInfo: ApiChatFullInfo;
-    users?: ApiUser[];
-    groupCall?: Partial<ApiGroupCall>;
-    membersCount?: number;
-  } | undefined> {
+): Promise<FullChatData | undefined> {
   const result = await invokeRequest(new GramJs.channels.GetFullChannel({
     channel: buildInputEntity(id, accessHash) as GramJs.InputChannel,
   }));
@@ -438,17 +440,18 @@ async function getFullChannelInfo(
     recentRequesters,
     statsDc,
     participantsCount,
+    stickerset,
   } = result.fullChat;
 
   const inviteLink = exportedInvite instanceof GramJs.ChatInviteExported
     ? exportedInvite.link
     : undefined;
 
-  const { members, users } = (canViewParticipants && await fetchMembers(id, accessHash)) || {};
-  const { members: kickedMembers, users: bannedUsers } = (
+  const { members, users, userStatusesById } = (canViewParticipants && await fetchMembers(id, accessHash)) || {};
+  const { members: kickedMembers, users: bannedUsers, userStatusesById: bannedStatusesById } = (
     canViewParticipants && adminRights && await fetchMembers(id, accessHash, 'kicked')
   ) || {};
-  const { members: adminMembers, users: adminUsers } = (
+  const { members: adminMembers, users: adminUsers, userStatusesById: adminStatusesById } = (
     canViewParticipants && adminRights && await fetchMembers(id, accessHash, 'admin')
   ) || {};
   const botCommands = botInfo ? buildApiChatBotCommands(botInfo) : undefined;
@@ -466,6 +469,12 @@ async function getFullChannelInfo(
       });
     }
   }
+
+  const statusesById = {
+    ...userStatusesById,
+    ...bannedStatusesById,
+    ...adminStatusesById,
+  };
 
   return {
     fullInfo: {
@@ -494,8 +503,10 @@ async function getFullChannelInfo(
       requestsPending,
       recentRequesterIds: recentRequesters?.map((userId) => buildApiPeerId(userId, 'user')),
       statisticsDcId: statsDc,
+      stickerSet: stickerset ? buildStickerSet(stickerset) : undefined,
     },
     users: [...(users || []), ...(bannedUsers || []), ...(adminUsers || [])],
+    userStatusesById: statusesById,
     groupCall: call ? {
       chatId: id,
       isLoaded: false,
@@ -994,10 +1005,12 @@ export async function fetchMembers(
   }
 
   updateLocalDb(result);
+  const { users, userStatusesById } = buildApiUsersAndStatuses(result.users);
 
   return {
     members: buildChatMembers(result),
-    users: result.users.map(buildApiUser).filter<ApiUser>(Boolean as any),
+    users,
+    userStatusesById,
   };
 }
 

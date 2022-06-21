@@ -1,10 +1,12 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useMemo, useState,
+  memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
-import { GlobalState } from '../../../global/types';
-import { ApiPrivacySettings, SettingsScreens } from '../../../types';
+import type { GlobalState } from '../../../global/types';
+import type { ApiPrivacySettings } from '../../../types';
+import { SettingsScreens } from '../../../types';
 
 import { ALL_FOLDER_ID, ARCHIVED_FOLDER_ID } from '../../../config';
 import { unique } from '../../../util/iteratees';
@@ -92,7 +94,10 @@ const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps> = ({
     onScreenSelect(SettingsScreens.Privacy);
   }, [isAllowList, newSelectedContactIds, onScreenSelect, screen, setPrivacySettings]);
 
-  useHistoryBack(isActive, onReset, onScreenSelect, screen);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   return (
     <div className="NewChat-inner step-1">
@@ -100,7 +105,7 @@ const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps> = ({
         itemIds={displayedIds || []}
         selectedIds={newSelectedContactIds}
         filterValue={searchQuery}
-        filterPlaceholder={isAllowList ? lang('AlwaysShareWithPlaceholder') : lang('NeverShareWithPlaceholder')}
+        filterPlaceholder={isAllowList ? lang('AlwaysAllowPlaceholder') : lang('NeverAllowPlaceholder')}
         searchInputId="new-group-picker-search"
         onSelectedIdsChange={handleSelectedContactIdsChange}
         onFilterChange={setSearchQuery}
@@ -109,7 +114,7 @@ const SettingsPrivacyVisibilityExceptionList: FC<OwnProps & StateProps> = ({
       <FloatingActionButton
         isShown={isSubmitShown}
         onClick={handleSubmit}
-        ariaLabel={isAllowList ? lang('AlwaysShareWithTitle') : lang('NeverShareWithTitle')}
+        ariaLabel={isAllowList ? lang('AlwaysAllow') : lang('NeverAllow')}
       >
         <i className="icon-arrow-right" />
       </FloatingActionButton>
@@ -129,6 +134,12 @@ function getCurrentPrivacySettings(global: GlobalState, screen: SettingsScreens)
     case SettingsScreens.PrivacyProfilePhotoAllowedContacts:
     case SettingsScreens.PrivacyProfilePhotoDeniedContacts:
       return privacy.profilePhoto;
+    case SettingsScreens.PrivacyPhoneCallAllowedContacts:
+    case SettingsScreens.PrivacyPhoneCallDeniedContacts:
+      return privacy.phoneCall;
+    case SettingsScreens.PrivacyPhoneP2PAllowedContacts:
+    case SettingsScreens.PrivacyPhoneP2PDeniedContacts:
+      return privacy.phoneP2P;
     case SettingsScreens.PrivacyForwardingAllowedContacts:
     case SettingsScreens.PrivacyForwardingDeniedContacts:
       return privacy.forwards;

@@ -3,6 +3,11 @@ import { removeGroupCall, updateGroupCall, updateGroupCallParticipant } from '..
 import { omit } from '../../../util/iteratees';
 import { selectChat } from '../../selectors';
 import { updateChat } from '../../reducers';
+import { ARE_CALLS_SUPPORTED } from '../../../util/environment';
+import { notifyAboutCall } from '../../../util/notifications';
+import { selectPhoneCallUser } from '../../selectors/calls';
+import { initializeSoundsForSafari } from '../ui/calls';
+import { onTickEnd } from '../../../util/schedulers';
 
 addActionHandler('apiUpdate', (global, actions, update) => {
   switch (update['@type']) {
@@ -16,11 +21,13 @@ addActionHandler('apiUpdate', (global, actions, update) => {
         }
       }
 
-      return updateGroupCall(global,
+      return updateGroupCall(
+        global,
         update.call.id,
         omit(update.call, ['connectionState']),
         undefined,
-        update.call.participantsCount);
+        update.call.participantsCount,
+      );
     }
     case 'updateGroupCallChatId': {
       const chat = selectChat(global, update.chatId);
@@ -53,6 +60,35 @@ addActionHandler('apiUpdate', (global, actions, update) => {
         });
       }
       return global;
+    }
+    case 'updatePhoneCall': {
+      if (!ARE_CALLS_SUPPORTED) return undefined;
+
+      const {
+        phoneCall,
+        currentUserId,
+      } = global;
+
+      if (phoneCall) return undefined;
+
+      const { call } = update;
+      const isOutgoing = call?.adminId === currentUserId;
+
+      if (!isOutgoing && call.state === 'requested') {
+        onTickEnd(() => {
+          notifyAboutCall({
+            call,
+            user: selectPhoneCallUser(global)!,
+          });
+        });
+
+        void initializeSoundsForSafari();
+        return {
+          ...global,
+          phoneCall: call,
+          isCallPanelVisible: false,
+        };
+      }
     }
   }
 

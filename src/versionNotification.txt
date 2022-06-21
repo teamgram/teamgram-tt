@@ -1,29 +1,12 @@
-Telegram Web Z was updated to version 1.40
-
-🤡 **Happy April Fool's Day!** 🤡
+**Telegram Web Z was updated to version 1.48**
 
 👏 **Harder**
-• Explore 37 new emoji.
-• Set Night Mode to follow your operating system in Settings > General.
-• Upload all types of audio files with cover images and meta tags.
-• Improved designs for Settings and Management pages.
+• Meet Seamless Web Bots, such as [@discussbot](https://t.me/discussbot), that help you log in on websites with your Telegram account.
 
 🤩 **Better**
-• Proper date formatting for all languages.
-• Changing volume in the media viewer automatically unmutes audio.
-• Groups you were restricted from now stay in your chat list.
-• Accessibility: Screen Reader support for emoji panel.
-• Removed reaction sounds.
-• Various layout improvements.
-
-🚀 **Faster**
-• Smoother transitions in Settings.
+• Podcasts and long tracks can now be played at 2X speed.
+• Audio Player buttons do not jump anymore when navigating between tracks.
 
 💪 **Stronger**
-• Fixed error messages for ‘You must be an admin’ and ‘You can't write in this chat’.
-• Fixed calendar months that start on a Sunday.
-• Fixed duplicated files when downloading.
-• Fixed pasting URLs with non-ASCII characters.
-• Fixed forwarding protected content.
-• Fixed saving Privacy Exceptions.
-• Fixed various issues when switching between message lists.
+• Fixed pasting text after switching chat.
+• Fixed sending and playing `.mov` videos.

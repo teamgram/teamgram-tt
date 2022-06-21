@@ -1,10 +1,11 @@
-import { ChangeEvent } from 'react';
-import React, { FC, useCallback, memo } from '../../lib/teact/teact';
+import type { ChangeEvent } from 'react';
+import type { FC, TeactNode } from '../../lib/teact/teact';
+import React, { useCallback, memo } from '../../lib/teact/teact';
 
 import Radio from './Radio';
 
 export type IRadioOption = {
-  label: string;
+  label: TeactNode;
   subLabel?: string;
   value: string;
   hidden?: boolean;

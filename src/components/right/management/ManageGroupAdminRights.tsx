@@ -1,9 +1,10 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useMemo, useState,
+  memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
-import { ApiChat, ApiChatAdminRights, ApiUser } from '../../../api/types';
+import type { ApiChat, ApiChatAdminRights, ApiUser } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
 import { selectChat } from '../../../global/selectors';
@@ -63,7 +64,10 @@ const ManageGroupAdminRights: FC<OwnProps & StateProps> = ({
   const [customTitle, setCustomTitle] = useState('');
   const lang = useLang();
 
-  useHistoryBack(isActive, onClose);
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
 
   const selectedChatMember = useMemo(() => {
     const selectedAdminMember = chat.fullInfo?.adminMembers?.find(({ userId }) => userId === selectedUserId);

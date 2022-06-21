@@ -1,8 +1,10 @@
-import {
-  ApiMediaFormat,
+import type {
   ApiOnProgress,
   ApiParsedMedia,
   ApiPreparedMedia,
+} from '../api/types';
+import {
+  ApiMediaFormat,
 } from '../api/types';
 
 import {
@@ -17,7 +19,7 @@ import { webpToPng } from './webpToPng';
 
 const asCacheApiType = {
   [ApiMediaFormat.BlobUrl]: cacheApi.Type.Blob,
-  [ApiMediaFormat.Lottie]: cacheApi.Type.Blob,
+  [ApiMediaFormat.Text]: cacheApi.Type.Text,
   [ApiMediaFormat.Progressive]: undefined,
   [ApiMediaFormat.Stream]: undefined,
 };

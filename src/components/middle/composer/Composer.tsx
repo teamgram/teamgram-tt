@@ -1,10 +1,11 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
+  memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
-import { GlobalState, MessageListType } from '../../../global/types';
-import {
+import type { GlobalState, MessageListType } from '../../../global/types';
+import type {
   ApiAttachment,
   ApiBotInlineResult,
   ApiBotInlineMediaResult,
@@ -16,13 +17,19 @@ import {
   ApiChat,
   ApiChatMember,
   ApiUser,
-  MAIN_THREAD_ID,
   ApiBotCommand,
+  ApiBotMenuButton,
 } from '../../../api/types';
-import { InlineBotSettings } from '../../../types';
+import {
+  MAIN_THREAD_ID,
+} from '../../../api/types';
+import type { InlineBotSettings, ISettings } from '../../../types';
 
 import {
-  BASE_EMOJI_KEYWORD_LANG, EDITABLE_INPUT_ID, REPLIES_USER_ID, SEND_MESSAGE_ACTION_INTERVAL,
+  BASE_EMOJI_KEYWORD_LANG,
+  EDITABLE_INPUT_ID,
+  REPLIES_USER_ID,
+  SEND_MESSAGE_ACTION_INTERVAL,
   EDITABLE_INPUT_CSS_SELECTOR,
 } from '../../../config';
 import { IS_VOICE_RECORDING_SUPPORTED, IS_SINGLE_COLUMN_LAYOUT, IS_IOS } from '../../../util/environment';
@@ -42,6 +49,9 @@ import {
   selectCanScheduleUntilOnline,
   selectEditingScheduledDraft,
   selectEditingDraft,
+  selectRequestedText,
+  selectTheme,
+  selectCurrentMessageList,
 } from '../../../global/selectors';
 import {
   getAllowedAttachmentOptions,
@@ -104,6 +114,7 @@ import PollModal from './PollModal.async';
 import DropArea, { DropAreaState } from './DropArea.async';
 import WebPagePreview from './WebPagePreview';
 import SendAsMenu from './SendAsMenu.async';
+import BotMenuButton from './BotMenuButton';
 
 import './Composer.scss';
 
@@ -124,10 +135,11 @@ type StateProps =
     isChatWithBot?: boolean;
     isChatWithSelf?: boolean;
     isChannel?: boolean;
+    isForCurrentMessageList: boolean;
     isRightColumnShown?: boolean;
     isSelectModeActive?: boolean;
     isForwarding?: boolean;
-    isPollModalOpen?: boolean;
+    pollModal: GlobalState['pollModal'];
     botKeyboardMessageId?: number;
     botKeyboardPlaceholder?: string;
     withScheduledButton?: boolean;
@@ -146,11 +158,16 @@ type StateProps =
     isInlineBotLoading: boolean;
     inlineBots?: Record<string, false | InlineBotSettings>;
     botCommands?: ApiBotCommand[] | false;
+    botMenuButton?: ApiBotMenuButton;
     chatBotCommands?: ApiBotCommand[];
     sendAsUser?: ApiUser;
     sendAsChat?: ApiChat;
     sendAsId?: string;
     editingDraft?: ApiFormattedText;
+    requestedText?: string;
+    attachMenuBots: GlobalState['attachMenu']['bots'];
+    isPrivateChat?: boolean;
+    theme: ISettings['theme'];
   }
   & Pick<GlobalState, 'connectionState'>;
 
@@ -189,6 +206,7 @@ const Composer: FC<OwnProps & StateProps> = ({
   messageListType,
   draft,
   chat,
+  isForCurrentMessageList,
   connectionState,
   isChatWithBot,
   isChatWithSelf,
@@ -196,7 +214,7 @@ const Composer: FC<OwnProps & StateProps> = ({
   isRightColumnShown,
   isSelectModeActive,
   isForwarding,
-  isPollModalOpen,
+  pollModal,
   botKeyboardMessageId,
   botKeyboardPlaceholder,
   withScheduledButton,
@@ -218,6 +236,11 @@ const Composer: FC<OwnProps & StateProps> = ({
   sendAsChat,
   sendAsId,
   editingDraft,
+  requestedText,
+  botMenuButton,
+  attachMenuBots,
+  isPrivateChat,
+  theme,
 }) => {
   const {
     sendMessage,
@@ -234,6 +257,8 @@ const Composer: FC<OwnProps & StateProps> = ({
     sendInlineBotResult,
     loadSendAs,
     loadFullChat,
+    resetOpenChatWithText,
+    callAttachMenuBot,
   } = getActions();
   const lang = useLang();
 
@@ -480,7 +505,7 @@ const Composer: FC<OwnProps & StateProps> = ({
     editingDraft,
   );
   useDraft(draft, chatId, threadId, htmlRef, setHtml, editingMessage);
-  useClipboardPaste(insertTextAndUpdateCursor, setAttachments, editingMessage);
+  useClipboardPaste(isForCurrentMessageList, insertTextAndUpdateCursor, setAttachments, editingMessage);
 
   const handleEmbeddedClear = useCallback(() => {
     if (editingMessage) {
@@ -612,6 +637,13 @@ const Composer: FC<OwnProps & StateProps> = ({
     resetComposer, stopRecordingVoice, showDialog, slowMode, isAdmin, sendMessage, forwardMessages, lang, htmlRef,
   ]);
 
+  const handleClickBotMenu = useCallback(() => {
+    if (botMenuButton?.type !== 'webApp') return;
+    callAttachMenuBot({
+      botId: chatId, chatId, isFromBotMenu: true, url: botMenuButton.url,
+    });
+  }, [botMenuButton, callAttachMenuBot, chatId]);
+
   const handleActivateBotCommandMenu = useCallback(() => {
     closeSymbolMenu();
     openBotCommandMenu();
@@ -656,6 +688,17 @@ const Composer: FC<OwnProps & StateProps> = ({
       });
     }
   }, [contentToBeScheduled, handleMessageSchedule, requestCalendar]);
+
+  useEffect(() => {
+    if (requestedText) {
+      setHtml(requestedText);
+      resetOpenChatWithText();
+      requestAnimationFrame(() => {
+        const messageInput = document.getElementById(EDITABLE_INPUT_ID)!;
+        focusEditableElement(messageInput, true);
+      });
+    }
+  }, [requestedText, resetOpenChatWithText]);
 
   const handleStickerSelect = useCallback((
     sticker: ApiSticker, isSilent?: boolean, isScheduleRequested?: boolean, shouldPreserveInput = false,
@@ -912,6 +955,8 @@ const Composer: FC<OwnProps & StateProps> = ({
     : mainButtonState === MainButtonState.Schedule ? handleSendScheduled
       : handleSend;
 
+  const isBotMenuButtonCommands = botMenuButton && botMenuButton?.type === 'commands';
+
   return (
     <div className={className}>
       {canAttachMedia && isReady && (
@@ -945,7 +990,8 @@ const Composer: FC<OwnProps & StateProps> = ({
         onClear={handleClearAttachment}
       />
       <PollModal
-        isOpen={Boolean(isPollModalOpen)}
+        isOpen={pollModal.isOpen}
+        isQuiz={pollModal.isQuiz}
         shouldBeAnonimous={isChannel}
         onClear={closePollModal}
         onSend={handlePollSend}
@@ -1000,7 +1046,17 @@ const Composer: FC<OwnProps & StateProps> = ({
           disabled={!canAttachEmbedLinks}
         />
         <div className="message-input-wrapper">
-          {isChatWithBot && botCommands !== false && !activeVoiceRecording && !editingMessage && (
+          {isChatWithBot && botMenuButton && botMenuButton.type === 'webApp' && !editingMessage
+            && (
+              <BotMenuButton
+                isOpen={!html && !activeVoiceRecording}
+                onClick={handleClickBotMenu}
+                text={botMenuButton.text}
+                isDisabled={Boolean(activeVoiceRecording)}
+              />
+            )}
+          {isChatWithBot && isBotMenuButtonCommands && botCommands !== false && !activeVoiceRecording
+            && !editingMessage && (
             <ResponsiveHoverButton
               className={buildClassName('bot-commands', isBotCommandMenuOpen && 'activated')}
               round
@@ -1099,25 +1155,17 @@ const Composer: FC<OwnProps & StateProps> = ({
               {formatVoiceRecordDuration(currentRecordTime - startRecordTimeRef.current!)}
             </span>
           )}
-          <StickerTooltip
-            chatId={chatId}
-            threadId={threadId}
-            isOpen={isStickerTooltipOpen}
-            onStickerSelect={handleStickerSelect}
-          />
-          <EmojiTooltip
-            isOpen={isEmojiTooltipOpen}
-            emojis={filteredEmojis}
-            onClose={closeEmojiTooltip}
-            onEmojiSelect={insertEmoji}
-            addRecentEmoji={addRecentEmoji}
-          />
           <AttachMenu
+            chatId={chatId}
             isButtonVisible={!activeVoiceRecording && !editingMessage}
             canAttachMedia={canAttachMedia}
             canAttachPolls={canAttachPolls}
             onFileSelect={handleFileSelect}
             onPollCreate={openPollModal}
+            isScheduled={shouldSchedule}
+            isPrivateChat={isPrivateChat}
+            attachMenuBots={attachMenuBots}
+            theme={theme}
           />
           {botKeyboardMessageId && (
             <BotKeyboardMenu
@@ -1133,6 +1181,19 @@ const Composer: FC<OwnProps & StateProps> = ({
               onClose={closeBotCommandMenu}
             />
           )}
+          <StickerTooltip
+            chatId={chatId}
+            threadId={threadId}
+            isOpen={isStickerTooltipOpen}
+            onStickerSelect={handleStickerSelect}
+          />
+          <EmojiTooltip
+            isOpen={isEmojiTooltipOpen}
+            emojis={filteredEmojis}
+            onClose={closeEmojiTooltip}
+            onEmojiSelect={insertEmoji}
+            addRecentEmoji={addRecentEmoji}
+          />
           <SymbolMenu
             chatId={chatId}
             threadId={threadId}
@@ -1199,6 +1260,7 @@ export default memo(withGlobal<OwnProps>(
     const chatBot = chatId !== REPLIES_USER_ID ? selectChatBot(global, chatId) : undefined;
     const isChatWithBot = Boolean(chatBot);
     const isChatWithSelf = selectIsChatWithSelf(global, chatId);
+    const isPrivateChat = Boolean(selectUser(global, chatId));
     const messageWithActualBotKeyboard = isChatWithBot && selectNewestMessageWithBotKeyboardButtons(global, chatId);
     const scheduledIds = selectScheduledIds(global, chatId);
     const { language, shouldSuggestStickers } = global.settings.byKey;
@@ -1213,6 +1275,11 @@ export default memo(withGlobal<OwnProps>(
       : (chat?.adminRights?.anonymous ? chat?.id : undefined);
     const sendAsUser = sendAsId ? selectUser(global, sendAsId) : undefined;
     const sendAsChat = !sendAsUser && sendAsId ? selectChat(global, sendAsId) : undefined;
+    const requestedText = selectRequestedText(global, chatId);
+    const currentMessageList = selectCurrentMessageList(global);
+    const isForCurrentMessageList = chatId === currentMessageList?.chatId
+        && threadId === currentMessageList?.threadId
+        && messageListType === currentMessageList?.type;
 
     const editingDraft = messageListType === 'scheduled'
       ? selectEditingScheduledDraft(global, chatId)
@@ -1225,6 +1292,8 @@ export default memo(withGlobal<OwnProps>(
       chat,
       isChatWithBot,
       isChatWithSelf,
+      isPrivateChat,
+      isForCurrentMessageList,
       canScheduleUntilOnline: selectCanScheduleUntilOnline(global, chatId),
       isChannel: chat ? isChatChannel(chat) : undefined,
       isRightColumnShown: selectIsRightColumnShown(global),
@@ -1238,7 +1307,7 @@ export default memo(withGlobal<OwnProps>(
       botKeyboardMessageId,
       botKeyboardPlaceholder: keyboardMessage?.keyboardPlaceholder,
       isForwarding: chatId === global.forwardMessages.toChatId,
-      isPollModalOpen: global.isPollModalOpen,
+      pollModal: global.pollModal,
       stickersForEmoji: global.stickers.forEmoji.stickers,
       groupChatMembers: chat?.fullInfo?.members,
       topInlineBotIds: global.topInlineBots?.userIds,
@@ -1251,12 +1320,16 @@ export default memo(withGlobal<OwnProps>(
       emojiKeywords: emojiKeywords?.keywords,
       inlineBots: global.inlineBots.byUsername,
       isInlineBotLoading: global.inlineBots.isLoading,
-      chatBotCommands: chat && chat.fullInfo && chat.fullInfo.botCommands,
-      botCommands: chatBot && chatBot.fullInfo ? (chatBot.fullInfo.botCommands || false) : undefined,
+      chatBotCommands: chat?.fullInfo && chat.fullInfo.botCommands,
+      botCommands: chatBot?.fullInfo ? (chatBot.fullInfo.botInfo?.commands || false) : undefined,
+      botMenuButton: chatBot?.fullInfo?.botInfo?.menuButton,
       sendAsUser,
       sendAsChat,
       sendAsId,
       editingDraft,
+      requestedText,
+      attachMenuBots: global.attachMenu.bots,
+      theme: selectTheme(global),
     };
   },
 )(Composer));

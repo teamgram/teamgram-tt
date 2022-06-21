@@ -1,12 +1,14 @@
-import { ChangeEvent } from 'react';
+import type { ChangeEvent } from 'react';
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, memo, useEffect, useRef, useState,
+  memo, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 
 import { MIN_PASSWORD_LENGTH } from '../../config';
 import { IS_TOUCH_ENV, IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
 import buildClassName from '../../util/buildClassName';
 import useLang from '../../hooks/useLang';
+import useTimeout from '../../hooks/useTimeout';
 
 import Button from '../ui/Button';
 
@@ -16,8 +18,12 @@ type OwnProps = {
   hint?: string;
   placeholder?: string;
   isLoading?: boolean;
+  shouldDisablePasswordManager?: boolean;
+  shouldShowSubmit?: boolean;
+  shouldResetValue?: boolean;
   isPasswordVisible?: boolean;
   clearError: NoneToVoidFunction;
+  noRipple?: boolean;
   onChangePasswordVisibility: (state: boolean) => void;
   onInputChange?: (password: string) => void;
   onSubmit: (password: string) => void;
@@ -32,6 +38,10 @@ const PasswordForm: FC<OwnProps> = ({
   hint,
   placeholder = 'Password',
   submitLabel = 'Next',
+  shouldShowSubmit,
+  shouldResetValue,
+  shouldDisablePasswordManager = false,
+  noRipple = false,
   clearError,
   onChangePasswordVisibility,
   onInputChange,
@@ -45,12 +55,16 @@ const PasswordForm: FC<OwnProps> = ({
   const [canSubmit, setCanSubmit] = useState(false);
 
   useEffect(() => {
-    if (!IS_TOUCH_ENV) {
-      setTimeout(() => {
-        inputRef.current!.focus();
-      }, FOCUS_DELAY_TIMEOUT_MS);
+    if (shouldResetValue) {
+      setPassword('');
     }
-  }, []);
+  }, [shouldResetValue]);
+
+  useTimeout(() => {
+    if (!IS_TOUCH_ENV) {
+      inputRef.current!.focus();
+    }
+  }, FOCUS_DELAY_TIMEOUT_MS);
 
   useEffect(() => {
     if (error) {
@@ -90,20 +104,34 @@ const PasswordForm: FC<OwnProps> = ({
     }
   }
 
+  function renderFakeInput() {
+    return (
+      <input
+        type="password"
+        id="prevent_autofill"
+        autoComplete="off"
+        className="visually-hidden"
+        tabIndex={-2}
+      />
+    );
+  }
+
   return (
     <form action="" onSubmit={handleSubmit} autoComplete="off">
       <div
         className={buildClassName('input-group password-input', password && 'touched', error && 'error')}
         dir={lang.isRtl ? 'rtl' : undefined}
       >
+        {shouldDisablePasswordManager && renderFakeInput()}
         <input
           ref={inputRef}
           className="form-control"
           type={isPasswordVisible ? 'text' : 'password'}
           id="sign-in-password"
           value={password || ''}
-          autoComplete="current-password"
+          autoComplete={shouldDisablePasswordManager ? 'one-time-code' : 'current-password'}
           onChange={onPasswordChange}
+          maxLength={256}
           dir="auto"
         />
         <label>{error || hint || placeholder}</label>
@@ -117,8 +145,8 @@ const PasswordForm: FC<OwnProps> = ({
           <i className={isPasswordVisible ? 'icon-eye' : 'icon-eye-closed'} />
         </div>
       </div>
-      {canSubmit && (
-        <Button type="submit" ripple isLoading={isLoading}>
+      {(canSubmit || shouldShowSubmit) && (
+        <Button type="submit" ripple={!noRipple} isLoading={isLoading} disabled={!canSubmit}>
           {submitLabel}
         </Button>
       )}

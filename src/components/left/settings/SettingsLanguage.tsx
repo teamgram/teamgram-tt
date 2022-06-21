@@ -1,10 +1,11 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useMemo, useState,
+  memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { ISettings, LangCode, SettingsScreens } from '../../../types';
-import { ApiLanguage } from '../../../api/types';
+import type { ISettings, LangCode } from '../../../types';
+import type { ApiLanguage } from '../../../api/types';
 
 import { setLanguage } from '../../../util/langProvider';
 
@@ -15,7 +16,6 @@ import useHistoryBack from '../../../hooks/useHistoryBack';
 
 type OwnProps = {
   isActive?: boolean;
-  onScreenSelect: (screen: SettingsScreens) => void;
   onReset: () => void;
 };
 
@@ -23,7 +23,6 @@ type StateProps = Pick<ISettings, 'languages' | 'language'>;
 
 const SettingsLanguage: FC<OwnProps & StateProps> = ({
   isActive,
-  onScreenSelect,
   onReset,
   languages,
   language,
@@ -56,7 +55,10 @@ const SettingsLanguage: FC<OwnProps & StateProps> = ({
     return languages ? buildOptions(languages) : undefined;
   }, [languages]);
 
-  useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.Language);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   return (
     <div className="settings-content settings-item settings-language custom-scroll settings-item--first">

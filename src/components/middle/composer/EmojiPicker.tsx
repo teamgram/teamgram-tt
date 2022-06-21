@@ -1,17 +1,20 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, useState, useEffect, memo, useRef, useMemo, useCallback,
+  useState, useEffect, memo, useRef, useMemo, useCallback,
 } from '../../../lib/teact/teact';
 import { withGlobal } from '../../../global';
 
-import { GlobalState } from '../../../global/types';
+import type { GlobalState } from '../../../global/types';
 
-import { MENU_TRANSITION_DURATION } from '../../../config';
+import { MENU_TRANSITION_DURATION, RECENT_SYMBOL_SET_ID } from '../../../config';
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../../util/environment';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
-import {
+import type {
   EmojiModule,
   EmojiRawData,
   EmojiData,
+} from '../../../util/emoji';
+import {
   uncompressEmoji,
 } from '../../../util/emoji';
 import fastSmoothScroll from '../../../util/fastSmoothScroll';
@@ -126,7 +129,7 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
     const themeCategories = [...categories];
     if (recentEmojis?.length) {
       themeCategories.unshift({
-        id: 'recent',
+        id: RECENT_SYMBOL_SET_ID,
         name: lang('RecentStickers'),
         emojis: recentEmojis,
       });
@@ -219,7 +222,7 @@ const EmojiPicker: FC<OwnProps & StateProps> = ({
 
 async function ensureEmojiData() {
   if (!emojiDataPromise) {
-    emojiDataPromise = import('emoji-data-ios/emoji-data.json') as unknown as Promise<EmojiModule>;
+    emojiDataPromise = import('emoji-data-ios/emoji-data.json');
     emojiRawData = (await emojiDataPromise).default;
 
     emojiData = uncompressEmoji(emojiRawData);

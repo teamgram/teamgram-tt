@@ -1,13 +1,17 @@
 export const APP_NAME = process.env.APP_NAME || 'Teamgram WebZ';
 export const APP_VERSION = process.env.APP_VERSION!;
 
-export const DEBUG = (
-  process.env.APP_ENV !== 'production' && process.env.APP_ENV !== 'perf' && process.env.APP_ENV !== 'test'
-);
+export const DEBUG = process.env.APP_ENV !== 'production';
 export const DEBUG_MORE = false;
 
+export const IS_MOCKED_CLIENT = process.env.APP_MOCKED_CLIENT === '1';
 export const IS_TEST = process.env.APP_ENV === 'test';
 export const IS_PERF = process.env.APP_ENV === 'perf';
+export const IS_BETA = process.env.APP_ENV === 'staging';
+
+export const BETA_CHANGELOG_URL = 'https://telegra.ph/WebZ-Beta-04-01';
+export const BETA_DISCUSSION_CHAT_RU = 'webzcommentsru';
+export const BETA_DISCUSSION_CHAT_EN = 'webzchat';
 
 export const DEBUG_ALERT_MSG = 'Shoot!\nSomething went wrong, please see the error details in Dev Tools Console.';
 export const DEBUG_GRAMJS = false;
@@ -19,6 +23,7 @@ export const DEBUG_PAYMENT_SMART_GLOCAL = false;
 
 export const SESSION_USER_KEY = 'user_auth';
 export const LEGACY_SESSION_KEY = 'GramJs:sessionId';
+export const PASSCODE_CACHE_NAME = 'tt-passcode';
 
 export const GLOBAL_STATE_CACHE_DISABLED = false;
 export const GLOBAL_STATE_CACHE_KEY = 'tt-global-state';
@@ -33,7 +38,7 @@ export const MEDIA_PROGRESSIVE_CACHE_DISABLED = false;
 export const MEDIA_PROGRESSIVE_CACHE_NAME = 'tt-media-progressive';
 export const MEDIA_CACHE_MAX_BYTES = 512 * 1024; // 512 KB
 export const CUSTOM_BG_CACHE_NAME = 'tt-custom-bg';
-export const LANG_CACHE_NAME = 'tt-lang-packs-v8';
+export const LANG_CACHE_NAME = 'tt-lang-packs-v9';
 export const ASSET_CACHE_NAME = 'tt-assets';
 export const AUTODOWNLOAD_FILESIZE_MB_LIMITS = [1, 5, 10, 50, 100, 500];
 
@@ -62,6 +67,8 @@ export const PROFILE_SENSITIVE_AREA = 500;
 export const COMMON_CHATS_LIMIT = 100;
 export const GROUP_CALL_PARTICIPANTS_LIMIT = 100;
 export const REACTION_LIST_LIMIT = 100;
+export const REACTION_UNREAD_SLICE = 100;
+export const MENTION_UNREAD_SLICE = 100;
 
 export const TOP_CHAT_MESSAGES_PRELOAD_LIMIT = 20;
 
@@ -69,6 +76,7 @@ export const SPONSORED_MESSAGE_CACHE_MS = 300000; // 5 min
 
 export const DEFAULT_VOLUME = 1;
 export const DEFAULT_PLAYBACK_RATE = 1;
+export const PLAYBACK_RATE_FOR_AUDIO_MIN_DURATION = 20 * 60; // 20 min
 
 export const ANIMATION_LEVEL_MIN = 0;
 export const ANIMATION_LEVEL_MED = 1;
@@ -85,7 +93,7 @@ export const SEND_MESSAGE_ACTION_INTERVAL = 3000; // 3s
 export const EDITABLE_INPUT_ID = 'editable-message-text';
 export const EDITABLE_INPUT_MODAL_ID = 'editable-message-text-modal';
 // eslint-disable-next-line max-len
-export const EDITABLE_INPUT_CSS_SELECTOR = `.Transition__slide--active #${EDITABLE_INPUT_ID}, .Transition > .to #${EDITABLE_INPUT_ID}`;
+export const EDITABLE_INPUT_CSS_SELECTOR = `.messages-layout .Transition__slide--active #${EDITABLE_INPUT_ID}, .messages-layout .Transition > .to #${EDITABLE_INPUT_ID}`;
 
 export const CUSTOM_APPENDIX_ATTRIBUTE = 'data-has-custom-appendix';
 
@@ -100,7 +108,7 @@ export const MOBILE_SCREEN_MAX_WIDTH = 600; // px
 export const MOBILE_SCREEN_LANDSCAPE_MAX_WIDTH = 950; // px
 export const MOBILE_SCREEN_LANDSCAPE_MAX_HEIGHT = 450; // px
 
-export const LOCAL_MESSAGE_ID_BASE = 1e9;
+export const LOCAL_MESSAGE_MIN_ID = 1e11; // `Date.now()` is always used as base
 export const TMP_CHAT_ID = '0';
 
 export const ANIMATION_END_DELAY = 100;
@@ -116,6 +124,8 @@ export const API_THROTTLE_RESET_UPDATES = new Set([
   'newMessage', 'newScheduledMessage', 'deleteMessages', 'deleteScheduledMessages', 'deleteHistory',
 ]);
 
+export const LOCK_SCREEN_ANIMATION_DURATION_MS = 200;
+
 export const STICKER_SIZE_INLINE_DESKTOP_FACTOR = 13;
 export const STICKER_SIZE_INLINE_MOBILE_FACTOR = 11;
 export const STICKER_SIZE_AUTH = 160;
@@ -126,6 +136,7 @@ export const STICKER_SIZE_PICKER_HEADER = 32;
 export const STICKER_SIZE_SEARCH = 64;
 export const STICKER_SIZE_MODAL = 64;
 export const STICKER_SIZE_TWO_FA = 160;
+export const STICKER_SIZE_PASSCODE = 160;
 export const STICKER_SIZE_DISCUSSION_GROUPS = 140;
 export const STICKER_SIZE_FOLDER_SETTINGS = 100;
 export const STICKER_SIZE_INLINE_BOT_RESULT = 100;
@@ -133,6 +144,9 @@ export const STICKER_SIZE_JOIN_REQUESTS = 140;
 export const STICKER_SIZE_INVITES = 140;
 export const RECENT_STICKERS_LIMIT = 20;
 export const NO_STICKER_SET_ID = 'NO_STICKER_SET';
+export const RECENT_SYMBOL_SET_ID = 'recent';
+export const FAVORITE_SYMBOL_SET_ID = 'favorite';
+export const CHAT_STICKER_SET_ID = 'chatStickers';
 
 export const BASE_EMOJI_KEYWORD_LANG = 'en';
 
@@ -190,13 +204,11 @@ export const SCHEDULED_WHEN_ONLINE = 0x7FFFFFFE;
 export const DEFAULT_LANG_CODE = 'en';
 export const DEFAULT_LANG_PACK = 'android';
 export const LANG_PACKS = ['android', 'ios', 'tdesktop', 'macos'] as const;
-export const TIPS_USERNAME = 'TeamgramTips';
-export const LOCALIZED_TIPS = ['ar', 'pt-br', 'id', 'it', 'ko', 'ms', 'pl', 'es', 'tr'];
 export const FEEDBACK_URL = 'https://bugs.telegram.org/?tag_ids=41&sort=time';
-export const LIGHT_THEME_BG_COLOR = '#A2AF8E';
+export const LIGHT_THEME_BG_COLOR = '#99BA92';
 export const DARK_THEME_BG_COLOR = '#0F0F0F';
-export const DARK_THEME_PATTERN_COLOR = '#0a0a0a8c';
-export const DEFAULT_PATTERN_COLOR = 'rgba(90, 110, 70, 0.6)';
+export const DEFAULT_PATTERN_COLOR = '#4A8E3A8C';
+export const DARK_THEME_PATTERN_COLOR = '#0A0A0A8C';
 
 // Group calls
 export const GROUP_CALL_VOLUME_MULTIPLIER = 100;

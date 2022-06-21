@@ -5,13 +5,14 @@ const {
   DefinePlugin,
   EnvironmentPlugin,
   ProvidePlugin,
+  ContextReplacementPlugin,
+  NormalModuleReplacementPlugin,
 } = require('webpack');
-const HtmlPlugin = require('html-webpack-plugin');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
-const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
 const { GitRevisionPlugin } = require('git-revision-webpack-plugin');
-
+const StatoscopeWebpackPlugin = require('@statoscope/webpack-plugin').default;
+const WebpackContextExtension = require('./dev/webpackContextExtension');
 const appVersion = require('./package.json').version;
 
 dotenv.config();
@@ -50,6 +51,7 @@ module.exports = (env = {}, argv = {}) => {
         stats: 'minimal',
       },
     },
+
     output: {
       filename: '[name].[contenthash].js',
       chunkFilename: '[id].[chunkhash].js',
@@ -80,7 +82,16 @@ module.exports = (env = {}, argv = {}) => {
           test: /\.scss$/,
           use: [
             MiniCssExtractPlugin.loader,
-            'css-loader',
+            {
+              loader: 'css-loader',
+              options: {
+                modules: {
+                  exportLocalsConvention: 'camelCase',
+                  auto: true,
+                  localIdentName: argv['optimize-minimize'] ? '[hash:base64]' : '[path][name]__[local]'
+                }
+              }
+            },
             'postcss-loader',
             'sass-loader',
           ],
@@ -109,7 +120,18 @@ module.exports = (env = {}, argv = {}) => {
       },
     },
     plugins: [
-      new HtmlPlugin({
+      // Clearing of the unused files for code highlight for smaller chunk count
+      new ContextReplacementPlugin(
+        /highlight\.js\/lib\/languages/,
+        /^((?!\.js\.js).)*$/
+      ),
+      ...(process.env.APP_MOCKED_CLIENT === '1' ? [new NormalModuleReplacementPlugin(
+        /src\/lib\/gramjs\/client\/TelegramClient\.js/,
+        './MockClient.ts'
+      )] : []),
+      new HtmlWebpackPlugin({
+        appName: process.env.APP_ENV === 'production' ? 'Telegram Web' : 'Telegram Web Beta',
+        appleIcon: process.env.APP_ENV === 'production' ? 'apple-touch-icon' : './apple-touch-icon-dev',
         template: 'src/index.html',
       }),
       new MiniCssExtractPlugin({
@@ -119,6 +141,7 @@ module.exports = (env = {}, argv = {}) => {
       }),
       new EnvironmentPlugin({
         APP_ENV: 'production',
+        APP_MOCKED_CLIENT: '',
         APP_NAME: null,
         APP_VERSION: appVersion,
         TELEGRAM_T_API_ID: undefined,
@@ -128,32 +151,33 @@ module.exports = (env = {}, argv = {}) => {
       new DefinePlugin({
         APP_REVISION: DefinePlugin.runtimeValue(() => {
           const { branch, commit } = getGitMetadata();
-          return JSON.stringify((!branch || branch === 'HEAD') ? commit : branch);
+          const shouldDisplayCommit = process.env.APP_ENV === 'staging' || !branch || branch === 'HEAD';
+          return JSON.stringify(shouldDisplayCommit ? commit : branch);
         }, argv.mode === 'development' ? true : []),
       }),
       new ProvidePlugin({
         Buffer: ['buffer', 'Buffer'],
-        process: 'process/browser',
       }),
-      ...(argv.mode === 'production' ? [
-        new BundleAnalyzerPlugin({
-          analyzerMode: 'static',
-          openAnalyzer: false,
-        }),
-      ] : []),
+      new StatoscopeWebpackPlugin({
+        statsOptions: {
+          context: __dirname,
+        },
+        saveReportTo: path.resolve('./public/statoscope-report.html'),
+        saveStatsTo: path.resolve('./public/build-stats.json'),
+        normalizeStats: true,
+        open: 'file',
+        extensions: [new WebpackContextExtension()],
+      }),
     ],
 
     ...(!env.noSourceMap && {
       devtool: 'source-map',
     }),
 
-    ...(argv['optimize-minimize'] && {
+    ...(process.env.APP_ENV !== 'production' && {
       optimization: {
-        minimize: !env.noMinify,
-        minimizer: [
-          new CssMinimizerPlugin(),
-        ],
-      },
+        chunkIds: 'named',
+      }
     }),
   };
 };

@@ -1,32 +1,33 @@
 import QrCodeStyling from 'qr-code-styling';
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, useEffect, useRef, memo, useCallback, useState,
+  useEffect, useRef, memo, useCallback,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { GlobalState } from '../../global/types';
-import { LangCode } from '../../types';
+import type { GlobalState } from '../../global/types';
+import type { LangCode } from '../../types';
 
 import { DEFAULT_LANG_CODE } from '../../config';
+import { LOCAL_TGS_URLS } from '../common/helpers/animatedAssets';
 import { setLanguage } from '../../util/langProvider';
+import buildClassName from '../../util/buildClassName';
 import renderText from '../common/helpers/renderText';
 import { getSuggestedLanguage } from './helpers/getSuggestedLanguage';
-import getAnimationData from '../common/helpers/animatedAssets';
 
 import useLangString from '../../hooks/useLangString';
 import useFlag from '../../hooks/useFlag';
 import useLang from '../../hooks/useLang';
+import useMediaTransition from '../../hooks/useMediaTransition';
 
 import Loading from '../ui/Loading';
 import Button from '../ui/Button';
-import AnimatedSticker from '../common/AnimatedSticker';
 import blankUrl from '../../assets/blank.png';
+import AnimatedIcon from '../common/AnimatedIcon';
 
 type StateProps =
   Pick<GlobalState, 'connectionState' | 'authState' | 'authQrCode'>
-  & {
-    language?: LangCode;
-  };
+  & { language?: LangCode };
 
 const DATA_PREFIX = 'tg://login?token=';
 const QR_SIZE = 280;
@@ -72,15 +73,7 @@ const AuthCode: FC<StateProps> = ({
   const [isLoading, markIsLoading, unmarkIsLoading] = useFlag();
   const [isQrMounted, markQrMounted, unmarkQrMounted] = useFlag();
 
-  const [animationData, setAnimationData] = useState<string>();
-  const [isAnimationLoaded, setIsAnimationLoaded] = useState(false);
-  const handleAnimationLoad = useCallback(() => setIsAnimationLoaded(true), []);
-
-  useEffect(() => {
-    if (!animationData) {
-      getAnimationData('QrPlane').then(setAnimationData);
-    }
-  }, [animationData]);
+  const transitionClassNames = useMediaTransition(isQrMounted);
 
   useEffect(() => {
     if (!authQrCode) {
@@ -94,9 +87,6 @@ const AuthCode: FC<StateProps> = ({
     }
 
     const container = qrCodeRef.current!;
-
-    container.parentElement!.classList.remove('pre-animate');
-
     const data = `${DATA_PREFIX}${authQrCode.token}`;
 
     QR_CODE.update({
@@ -131,29 +121,27 @@ const AuthCode: FC<StateProps> = ({
   return (
     <div id="auth-qr-form" className="custom-scroll">
       <div className="auth-form qr">
-        {authQrCode ? (
-          <div className="qr-wrapper pre-animate" key="qr-wrapper">
+        <div className="qr-outer">
+          <div
+            className={buildClassName('qr-inner', transitionClassNames)}
+            key="qr-inner"
+          >
             <div
               key="qr-container"
               className="qr-container"
               ref={qrCodeRef}
               style={`width: ${QR_SIZE}px; height: ${QR_SIZE}px`}
             />
-            {animationData && (
-              <AnimatedSticker
-                id="qrPlane"
-                className="qr-plane"
-                size={QR_PLANE_SIZE}
-                animationData={animationData}
-                play={isAnimationLoaded}
-                onLoad={handleAnimationLoad}
-                key="qrPlane"
-              />
-            )}
+            <AnimatedIcon
+              tgsUrl={LOCAL_TGS_URLS.QrPlane}
+              size={QR_PLANE_SIZE}
+              className="qr-plane"
+              nonInteractive
+              noLoop={false}
+            />
           </div>
-        ) : (
-          <div key="qr-loading" className="qr-loading"><Loading /></div>
-        )}
+          {!isQrMounted && <div className="qr-loading"><Loading /></div>}
+        </div>
         <h3>{lang('Login.QR.Title')}</h3>
         <ol>
           <li><span>{lang('Login.QR.Help1')}</span></li>

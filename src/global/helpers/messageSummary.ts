@@ -1,8 +1,10 @@
-import { ApiMessage, ApiMessageEntityTypes } from '../../api/types';
-import type { TextPart } from '../../components/common/helpers/renderTextWithEntities';
+import type { ApiMessage } from '../../api/types';
+import { ApiMessageEntityTypes } from '../../api/types';
 import { CONTENT_NOT_SUPPORTED } from '../../config';
 
-import { LangFn } from '../../hooks/useLang';
+import type { TextPart } from '../../types';
+import type { LangFn } from '../../hooks/useLang';
+
 import trimText from '../../util/trimText';
 import { getMessageText } from './messages';
 import { getMessageRecentReaction } from './reactions';
@@ -118,6 +120,7 @@ export function getMessageSummaryDescription(
     poll,
     invoice,
     location,
+    game,
   } = message.content;
 
   let summary: string | TextPart[] | undefined;
@@ -176,6 +179,10 @@ export function getMessageSummaryDescription(
 
   if (location?.type === 'geoLive') {
     summary = lang('Message.LiveLocation');
+  }
+
+  if (game) {
+    summary = `🎮 ${game.title}`;
   }
 
   const reaction = !noReactions && getMessageRecentReaction(message);

@@ -1,5 +1,4 @@
-// eslint-disable-next-line import/no-named-default
-import { default as Api } from '../tl/api';
+import Api from '../tl/api';
 import TelegramClient from './TelegramClient';
 import utils from '../Utils';
 import { sleep } from '../Helpers';
@@ -14,6 +13,7 @@ export interface UserAuthParams {
     onError: (err: Error) => void;
     forceSMS?: boolean;
     initialMethod?: 'phoneNumber' | 'qrCode';
+    shouldThrowIfUnauthorized?: boolean;
 }
 
 export interface BotAuthParams {
@@ -50,12 +50,12 @@ export async function authFlow(
     client._log.info('Signed in successfully as', utils.getDisplayName(me));
 }
 
-export async function checkAuthorization(client: TelegramClient) {
+export async function checkAuthorization(client: TelegramClient, shouldThrow = false) {
     try {
         await client.invoke(new Api.updates.GetState());
         return true;
     } catch (e: any) {
-        if (e.message === 'Disconnect') throw e;
+        if (e.message === 'Disconnect' || shouldThrow) throw e;
         return false;
     }
 }

@@ -1,5 +1,5 @@
 import { addActionHandler } from '../../index';
-import { ISettings, IThemeSettings, ThemeKey } from '../../../types';
+import type { ISettings, IThemeSettings, ThemeKey } from '../../../types';
 import { replaceSettings, replaceThemeSettings } from '../../reducers';
 
 addActionHandler('setSettingOption', (global, actions, payload?: Partial<ISettings>) => {
@@ -10,4 +10,14 @@ addActionHandler('setThemeSettings', (global, actions, payload: { theme: ThemeKe
   const { theme, ...settings } = payload;
 
   return replaceThemeSettings(global, theme, settings);
+});
+
+addActionHandler('requestNextSettingsScreen', (global, actions, nextScreen) => {
+  return {
+    ...global,
+    settings: {
+      ...global.settings,
+      nextScreen,
+    },
+  };
 });

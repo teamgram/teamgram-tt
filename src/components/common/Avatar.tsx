@@ -1,9 +1,11 @@
-import { MouseEvent as ReactMouseEvent } from 'react';
-import React, { FC, memo, useCallback } from '../../lib/teact/teact';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { FC, TeactNode } from '../../lib/teact/teact';
+import React, { memo, useCallback } from '../../lib/teact/teact';
 
-import {
-  ApiChat, ApiMediaFormat, ApiPhoto, ApiUser, ApiUserStatus,
+import type {
+  ApiChat, ApiPhoto, ApiUser, ApiUserStatus,
 } from '../../api/types';
+import { ApiMediaFormat } from '../../api/types';
 
 import { IS_TEST } from '../../config';
 import {
@@ -58,11 +60,12 @@ const Avatar: FC<OwnProps> = ({
   const isReplies = user && isChatWithRepliesBot(user.id);
   let imageHash: string | undefined;
 
+  const shouldFetchBig = size === 'jumbo';
   if (!isSavedMessages && !isDeleted) {
     if (user) {
-      imageHash = getChatAvatarHash(user);
+      imageHash = getChatAvatarHash(user, shouldFetchBig ? 'big' : undefined);
     } else if (chat) {
-      imageHash = getChatAvatarHash(chat);
+      imageHash = getChatAvatarHash(chat, shouldFetchBig ? 'big' : undefined);
     } else if (photo) {
       imageHash = `photo${photo.id}?size=m`;
     }
@@ -74,20 +77,21 @@ const Avatar: FC<OwnProps> = ({
 
   const lang = useLang();
 
-  let content: string | undefined = '';
+  let content: TeactNode | undefined;
+  const author = user ? getUserFullName(user) : (chat ? getChatTitle(lang, chat) : text);
 
   if (isSavedMessages) {
-    content = <i className={buildClassName(cn.icon, 'icon-avatar-saved-messages')} />;
+    content = <i className={buildClassName(cn.icon, 'icon-avatar-saved-messages')} aria-label={author} />;
   } else if (isDeleted) {
-    content = <i className={buildClassName(cn.icon, 'icon-avatar-deleted-account')} />;
+    content = <i className={buildClassName(cn.icon, 'icon-avatar-deleted-account')} aria-label={author} />;
   } else if (isReplies) {
-    content = <i className={buildClassName(cn.icon, 'icon-reply-filled')} />;
+    content = <i className={buildClassName(cn.icon, 'icon-reply-filled')} aria-label={author} />;
   } else if (blobUrl) {
     content = (
       <img
         src={blobUrl}
         className={buildClassName(cn.img, 'avatar-media', transitionClassNames)}
-        alt=""
+        alt={author}
         decoding="async"
       />
     );
@@ -124,7 +128,12 @@ const Avatar: FC<OwnProps> = ({
   const senderId = (user || chat) && (user || chat)!.id;
 
   return (
-    <div className={fullClassName} onClick={handleClick} data-test-sender-id={IS_TEST ? senderId : undefined}>
+    <div
+      className={fullClassName}
+      onClick={handleClick}
+      data-test-sender-id={IS_TEST ? senderId : undefined}
+      aria-label={typeof content === 'string' ? author : undefined}
+    >
       {typeof content === 'string' ? renderText(content, [size === 'jumbo' ? 'hq_emoji' : 'emoji']) : content}
     </div>
   );

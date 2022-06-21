@@ -1,13 +1,15 @@
-import { GlobalState, MessageListType, Thread } from '../types';
-import {
+import type { GlobalState, MessageListType, Thread } from '../types';
+import type {
   ApiChat,
   ApiMessage,
   ApiMessageOutgoingStatus,
   ApiUser,
+} from '../../api/types';
+import {
   MAIN_THREAD_ID,
 } from '../../api/types';
 
-import { LOCAL_MESSAGE_ID_BASE, REPLIES_USER_ID, SERVICE_NOTIFICATIONS_USER_ID } from '../../config';
+import { LOCAL_MESSAGE_MIN_ID, REPLIES_USER_ID, SERVICE_NOTIFICATIONS_USER_ID } from '../../config';
 import {
   selectChat, selectChatBot, selectIsChatWithBot, selectIsChatWithSelf,
 } from './chats';
@@ -35,6 +37,7 @@ import {
   getMessageVoice,
   getMessageDocument,
   getMessageWebPagePhoto,
+  getMessageOriginalId,
 } from '../helpers';
 import { findLast } from '../../util/iteratees';
 import { selectIsStickerFavorite } from './symbols';
@@ -251,7 +254,7 @@ export function selectIsViewportNewest(global: GlobalState, chatId: string, thre
   }
 
   // Edge case: outgoing `lastMessage` is updated with a delay to optimize animation
-  if (lastMessageId >= LOCAL_MESSAGE_ID_BASE && !selectChatMessage(global, chatId, lastMessageId)) {
+  if (lastMessageId > LOCAL_MESSAGE_MIN_ID && !selectChatMessage(global, chatId, lastMessageId)) {
     return true;
   }
 
@@ -327,6 +330,23 @@ export function selectOutgoingStatus(
 }
 
 export function selectSender(global: GlobalState, message: ApiMessage): ApiUser | ApiChat | undefined {
+  const { senderId } = message;
+  if (!senderId) {
+    return undefined;
+  }
+
+  return isUserId(senderId) ? selectUser(global, senderId) : selectChat(global, senderId);
+}
+
+export function selectReplySender(global: GlobalState, message: ApiMessage, isForwarded = false) {
+  if (isForwarded) {
+    const { senderUserId, hiddenUserName } = message.forwardInfo || {};
+    if (senderUserId) {
+      return isUserId(senderUserId) ? selectUser(global, senderUserId) : selectChat(global, senderUserId);
+    }
+    if (hiddenUserName) return undefined;
+  }
+
   const { senderId } = message;
   if (!senderId) {
     return undefined;
@@ -535,7 +555,7 @@ export function selectActiveDownloadIds(global: GlobalState, chatId: string) {
 }
 
 export function selectUploadProgress(global: GlobalState, message: ApiMessage) {
-  return global.fileUploads.byMessageLocalId[message.previousLocalId || message.id]?.progress;
+  return global.fileUploads.byMessageLocalId[getMessageOriginalId(message)]?.progress;
 }
 
 export function selectRealLastReadId(global: GlobalState, chatId: string, threadId: number) {
@@ -642,8 +662,8 @@ export function selectIsPollResultsOpen(global: GlobalState) {
 }
 
 export function selectIsForwardModalOpen(global: GlobalState) {
-  const { forwardMessages } = global;
-  return Boolean(forwardMessages.isModalShown);
+  const { forwardMessages, switchBotInline } = global;
+  return Boolean(switchBotInline || forwardMessages.isModalShown);
 }
 
 export function selectCommonBoxChatId(global: GlobalState, messageId: number) {

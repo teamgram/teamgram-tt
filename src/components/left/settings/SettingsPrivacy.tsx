@@ -1,7 +1,9 @@
-import React, { FC, memo, useEffect } from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { PrivacyVisibility, SettingsScreens } from '../../../types';
+import type { ApiPrivacySettings } from '../../../types';
+import { SettingsScreens } from '../../../types';
 
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -17,30 +19,37 @@ type OwnProps = {
 
 type StateProps = {
   hasPassword?: boolean;
+  hasPasscode?: boolean;
   blockedCount: number;
+  webAuthCount: number;
   isSensitiveEnabled?: boolean;
   canChangeSensitive?: boolean;
-  visibilityPrivacyPhoneNumber?: PrivacyVisibility;
-  visibilityPrivacyLastSeen?: PrivacyVisibility;
-  visibilityPrivacyProfilePhoto?: PrivacyVisibility;
-  visibilityPrivacyForwarding?: PrivacyVisibility;
-  visibilityPrivacyGroupChats?: PrivacyVisibility;
+  privacyPhoneNumber?: ApiPrivacySettings;
+  privacyLastSeen?: ApiPrivacySettings;
+  privacyProfilePhoto?: ApiPrivacySettings;
+  privacyForwarding?: ApiPrivacySettings;
+  privacyGroupChats?: ApiPrivacySettings;
+  privacyPhoneCall?: ApiPrivacySettings;
+  privacyPhoneP2P?: ApiPrivacySettings;
 };
 
 const SettingsPrivacy: FC<OwnProps & StateProps> = ({
   isActive,
-  onScreenSelect,
-  onReset,
   hasPassword,
+  hasPasscode,
   blockedCount,
+  webAuthCount,
   isSensitiveEnabled,
   canChangeSensitive,
-  visibilityPrivacyPhoneNumber,
-  visibilityPrivacyLastSeen,
-  visibilityPrivacyProfilePhoto,
-  visibilityPrivacyForwarding,
-  visibilityPrivacyGroupChats,
-
+  privacyPhoneNumber,
+  privacyLastSeen,
+  privacyProfilePhoto,
+  privacyForwarding,
+  privacyGroupChats,
+  privacyPhoneCall,
+  privacyPhoneP2P,
+  onScreenSelect,
+  onReset,
 }) => {
   const {
     loadPrivacySettings,
@@ -59,18 +68,30 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
 
   const lang = useLang();
 
-  useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.Privacy);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
-  function getVisibilityValue(visibility?: PrivacyVisibility) {
+  function getVisibilityValue(setting?: ApiPrivacySettings) {
+    const { visibility } = setting || {};
+    const blockCount = setting ? setting.blockChatIds.length + setting.blockUserIds.length : 0;
+    const allowCount = setting ? setting.allowChatIds.length + setting.allowUserIds.length : 0;
+    const total = [];
+    if (blockCount) total.push(`-${blockCount}`);
+    if (allowCount) total.push(`+${allowCount}`);
+
+    const exceptionString = total.length ? `(${total.join(',')})` : '';
+
     switch (visibility) {
       case 'everybody':
-        return lang('P2PEverybody');
+        return `${lang('P2PEverybody')} ${exceptionString}`;
 
       case 'contacts':
-        return lang('P2PContacts');
+        return `${lang('P2PContacts')} ${exceptionString}`;
 
       case 'nobody':
-        return lang('P2PNobody');
+        return `${lang('P2PNobody')} ${exceptionString}`;
     }
 
     return undefined;
@@ -92,6 +113,31 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
                 {lang('Users', blockedCount)}
               </span>
             )}
+          </div>
+        </ListItem>
+        {webAuthCount > 0 && (
+          <ListItem
+            icon="web"
+            // eslint-disable-next-line react/jsx-no-bind
+            onClick={() => onScreenSelect(SettingsScreens.ActiveWebsites)}
+          >
+            {lang('PrivacySettings.WebSessions')}
+            <span className="settings-item__current-value">{webAuthCount}</span>
+          </ListItem>
+        )}
+        <ListItem
+          icon="key"
+          narrow
+          // eslint-disable-next-line react/jsx-no-bind
+          onClick={() => onScreenSelect(
+            hasPasscode ? SettingsScreens.PasscodeEnabled : SettingsScreens.PasscodeDisabled,
+          )}
+        >
+          <div className="multiline-menu-item">
+            <span className="title">{lang('Passcode')}</span>
+            <span className="subtitle" dir="auto">
+              {lang(hasPasscode ? 'PasswordOn' : 'PasswordOff')}
+            </span>
           </div>
         </ListItem>
         <ListItem
@@ -123,7 +169,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           <div className="multiline-menu-item">
             <span className="title">{lang('PrivacyPhoneTitle')}</span>
             <span className="subtitle" dir="auto">
-              {getVisibilityValue(visibilityPrivacyPhoneNumber)}
+              {getVisibilityValue(privacyPhoneNumber)}
             </span>
           </div>
         </ListItem>
@@ -136,7 +182,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           <div className="multiline-menu-item">
             <span className="title">{lang('LastSeenTitle')}</span>
             <span className="subtitle" dir="auto">
-              {getVisibilityValue(visibilityPrivacyLastSeen)}
+              {getVisibilityValue(privacyLastSeen)}
             </span>
           </div>
         </ListItem>
@@ -149,7 +195,33 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           <div className="multiline-menu-item">
             <span className="title">{lang('PrivacyProfilePhotoTitle')}</span>
             <span className="subtitle" dir="auto">
-              {getVisibilityValue(visibilityPrivacyProfilePhoto)}
+              {getVisibilityValue(privacyProfilePhoto)}
+            </span>
+          </div>
+        </ListItem>
+        <ListItem
+          narrow
+          className="no-icon"
+          // eslint-disable-next-line react/jsx-no-bind
+          onClick={() => onScreenSelect(SettingsScreens.PrivacyPhoneCall)}
+        >
+          <div className="multiline-menu-item">
+            <span className="title">{lang('WhoCanCallMe')}</span>
+            <span className="subtitle" dir="auto">
+              {getVisibilityValue(privacyPhoneCall)}
+            </span>
+          </div>
+        </ListItem>
+        <ListItem
+          narrow
+          className="no-icon"
+          // eslint-disable-next-line react/jsx-no-bind
+          onClick={() => onScreenSelect(SettingsScreens.PrivacyPhoneP2P)}
+        >
+          <div className="multiline-menu-item">
+            <span className="title">{lang('PrivacyP2P')}</span>
+            <span className="subtitle" dir="auto">
+              {getVisibilityValue(privacyPhoneP2P)}
             </span>
           </div>
         </ListItem>
@@ -162,7 +234,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           <div className="multiline-menu-item">
             <span className="title">{lang('PrivacyForwardsTitle')}</span>
             <span className="subtitle" dir="auto">
-              {getVisibilityValue(visibilityPrivacyForwarding)}
+              {getVisibilityValue(privacyForwarding)}
             </span>
           </div>
         </ListItem>
@@ -175,7 +247,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           <div className="multiline-menu-item">
             <span className="title">{lang('WhoCanAddMe')}</span>
             <span className="subtitle" dir="auto">
-              {getVisibilityValue(visibilityPrivacyGroupChats)}
+              {getVisibilityValue(privacyGroupChats)}
             </span>
           </div>
         </ListItem>
@@ -203,22 +275,31 @@ export default memo(withGlobal<OwnProps>(
   (global): StateProps => {
     const {
       settings: {
-        byKey: { hasPassword, isSensitiveEnabled, canChangeSensitive },
+        byKey: {
+          hasPassword, isSensitiveEnabled, canChangeSensitive,
+        },
         privacy,
       },
       blocked,
+      passcode: {
+        hasPasscode,
+      },
     } = global;
 
     return {
       hasPassword,
+      hasPasscode: Boolean(hasPasscode),
       blockedCount: blocked.totalCount,
+      webAuthCount: global.activeWebSessions.orderedHashes.length,
       isSensitiveEnabled,
       canChangeSensitive,
-      visibilityPrivacyPhoneNumber: privacy.phoneNumber?.visibility,
-      visibilityPrivacyLastSeen: privacy.lastSeen?.visibility,
-      visibilityPrivacyProfilePhoto: privacy.profilePhoto?.visibility,
-      visibilityPrivacyForwarding: privacy.forwards?.visibility,
-      visibilityPrivacyGroupChats: privacy.chatInvite?.visibility,
+      privacyPhoneNumber: privacy.phoneNumber,
+      privacyLastSeen: privacy.lastSeen,
+      privacyProfilePhoto: privacy.profilePhoto,
+      privacyForwarding: privacy.forwards,
+      privacyGroupChats: privacy.chatInvite,
+      privacyPhoneCall: privacy.phoneCall,
+      privacyPhoneP2P: privacy.phoneP2P,
     };
   },
 )(SettingsPrivacy));

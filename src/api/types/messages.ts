@@ -1,4 +1,4 @@
-import { ApiGroupCall } from './calls';
+import type { ApiGroupCall, PhoneCallAction } from './calls';
 
 export interface ApiDimensions {
   width: number;
@@ -137,6 +137,8 @@ export interface ApiInvoice {
   text: string;
   title: string;
   photoUrl?: string;
+  photoWidth?: number;
+  photoHeight?: number;
   amount: number;
   currency: string;
   receiptMsgId?: number;
@@ -174,6 +176,16 @@ interface ApiGeoLive {
 
 export type ApiLocation = ApiGeo | ApiVenue | ApiGeoLive;
 
+export type ApiGame = {
+  title: string;
+  description: string;
+  photo?: ApiPhoto;
+  shortName: string;
+  id: string;
+  accessHash: string;
+  document?: ApiDocument;
+};
+
 export type ApiNewPoll = {
   summary: ApiPoll['summary'];
   quiz?: {
@@ -193,6 +205,8 @@ export interface ApiAction {
   currency?: string;
   translationValues: string[];
   call?: Partial<ApiGroupCall>;
+  phoneCall?: PhoneCallAction;
+  score?: number;
 }
 
 export interface ApiWebPage {
@@ -227,6 +241,7 @@ export interface ApiMessageEntity {
   length: number;
   userId?: string;
   url?: string;
+  language?: string;
 }
 
 export enum ApiMessageEntityTypes {
@@ -272,6 +287,7 @@ export interface ApiMessage {
     voice?: ApiVoice;
     invoice?: ApiInvoice;
     location?: ApiLocation;
+    game?: ApiGame;
   };
   date: number;
   isOutgoing: boolean;
@@ -284,6 +300,7 @@ export interface ApiMessage {
   isDeleting?: boolean;
   previousLocalId?: number;
   views?: number;
+  forwards?: number;
   isEdited?: boolean;
   editDate?: number;
   isMentioned?: boolean;
@@ -320,6 +337,8 @@ export interface ApiReactions {
 export interface ApiUserReaction {
   userId: string;
   reaction: string;
+  isBig?: boolean;
+  isUnread?: boolean;
 }
 
 export interface ApiReactionCount {
@@ -363,12 +382,81 @@ export type ApiSponsoredMessage = {
   expiresAt: number;
 };
 
-export interface ApiKeyboardButton {
-  type: 'command' | 'url' | 'callback' | 'requestPoll' | 'requestSelfContact' | 'buy' | 'NOT_SUPPORTED';
+// KeyboardButtons
+
+interface ApiKeyboardButtonSimple {
+  type: 'unsupported' | 'buy' | 'command' | 'requestPhone' | 'game';
   text: string;
-  messageId: number;
-  value?: string;
 }
+
+interface ApiKeyboardButtonReceipt {
+  type: 'receipt';
+  text: string;
+  receiptMessageId: number;
+}
+
+interface ApiKeyboardButtonUrl {
+  type: 'url';
+  text: string;
+  url: string;
+}
+
+interface ApiKeyboardButtonSimpleWebView {
+  type: 'simpleWebView';
+  text: string;
+  url: string;
+}
+
+interface ApiKeyboardButtonWebView {
+  type: 'webView';
+  text: string;
+  url: string;
+}
+
+interface ApiKeyboardButtonCallback {
+  type: 'callback';
+  text: string;
+  data: string;
+}
+
+interface ApiKeyboardButtonRequestPoll {
+  type: 'requestPoll';
+  text: string;
+  isQuiz?: boolean;
+}
+
+interface ApiKeyboardButtonSwitchBotInline {
+  type: 'switchBotInline';
+  text: string;
+  query: string;
+  isSamePeer?: boolean;
+}
+
+interface ApiKeyboardButtonUserProfile {
+  type: 'userProfile';
+  text: string;
+  userId: string;
+}
+
+interface ApiKeyboardButtonUrlAuth {
+  type: 'urlAuth';
+  text: string;
+  url: string;
+  buttonId: number;
+}
+
+export type ApiKeyboardButton = (
+  ApiKeyboardButtonSimple
+  | ApiKeyboardButtonReceipt
+  | ApiKeyboardButtonUrl
+  | ApiKeyboardButtonCallback
+  | ApiKeyboardButtonRequestPoll
+  | ApiKeyboardButtonSwitchBotInline
+  | ApiKeyboardButtonUserProfile
+  | ApiKeyboardButtonWebView
+  | ApiKeyboardButtonSimpleWebView
+  | ApiKeyboardButtonUrlAuth
+);
 
 export type ApiKeyboardButtons = ApiKeyboardButton[][];
 export type ApiReplyKeyboard = {
@@ -385,7 +473,16 @@ export type ApiReportReason = 'spam' | 'violence' | 'pornography' | 'childAbuse'
 | 'copyright' | 'geoIrrelevant' | 'fake' | 'illegalDrugs' | 'personalDetails' | 'other';
 
 export type ApiSendMessageAction = {
-  type: 'cancel' | 'typing' | 'recordAudio' | 'chooseSticker';
+  type: 'cancel' | 'typing' | 'recordAudio' | 'chooseSticker' | 'playingGame';
+};
+
+export type ApiThemeParameters = {
+  bg_color: string;
+  text_color: string;
+  hint_color: string;
+  link_color: string;
+  button_color: string;
+  button_text_color: string;
 };
 
 export const MAIN_THREAD_ID = -1;

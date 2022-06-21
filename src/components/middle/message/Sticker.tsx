@@ -1,12 +1,14 @@
-import React, { FC, useEffect, useRef } from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { useEffect, useRef } from '../../../lib/teact/teact';
 
-import { ApiMessage } from '../../../api/types';
+import type { ApiMessage } from '../../../api/types';
 
 import { NO_STICKER_SET_ID } from '../../../config';
 import { getStickerDimensions } from '../../common/helpers/mediaDimensions';
 import { getMessageMediaFormat, getMessageMediaHash } from '../../../global/helpers';
 import buildClassName from '../../../util/buildClassName';
-import { ObserveFn, useIsIntersecting } from '../../../hooks/useIntersectionObserver';
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import { useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useMedia from '../../../hooks/useMedia';
 import useMediaTransition from '../../../hooks/useMediaTransition';
 import useFlag from '../../../hooks/useFlag';
@@ -116,8 +118,7 @@ const Sticker: FC<OwnProps> = ({
         <AnimatedSticker
           key={mediaHash}
           className={buildClassName('full-media', transitionClassNames)}
-          id={mediaHash}
-          animationData={mediaData}
+          tgsUrl={mediaData}
           size={width}
           play={shouldPlay}
           noLoop={!shouldLoop}

@@ -1,9 +1,9 @@
 import { addCallback } from '../lib/teact/teactn';
 import { addActionHandler, getGlobal } from '../global';
 
-import { GlobalState } from '../global/types';
-import { NotifyException, NotifySettings } from '../types';
-import { ApiChat, ApiChatFolder, ApiUser } from '../api/types';
+import type { GlobalState } from '../global/types';
+import type { NotifyException, NotifySettings } from '../types';
+import type { ApiChat, ApiChatFolder, ApiUser } from '../api/types';
 
 import { ALL_FOLDER_ID, ARCHIVED_FOLDER_ID, DEBUG } from '../config';
 import { selectNotifySettings, selectNotifyExceptions } from '../global/selectors';
@@ -11,7 +11,8 @@ import { selectIsChatMuted } from '../global/helpers';
 import { onIdle, throttle } from './schedulers';
 import { areSortedArraysEqual, unique } from './iteratees';
 import arePropsShallowEqual from './arePropsShallowEqual';
-import { CallbackManager, createCallbackManager } from './callbacks';
+import type { CallbackManager } from './callbacks';
+import { createCallbackManager } from './callbacks';
 
 interface FolderSummary {
   id: number;
@@ -132,6 +133,10 @@ export function getUnreadCounters() {
 
 export function getAllNotificationsCount() {
   return getUnreadCounters()[ALL_FOLDER_ID]?.notificationsCount || 0;
+}
+
+export function getOrderKey(chatId: string) {
+  return prepared.chatSummariesById.get(chatId)!.order;
 }
 
 /* Callback managers */
@@ -414,7 +419,7 @@ function buildChatSummary(
   user?: ApiUser,
 ): ChatSummary {
   const {
-    id, type, lastMessage, isRestricted, isNotJoined, folderId,
+    id, type, lastMessage, isRestricted, isNotJoined, migratedTo, folderId,
     unreadCount, unreadMentionsCount, hasUnreadMark,
     joinDate, draftDate,
   } = chat;
@@ -424,7 +429,7 @@ function buildChatSummary(
   return {
     id,
     type,
-    isListed: Boolean(lastMessage && !isRestricted && !isNotJoined),
+    isListed: Boolean(lastMessage && !isRestricted && !isNotJoined && !migratedTo),
     isArchived: folderId === ARCHIVED_FOLDER_ID,
     isMuted: selectIsChatMuted(chat, notifySettings, notifyExceptions),
     isUnread: Boolean(unreadCount || unreadMentionsCount || hasUnreadMark),

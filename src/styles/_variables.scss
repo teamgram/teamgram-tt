@@ -165,6 +165,9 @@ $color-message-reaction-own-hover: #b5e0a4;
   --color-skeleton-background: rgba(33, 33, 33, 0.15);
   --color-skeleton-foreground: rgba(232, 232, 232, 0.2);
 
+  --color-scrollbar: rgba(90, 90, 90, 0.3);
+  --color-scrollbar-code: rgba(200, 200, 200, 0.3);
+
   --color-telegram-blue: #{$color-primary};
 
   --vh: 1vh;
@@ -196,12 +199,13 @@ $color-message-reaction-own-hover: #b5e0a4;
     --symbol-menu-height: 14.6875rem;
   }
 
+  --z-lock-screen: 3000;
   --z-ui-loader-mask: 2000;
-  --z-notification: 1000;
+  --z-notification: 1520;
   --z-right-column: 900;
   --z-header-menu: 990;
   --z-header-menu-backdrop: 980;
-  --z-modal: 1000;
+  --z-modal: 1510;
   --z-media-viewer: 1500;
   --z-drop-area: 55;
   --z-animation-fade: 50;

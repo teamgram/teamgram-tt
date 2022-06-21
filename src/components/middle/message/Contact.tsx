@@ -1,7 +1,8 @@
-import React, { FC, useCallback } from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { useCallback } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { ApiUser, ApiContact, ApiCountryCode } from '../../../api/types';
+import type { ApiUser, ApiContact, ApiCountryCode } from '../../../api/types';
 
 import { selectUser } from '../../../global/selectors';
 import { formatPhoneNumberWithCode } from '../../../util/phoneNumber';
@@ -20,6 +21,8 @@ type StateProps = {
   phoneCodeList: ApiCountryCode[];
 };
 
+const UNREGISTERED_CONTACT_ID = '0';
+
 const Contact: FC<OwnProps & StateProps> = ({
   contact, user, phoneCodeList,
 }) => {
@@ -31,6 +34,7 @@ const Contact: FC<OwnProps & StateProps> = ({
     phoneNumber,
     userId,
   } = contact;
+  const isRegistered = userId !== UNREGISTERED_CONTACT_ID;
 
   const handleClick = useCallback(() => {
     openChat({ id: userId });
@@ -38,8 +42,8 @@ const Contact: FC<OwnProps & StateProps> = ({
 
   return (
     <div
-      className={buildClassName('Contact', Boolean(userId) && 'interactive')}
-      onClick={userId ? handleClick : undefined}
+      className={buildClassName('Contact', isRegistered && 'interactive')}
+      onClick={isRegistered ? handleClick : undefined}
     >
       <Avatar size="large" user={user} text={firstName || lastName} />
       <div className="contact-info">

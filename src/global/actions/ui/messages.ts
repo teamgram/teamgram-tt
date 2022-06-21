@@ -1,6 +1,7 @@
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
 
-import { ApiMessage, MAIN_THREAD_ID } from '../../../api/types';
+import type { ApiMessage } from '../../../api/types';
+import { MAIN_THREAD_ID } from '../../../api/types';
 import { FocusDirection } from '../../../types';
 
 import {
@@ -42,7 +43,7 @@ import parseMessageInput from '../../../util/parseMessageInput';
 import { getMessageSummaryText, getSenderTitle } from '../../helpers';
 import * as langProvider from '../../../util/langProvider';
 import { copyTextToClipboard } from '../../../util/clipboard';
-import { GlobalState } from '../../types';
+import type { GlobalState } from '../../types';
 
 const FOCUS_DURATION = 1500;
 const FOCUS_NO_HIGHLIGHT_DURATION = FAST_SMOOTH_MAX_DURATION + ANIMATION_END_DELAY;
@@ -342,7 +343,7 @@ addActionHandler('focusNextReply', (global, actions) => {
 addActionHandler('focusMessage', (global, actions, payload) => {
   const {
     chatId, threadId = MAIN_THREAD_ID, messageListType = 'thread', noHighlight, groupedId, groupedChatId,
-    replyMessageId, isResizingContainer,
+    replyMessageId, isResizingContainer, shouldReplaceHistory,
   } = payload!;
 
   let { messageId } = payload!;
@@ -387,7 +388,7 @@ addActionHandler('focusMessage', (global, actions, payload) => {
   const viewportIds = selectViewportIds(global, chatId, threadId);
   if (viewportIds && viewportIds.includes(messageId)) {
     setGlobal(global);
-    actions.openChat({ id: chatId, threadId });
+    actions.openChat({ id: chatId, threadId, shouldReplaceHistory });
     return undefined;
   }
 
@@ -404,13 +405,15 @@ addActionHandler('focusMessage', (global, actions, payload) => {
 
   setGlobal(global);
 
-  actions.openChat({ id: chatId, threadId });
+  actions.openChat({ id: chatId, threadId, shouldReplaceHistory });
   actions.loadViewportMessages();
   return undefined;
 });
 
 addActionHandler('openForwardMenu', (global, actions, payload) => {
-  const { fromChatId, messageIds, groupedId } = payload!;
+  const {
+    fromChatId, messageIds, groupedId, withMyScore,
+  } = payload!;
   let groupedMessageIds;
   if (groupedId) {
     groupedMessageIds = selectMessageIdsByGroupId(global, fromChatId, groupedId);
@@ -421,6 +424,7 @@ addActionHandler('openForwardMenu', (global, actions, payload) => {
       fromChatId,
       messageIds: groupedMessageIds || messageIds,
       isModalShown: true,
+      withMyScore,
     },
   };
 });
@@ -573,17 +577,23 @@ addActionHandler('disableContextMenuHint', (global) => {
 
 addActionHandler('exitMessageSelectMode', exitMessageSelectMode);
 
-addActionHandler('openPollModal', (global) => {
+addActionHandler('openPollModal', (global, actions, payload) => {
+  const { isQuiz } = payload || {};
   return {
     ...global,
-    isPollModalOpen: true,
+    pollModal: {
+      isOpen: true,
+      isQuiz,
+    },
   };
 });
 
 addActionHandler('closePollModal', (global) => {
   return {
     ...global,
-    isPollModalOpen: false,
+    pollModal: {
+      isOpen: false,
+    },
   };
 });
 
@@ -599,7 +609,7 @@ addActionHandler('checkVersionNotification', (global, actions) => {
     chatId: SERVICE_NOTIFICATIONS_USER_ID,
     date: getServerTime(global.serverTimeOffset),
     content: {
-      text: parseMessageInput(versionNotification),
+      text: parseMessageInput(versionNotification, true),
     },
     isOutgoing: false,
   };
@@ -623,6 +633,7 @@ addActionHandler('createServiceNotification', (global, actions, payload) => {
   // The fractional ID is made of the largest integer ID and an incremented fractional part
   const id = Math.floor(maxId) + fractionalPart;
 
+  message.previousLocalId = message.id;
   message.id = id;
 
   const serviceNotification = {

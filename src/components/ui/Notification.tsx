@@ -1,16 +1,17 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from '../../lib/teact/teact';
 
+import type { TextPart } from '../../types';
+
 import { ANIMATION_END_DELAY } from '../../config';
 import useShowTransition from '../../hooks/useShowTransition';
 import buildClassName from '../../util/buildClassName';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
-import { TextPart } from '../common/helpers/renderMessageText';
 
 import Portal from './Portal';
 

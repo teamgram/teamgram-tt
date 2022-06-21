@@ -1,9 +1,11 @@
 import React from '../../../lib/teact/teact';
 
-import {
+import type {
   ApiChat, ApiMessage, ApiUser, ApiGroupCall,
 } from '../../../api/types';
-import { LangFn } from '../../../hooks/useLang';
+import type { TextPart } from '../../../types';
+
+import type { LangFn } from '../../../hooks/useLang';
 import {
   getChatTitle,
   getMessageSummaryText,
@@ -11,7 +13,7 @@ import {
 } from '../../../global/helpers';
 import trimText from '../../../util/trimText';
 import { formatCurrency } from '../../../util/formatCurrency';
-import { TextPart, renderMessageSummary } from './renderMessageText';
+import { renderMessageSummary } from './renderMessageText';
 import renderText from './renderText';
 
 import UserLink from '../UserLink';
@@ -42,15 +44,17 @@ export function renderActionMessageText(
   }
 
   const {
-    text, translationValues, amount, currency, call,
+    text, translationValues, amount, currency, call, score,
   } = message.content.action;
   const content: TextPart[] = [];
   const noLinks = options.asPlainText || options.asTextWithSpoilers;
   const translationKey = text === 'Chat.Service.Group.UpdatedPinnedMessage1' && !targetMessage
     ? 'Message.PinnedGenericMessage'
     : text;
-
   let unprocessed = lang(translationKey, translationValues?.length ? translationValues : undefined);
+  if (translationKey.includes('ScoredInGame')) { // Translation hack for games
+    unprocessed = unprocessed.replace('un1', '%action_origin%').replace('un2', '%message%');
+  }
   let processed: TextPart[];
 
   if (unprocessed.includes('%payment_amount%')) {
@@ -75,6 +79,16 @@ export function renderActionMessageText(
 
   unprocessed = processed.pop() as string;
   content.push(...processed);
+
+  if (unprocessed.includes('%score%')) {
+    processed = processPlaceholder(
+      unprocessed,
+      '%score%',
+      score!.toString(),
+    );
+    unprocessed = processed.pop() as string;
+    content.push(...processed);
+  }
 
   processed = processPlaceholder(
     unprocessed,

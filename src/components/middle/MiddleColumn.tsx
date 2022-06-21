@@ -1,15 +1,16 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, useEffect, useState, memo, useMemo, useCallback,
+  useEffect, useState, memo, useMemo, useCallback,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { ApiChatBannedRights, MAIN_THREAD_ID } from '../../api/types';
-import {
+import type { ApiChatBannedRights } from '../../api/types';
+import { MAIN_THREAD_ID } from '../../api/types';
+import type {
   MessageListType,
-  MessageList as GlobalMessageList,
   ActiveEmojiInteraction,
 } from '../../global/types';
-import { ThemeKey } from '../../types';
+import type { ThemeKey } from '../../types';
 
 import {
   MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN,
@@ -48,7 +49,6 @@ import {
 } from '../../global/helpers';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import buildClassName from '../../util/buildClassName';
-import { createMessageHash } from '../../util/routing';
 import useCustomBackground from '../../hooks/useCustomBackground';
 import useWindowSize from '../../hooks/useWindowSize';
 import usePrevDuringAnimation from '../../hooks/usePrevDuringAnimation';
@@ -62,7 +62,7 @@ import calculateMiddleFooterTransforms from './helpers/calculateMiddleFooterTran
 import Transition from '../ui/Transition';
 import MiddleHeader from './MiddleHeader';
 import MessageList from './MessageList';
-import ScrollDownButton from './ScrollDownButton';
+import FloatingActionButtons from './FloatingActionButtons';
 import Composer from './composer/Composer';
 import Button from '../ui/Button';
 import MobileSearch from './MobileSearch.async';
@@ -75,6 +75,7 @@ import EmojiInteractionAnimation from './EmojiInteractionAnimation.async';
 import ReactorListModal from './ReactorListModal.async';
 
 import './MiddleColumn.scss';
+import styles from './MiddleColumn.module.scss';
 
 type StateProps = {
   chatId?: string;
@@ -104,7 +105,6 @@ type StateProps = {
   animationLevel?: number;
   shouldSkipHistoryAnimations?: boolean;
   currentTransitionKey: number;
-  messageLists?: GlobalMessageList[];
   isChannel?: boolean;
   areChatSettingsLoaded?: boolean;
   canSubscribe?: boolean;
@@ -126,7 +126,6 @@ const MiddleColumn: FC<StateProps> = ({
   messageListType,
   isPrivate,
   isPinnedMessageList,
-  messageLists,
   canPost,
   currentUserBannedRights,
   defaultBannedRights,
@@ -158,6 +157,7 @@ const MiddleColumn: FC<StateProps> = ({
 }) => {
   const {
     openChat,
+    openPreviousChat,
     unpinAllMessages,
     loadUser,
     loadChatSettings,
@@ -293,8 +293,8 @@ const MiddleColumn: FC<StateProps> = ({
   const handleUnpinAllMessages = useCallback(() => {
     unpinAllMessages({ chatId });
     closeUnpinModal();
-    openChat({ id: chatId });
-  }, [unpinAllMessages, openChat, closeUnpinModal, chatId]);
+    openPreviousChat();
+  }, [unpinAllMessages, chatId, closeUnpinModal, openPreviousChat]);
 
   const handleTabletFocus = useCallback(() => {
     openChat({ id: chatId });
@@ -316,10 +316,16 @@ const MiddleColumn: FC<StateProps> = ({
 
   const className = buildClassName(
     renderingHasTools && 'has-header-tools',
-    customBackground && 'custom-bg-image',
-    backgroundColor && 'custom-bg-color',
-    customBackground && isBackgroundBlurred && 'blurred',
     MASK_IMAGE_DISABLED ? 'mask-image-disabled' : 'mask-image-enabled',
+  );
+
+  const bgClassName = buildClassName(
+    styles.background,
+    styles.withTransition,
+    customBackground && styles.customBgImage,
+    backgroundColor && styles.customBgColor,
+    customBackground && isBackgroundBlurred && styles.blurred,
+    isRightColumnShown && styles.withRightColumn,
   );
 
   const messagingDisabledClassName = buildClassName(
@@ -347,21 +353,15 @@ const MiddleColumn: FC<StateProps> = ({
     renderingCanPost && isNotchShown && !isSelectModeActive && 'with-notch',
   );
 
-  const closeChat = () => {
-    openChat({ id: undefined }, { forceSyncOnIOs: true });
-  };
+  useHistoryBack({
+    isActive: isSelectModeActive,
+    onBack: exitMessageSelectMode,
+  });
 
-  useHistoryBack(
-    renderingChatId && renderingThreadId,
-    closeChat,
-    undefined,
-    undefined,
-    undefined,
-    messageLists?.map(createMessageHash) || [],
-  );
-
-  useHistoryBack(isMobileSearchActive, closeLocalTextSearch);
-  useHistoryBack(isSelectModeActive, exitMessageSelectMode);
+  useHistoryBack({
+    isActive: isMobileSearchActive,
+    onBack: closeLocalTextSearch,
+  });
 
   const isMessagingDisabled = Boolean(
     !isPinnedMessageList && !renderingCanPost && !renderingCanRestartBot && !renderingCanStartBot
@@ -391,7 +391,7 @@ const MiddleColumn: FC<StateProps> = ({
       onClick={(IS_TABLET_COLUMN_LAYOUT && isLeftColumnShown) ? handleTabletFocus : undefined}
     >
       <div
-        id="middle-column-bg"
+        className={bgClassName}
         style={customBackgroundValue ? `--custom-background: ${customBackgroundValue}` : undefined}
       />
       <div id="middle-column-portals" />
@@ -514,7 +514,7 @@ const MiddleColumn: FC<StateProps> = ({
               </div>
             </Transition>
 
-            <ScrollDownButton
+            <FloatingActionButtons
               isShown={renderingIsFabShown}
               canPost={renderingCanPost}
               withExtraShift={withExtraShift}
@@ -573,7 +573,7 @@ export default memo(withGlobal(
       isSeenByModalOpen: Boolean(global.seenByModal),
       isReactorListModalOpen: Boolean(global.reactorModal),
       animationLevel: global.settings.byKey.animationLevel,
-      currentTransitionKey: Math.max(0, global.messages.messageLists.length - 1),
+      currentTransitionKey: Math.max(0, messageLists.length - 1),
       activeEmojiInteractions,
       lastSyncTime,
     };
@@ -620,7 +620,6 @@ export default memo(withGlobal(
       ),
       pinnedMessagesCount: pinnedIds ? pinnedIds.length : 0,
       shouldSkipHistoryAnimations: global.shouldSkipHistoryAnimations,
-      messageLists,
       isChannel,
       canSubscribe,
       canStartBot,

@@ -1,14 +1,17 @@
-import {
+import type {
   GroupCallConnectionState, GroupCallParticipant as TypeGroupCallParticipant,
+} from '../../../lib/secret-sauce';
+import {
   IS_SCREENSHARE_SUPPORTED, switchCameraInput, toggleSpeaker,
 } from '../../../lib/secret-sauce';
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useMemo, useRef, useState,
+  memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 import '../../../global/actions/calls';
 
-import { IAnchorPosition } from '../../../types';
+import type { IAnchorPosition } from '../../../types';
 
 import {
   IS_ANDROID,
@@ -16,6 +19,7 @@ import {
   IS_REQUEST_FULLSCREEN_SUPPORTED,
   IS_SINGLE_COLUMN_LAYOUT,
 } from '../../../util/environment';
+import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 import buildClassName from '../../../util/buildClassName';
 import {
   selectGroupCall,
@@ -47,7 +51,7 @@ export type OwnProps = {
 };
 
 type StateProps = {
-  isGroupCallPanelHidden: boolean;
+  isCallPanelVisible: boolean;
   connectionState: GroupCallConnectionState;
   title?: string;
   meParticipant?: TypeGroupCallParticipant;
@@ -59,7 +63,7 @@ type StateProps = {
 
 const GroupCall: FC<OwnProps & StateProps> = ({
   groupCallId,
-  isGroupCallPanelHidden,
+  isCallPanelVisible,
   connectionState,
   isSpeakerEnabled,
   title,
@@ -246,7 +250,7 @@ const GroupCall: FC<OwnProps & StateProps> = ({
 
   return (
     <Modal
-      isOpen={!isGroupCallPanelHidden && !isLeaving}
+      isOpen={!isCallPanelVisible && !isLeaving}
       onClose={toggleGroupCallPanel}
       className={buildClassName(
         'GroupCall',
@@ -287,7 +291,7 @@ const GroupCall: FC<OwnProps & StateProps> = ({
           >
             {IS_SCREENSHARE_SUPPORTED && !shouldRaiseHand && (
               <MenuItem
-                icon="share-screen"
+                icon="share-screen-outlined"
                 onClick={toggleGroupCallPresentation}
               >
                 {lang(hasPresentation ? 'VoipChatStopScreenCapture' : 'VoipChatStartScreenCapture')}
@@ -335,7 +339,11 @@ const GroupCall: FC<OwnProps & StateProps> = ({
           <div className="video-buttons">
             {hasVideo && (IS_ANDROID || IS_IOS) && (
               <button className="smaller-button" onClick={switchCameraInput}>
-                <AnimatedIcon name="CameraFlip" playSegment={CAMERA_FLIP_PLAY_SEGMENT} size={24} />
+                <AnimatedIcon
+                  tgsUrl={LOCAL_TGS_URLS.CameraFlip}
+                  playSegment={CAMERA_FLIP_PLAY_SEGMENT}
+                  size={24}
+                />
               </button>
             )}
             <button
@@ -405,7 +413,7 @@ export default memo(withGlobal<OwnProps>(
       isSpeakerEnabled: !isSpeakerDisabled,
       participantsCount,
       meParticipant: selectGroupCallParticipant(global, groupCallId, global.currentUserId!),
-      isGroupCallPanelHidden: Boolean(global.groupCalls.isGroupCallPanelHidden),
+      isCallPanelVisible: Boolean(global.isCallPanelVisible),
       isAdmin: selectIsAdminInActiveGroupCall(global),
       participants,
     };

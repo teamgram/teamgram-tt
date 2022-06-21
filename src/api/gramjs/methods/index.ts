@@ -3,6 +3,10 @@ export {
 } from './client';
 
 export {
+  reportPeer, reportProfilePhoto, changeSessionSettings, changeSessionTtl,
+} from './account';
+
+export {
   provideAuthPhoneNumber, provideAuthCode, provideAuthPassword, provideAuthRegistration, restartAuth, restartAuthWithQr,
 } from './auth';
 
@@ -24,7 +28,7 @@ export {
   fetchWebPagePreview, editMessage, forwardMessages, loadPollOptionResults, sendPollVote, findFirstMessageIdAfterDate,
   fetchPinnedMessages, fetchScheduledHistory, sendScheduledMessages, rescheduleMessage, deleteScheduledMessages,
   reportMessages, sendMessageAction, fetchSeenBy, fetchSponsoredMessages, viewSponsoredMessage, fetchSendAs,
-  saveDefaultSendAs,
+  saveDefaultSendAs, fetchUnreadReactions, readAllReactions, fetchUnreadMentions, readAllMentions,
 } from './messages';
 
 export {
@@ -36,6 +40,7 @@ export {
   fetchStickerSets, fetchRecentStickers, fetchFavoriteStickers, fetchFeaturedStickers,
   faveSticker, fetchStickers, fetchSavedGifs, saveGif, searchStickers, installStickerSet, uninstallStickerSet,
   searchGifs, fetchAnimatedEmojis, fetchStickersForEmoji, fetchEmojiKeywords, fetchAnimatedEmojiEffects,
+  removeRecentSticker, clearRecentStickers,
 } from './symbols';
 
 export {
@@ -49,6 +54,7 @@ export {
   updateProfile, checkUsername, updateUsername, fetchBlockedContacts, blockContact, unblockContact,
   updateProfilePhoto, uploadProfilePhoto, fetchWallpapers, uploadWallpaper,
   fetchAuthorizations, terminateAuthorization, terminateAllAuthorizations,
+  fetchWebAuthorizations, terminateWebAuthorization, terminateAllWebAuthorizations,
   fetchNotificationExceptions, fetchNotificationSettings, updateContactSignUpNotification, updateNotificationSettings,
   fetchLanguages, fetchLangPack, fetchPrivacySettings, setPrivacySettings, registerDevice, unregisterDevice,
   updateIsOnline, fetchContentSettings, updateContentSettings, fetchLangStrings, fetchCountryList, fetchAppConfig,
@@ -60,6 +66,8 @@ export {
 
 export {
   answerCallbackButton, fetchTopInlineBots, fetchInlineBot, fetchInlineBotResults, sendInlineBotResult, startBot,
+  requestWebView, requestSimpleWebView, sendWebViewData, prolongWebView, loadAttachMenuBots, toggleBotInAttachMenu,
+  requestBotUrlAuth, requestLinkUrlAuth, acceptBotUrlAuth, acceptLinkUrlAuth,
 } from './bots';
 
 export {
@@ -70,6 +78,7 @@ export {
   getGroupCall, joinGroupCall, discardGroupCall, createGroupCall,
   editGroupCallTitle, editGroupCallParticipant, exportGroupCallInvite, fetchGroupCallParticipants,
   joinGroupCallPresentation, leaveGroupCall, leaveGroupCallPresentation, toggleGroupCallStartSubscription,
+  requestCall, getDhConfig, confirmCall, sendSignalingData, acceptCall, discardCall, setCallRating, receivedCall,
 } from './calls';
 
 export {
@@ -77,4 +86,12 @@ export {
   setDefaultReaction, fetchMessageReactions, sendWatchingEmojiInteraction,
 } from './reactions';
 
-export { fetchChannelStatistics, fetchGroupStatistics, fetchStatisticsAsyncGraph } from './statistics';
+export {
+  fetchChannelStatistics, fetchGroupStatistics, fetchMessageStatistics,
+  fetchMessagePublicForwards, fetchStatisticsAsyncGraph,
+} from './statistics';
+
+export {
+  acceptPhoneCall, confirmPhoneCall, requestPhoneCall, decodePhoneCallData, createPhoneCallState,
+  destroyPhoneCallState, encodePhoneCallData,
+} from './phoneCallState';

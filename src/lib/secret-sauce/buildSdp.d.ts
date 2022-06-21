@@ -1,4 +1,4 @@
-import { GroupCallTransport, PayloadType, RTPExtension, SsrcGroup } from './types';
+import type { GroupCallTransport, PayloadType, RTPExtension, SsrcGroup } from './types';
 export declare type Conference = {
     sessionId: number;
     audioExtensions: RTPExtension[];
@@ -17,5 +17,5 @@ export declare type Ssrc = {
     isPresentation?: boolean;
     sourceGroups: SsrcGroup[];
 };
-declare const _default: (conference: Conference, isAnswer?: boolean, isPresentation?: boolean) => string;
+declare const _default: (conference: Conference, isAnswer?: boolean, isPresentation?: boolean, isP2p?: boolean) => string;
 export default _default;

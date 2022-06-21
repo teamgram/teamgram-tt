@@ -1,10 +1,12 @@
-import { addActionHandler } from '../../index';
+import { addActionHandler, setGlobal } from '../../index';
 
-import { ApiError } from '../../../api/types';
+import type { ApiError } from '../../../api/types';
 
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TABLET_COLUMN_LAYOUT } from '../../../util/environment';
 import getReadableErrorText from '../../../util/getReadableErrorText';
-import { selectCurrentMessageList } from '../../selectors';
+import {
+  selectBot, selectChatMessage, selectCurrentMessageList, selectIsTrustedBot,
+} from '../../selectors';
 import generateIdFor from '../../../util/generateIdFor';
 
 const MAX_STORED_EMOJIS = 18; // Represents two rows of recent emojis
@@ -112,6 +114,20 @@ addActionHandler('toggleStatistics', (global) => {
   return {
     ...global,
     isStatisticsShown: !global.isStatisticsShown,
+    statistics: {
+      ...global.statistics,
+      currentMessageId: undefined,
+    },
+  };
+});
+
+addActionHandler('toggleMessageStatistics', (global, action, payload) => {
+  return {
+    ...global,
+    statistics: {
+      ...global.statistics,
+      currentMessageId: payload?.messageId,
+    },
   };
 });
 
@@ -145,7 +161,7 @@ addActionHandler('addRecentEmoji', (global, action, payload) => {
 });
 
 addActionHandler('addRecentSticker', (global, action, payload) => {
-  const { sticker } = payload!;
+  const { sticker } = payload;
   const { recent } = global.stickers;
   if (!recent) {
     return {
@@ -170,6 +186,19 @@ addActionHandler('addRecentSticker', (global, action, payload) => {
       recent: {
         ...recent,
         stickers: newStickers,
+      },
+    },
+  };
+});
+
+addActionHandler('reorderStickerSets', (global, action, payload) => {
+  const { order } = payload;
+  return {
+    ...global,
+    stickers: {
+      ...global.stickers,
+      added: {
+        setIds: order,
       },
     },
   };
@@ -259,5 +288,47 @@ addActionHandler('closeHistoryCalendar', (global) => {
   return {
     ...global,
     historyCalendarSelectedAt: undefined,
+  };
+});
+
+addActionHandler('openGame', (global, actions, payload) => {
+  const { url, chatId, messageId } = payload;
+
+  const message = selectChatMessage(global, chatId, messageId);
+  if (!message) return;
+
+  const botId = message.viaBotId || message.senderId;
+  const bot = botId && selectBot(global, botId);
+  if (!bot) return;
+
+  if (!selectIsTrustedBot(global, bot)) {
+    setGlobal({
+      ...global,
+      botTrustRequest: {
+        bot,
+        type: 'game',
+        onConfirm: {
+          action: 'openGame',
+          payload,
+        },
+      },
+    });
+    return;
+  }
+
+  setGlobal({
+    ...global,
+    openedGame: {
+      url,
+      chatId,
+      messageId,
+    },
+  });
+});
+
+addActionHandler('closeGame', (global) => {
+  return {
+    ...global,
+    openedGame: undefined,
   };
 });

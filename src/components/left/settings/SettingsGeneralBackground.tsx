@@ -1,10 +1,12 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useEffect, useCallback, useRef,
+  memo, useEffect, useCallback, useRef,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { SettingsScreens, ThemeKey, UPLOADING_WALLPAPER_SLUG } from '../../../types';
-import { ApiWallpaper } from '../../../api/types';
+import type { ThemeKey } from '../../../types';
+import { SettingsScreens, UPLOADING_WALLPAPER_SLUG } from '../../../types';
+import type { ApiWallpaper } from '../../../api/types';
 
 import { DARK_THEME_PATTERN_COLOR, DEFAULT_PATTERN_COLOR } from '../../../config';
 import { throttle } from '../../../util/schedulers';
@@ -108,7 +110,10 @@ const SettingsGeneralBackground: FC<OwnProps & StateProps> = ({
 
   const lang = useLang();
 
-  useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.GeneralChatBackground);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   const isUploading = loadedWallpapers?.[0] && loadedWallpapers[0].slug === UPLOADING_WALLPAPER_SLUG;
 

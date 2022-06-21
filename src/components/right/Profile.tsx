@@ -1,10 +1,10 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, useCallback, useEffect, useMemo, useRef, useState, memo,
+  useCallback, useEffect, useMemo, useRef, useState, memo,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import {
-  MAIN_THREAD_ID,
+import type {
   ApiMessage,
   ApiChat,
   ApiChatMember,
@@ -12,7 +12,13 @@ import {
   ApiUserStatus,
 } from '../../api/types';
 import {
-  NewChatMembersProgress, ISettings, MediaViewerOrigin, ProfileState, ProfileTabType, SharedMediaType, AudioOrigin,
+  MAIN_THREAD_ID,
+} from '../../api/types';
+import type {
+  ISettings, ProfileState, ProfileTabType, SharedMediaType,
+} from '../../types';
+import {
+  NewChatMembersProgress, MediaViewerOrigin, AudioOrigin,
 } from '../../types';
 
 import {
@@ -23,7 +29,7 @@ import {
 } from '../../config';
 import { IS_TOUCH_ENV } from '../../util/environment';
 import {
-  getHasAdminRight, isChatAdmin, isChatChannel, isChatGroup, isUserBot, isUserId,
+  getHasAdminRight, isChatAdmin, isChatChannel, isChatGroup, isUserBot, isUserId, isUserRightBanned,
 } from '../../global/helpers';
 import {
   selectChatMessages,
@@ -522,7 +528,8 @@ export default memo(withGlobal<OwnProps>(
     const members = chat?.fullInfo?.members;
     const areMembersHidden = hasMembersTab && chat
       && (chat.isForbidden || (chat.fullInfo && !chat.fullInfo.canViewMembers));
-    const canAddMembers = hasMembersTab && chat && (getHasAdminRight(chat, 'inviteUsers') || chat.isCreator);
+    const canAddMembers = hasMembersTab && chat
+      && (getHasAdminRight(chat, 'inviteUsers') || !isUserRightBanned(chat, 'inviteUsers') || chat.isCreator);
     const canDeleteMembers = hasMembersTab && chat && (getHasAdminRight(chat, 'banUsers') || chat.isCreator);
     const activeDownloadIds = selectActiveDownloadIds(global, chatId);
 

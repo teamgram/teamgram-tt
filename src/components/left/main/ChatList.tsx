@@ -1,10 +1,9 @@
-import React, {
-  FC, memo, useMemo, useEffect,
-} from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useMemo, useEffect } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
-import { SettingsScreens } from '../../../types';
-import { FolderEditDispatch } from '../../../hooks/reducers/useFoldersReducer';
+import type { SettingsScreens } from '../../../types';
+import type { FolderEditDispatch } from '../../../hooks/reducers/useFoldersReducer';
 
 import {
   ALL_FOLDER_ID,
@@ -14,11 +13,12 @@ import {
 } from '../../../config';
 import { IS_MAC_OS, IS_PWA } from '../../../util/environment';
 import { mapValues } from '../../../util/iteratees';
-import { getPinnedChatsCount } from '../../../util/folderManager';
+import { getPinnedChatsCount, getOrderKey } from '../../../util/folderManager';
 import usePrevious from '../../../hooks/usePrevious';
 import useInfiniteScroll from '../../../hooks/useInfiniteScroll';
 import { useFolderManagerForOrderedIds } from '../../../hooks/useFolderManager';
 import { useChatAnimationType } from './hooks';
+import { useHotkeys } from '../../../hooks/useHotkeys';
 
 import InfiniteScroll from '../../ui/InfiniteScroll';
 import Loading from '../../ui/Loading';
@@ -74,14 +74,26 @@ const ChatList: FC<OwnProps> = ({
 
   const [viewportIds, getMore] = useInfiniteScroll(undefined, orderedIds, undefined, CHAT_LIST_SLICE);
 
-  // Support <Cmd>+<Digit> and <Alt>+<Up/Down> to navigate between chats
+  // Support <Alt>+<Up/Down> to navigate between chats
+  useHotkeys(isActive && orderedIds?.length ? {
+    'alt+ArrowUp': (e: KeyboardEvent) => {
+      e.preventDefault();
+      openNextChat({ targetIndexDelta: -1, orderedIds });
+    },
+    'alt+ArrowDown': (e: KeyboardEvent) => {
+      e.preventDefault();
+      openNextChat({ targetIndexDelta: 1, orderedIds });
+    },
+  } : undefined);
+
+  // Support <Cmd>+<Digit> to navigate between chats
   useEffect(() => {
-    if (!isActive || !orderedIds) {
+    if (!isActive || !orderedIds || !IS_PWA) {
       return undefined;
     }
 
     function handleKeyDown(e: KeyboardEvent) {
-      if (IS_PWA && ((IS_MAC_OS && e.metaKey) || (!IS_MAC_OS && e.ctrlKey)) && e.code.startsWith('Digit')) {
+      if (((IS_MAC_OS && e.metaKey) || (!IS_MAC_OS && e.ctrlKey)) && e.code.startsWith('Digit')) {
         const [, digit] = e.code.match(/Digit(\d)/) || [];
         if (!digit) return;
 
@@ -89,14 +101,6 @@ const ChatList: FC<OwnProps> = ({
         if (position > orderedIds!.length - 1) return;
 
         openChat({ id: orderedIds![position], shouldReplaceHistory: true });
-      }
-
-      if (e.altKey) {
-        const targetIndexDelta = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : undefined;
-        if (!targetIndexDelta) return;
-
-        e.preventDefault();
-        openNextChat({ targetIndexDelta, orderedIds });
       }
     }
 
@@ -113,18 +117,22 @@ const ChatList: FC<OwnProps> = ({
     const viewportOffset = orderedIds!.indexOf(viewportIds![0]);
     const pinnedCount = getPinnedChatsCount(resolvedFolderId) || 0;
 
-    return viewportIds!.map((id, i) => (
-      <Chat
-        key={id}
-        teactOrderKey={i}
-        chatId={id}
-        isPinned={viewportOffset + i < pinnedCount}
-        folderId={folderId}
-        animationType={getAnimationType(id)}
-        orderDiff={orderDiffById[id]}
-        style={`top: ${(viewportOffset + i) * CHAT_HEIGHT_PX}px;`}
-      />
-    ));
+    return viewportIds!.map((id, i) => {
+      const isPinned = viewportOffset + i < pinnedCount;
+
+      return (
+        <Chat
+          key={id}
+          teactOrderKey={isPinned ? i : getOrderKey(id)}
+          chatId={id}
+          isPinned={isPinned}
+          folderId={folderId}
+          animationType={getAnimationType(id)}
+          orderDiff={orderDiffById[id]}
+          style={`top: ${(viewportOffset + i) * CHAT_HEIGHT_PX}px;`}
+        />
+      );
+    });
   }
 
   return (

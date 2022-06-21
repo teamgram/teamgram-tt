@@ -2,7 +2,7 @@ import {
   addActionHandler, getActions, getGlobal, setGlobal,
 } from '../../index';
 
-import { ApiUser } from '../../../api/types';
+import type { ApiUser } from '../../../api/types';
 import { ManagementProgress } from '../../../types';
 
 import { debounce, throttle } from '../../../util/schedulers';
@@ -11,8 +11,17 @@ import { isUserBot, isUserId } from '../../helpers';
 import { callApi } from '../../../api/gramjs';
 import { selectChat, selectCurrentMessageList, selectUser } from '../../selectors';
 import {
-  addChats, addUsers, closeNewContactDialog, replaceUserStatuses, updateChat, updateManagementProgress, updateUser,
-  updateUsers, updateUserSearch, updateUserSearchFetchingStatus,
+  addChats,
+  addUsers,
+  addUserStatuses,
+  closeNewContactDialog,
+  replaceUserStatuses,
+  updateChat,
+  updateManagementProgress,
+  updateUser,
+  updateUsers,
+  updateUserSearch,
+  updateUserSearchFetchingStatus,
 } from '../../reducers';
 import { getServerTime } from '../../../util/serverTime';
 import * as langProvider from '../../../util/langProvider';
@@ -37,25 +46,23 @@ addActionHandler('loadUser', async (global, actions, payload) => {
   const { userId } = payload!;
   const user = selectUser(global, userId);
   if (!user) {
-    return undefined;
+    return;
   }
 
   const result = await callApi('fetchUsers', { users: [user] });
   if (!result) {
-    return undefined;
+    return;
   }
 
   const { users, userStatusesById } = result;
 
   global = getGlobal();
-
   global = updateUsers(global, buildCollectionByKey(users, 'id'));
   global = replaceUserStatuses(global, {
     ...global.users.statusesById,
     ...userStatusesById,
   });
-
-  return global;
+  setGlobal(global);
 });
 
 addActionHandler('loadTopUsers', (global) => {
@@ -78,13 +85,13 @@ addActionHandler('loadCommonChats', async (global) => {
   const { chatId } = selectCurrentMessageList(global) || {};
   const user = chatId ? selectUser(global, chatId) : undefined;
   if (!user || isUserBot(user) || user.commonChats?.isFullyLoaded) {
-    return undefined;
+    return;
   }
 
   const maxId = user.commonChats?.maxId;
   const result = await callApi('fetchCommonChats', user.id, user.accessHash!, maxId);
   if (!result) {
-    return undefined;
+    return;
   }
 
   const { chats, chatIds, isFullyLoaded } = result;
@@ -101,7 +108,7 @@ addActionHandler('loadCommonChats', async (global) => {
     },
   });
 
-  return global;
+  setGlobal(global);
 });
 
 addActionHandler('updateContact', (global, actions, payload) => {
@@ -147,6 +154,7 @@ async function loadContactList() {
 
   let global = addUsers(getGlobal(), buildCollectionByKey(contactList.users, 'id'));
   global = addChats(global, buildCollectionByKey(contactList.chats, 'id'));
+  global = addUserStatuses(global, contactList.userStatusesById);
 
   // Sort contact list by Last Name (or First Name), with latin names being placed first
   const getCompareString = (user: ApiUser) => (user.lastName || user.firstName || '');
@@ -196,12 +204,11 @@ async function updateContact(
     });
   }
 
-  global = getGlobal();
   if (result) {
     getActions().loadChatSettings({ chatId: userId });
 
     setGlobal(updateUser(
-      global,
+      getGlobal(),
       user.id,
       {
         firstName,
@@ -210,6 +217,7 @@ async function updateContact(
     ));
   }
 
+  global = getGlobal();
   global = updateManagementProgress(global, ManagementProgress.Complete);
   global = closeNewContactDialog(global);
   setGlobal(global);
@@ -235,12 +243,12 @@ addActionHandler('loadProfilePhotos', async (global, actions, payload) => {
   const user = isPrivate ? selectUser(global, profileId) : undefined;
   const chat = !isPrivate ? selectChat(global, profileId) : undefined;
   if (!user && !chat) {
-    return undefined;
+    return;
   }
 
   const result = await callApi('fetchProfilePhotos', user, chat);
   if (!result || !result.photos) {
-    return undefined;
+    return;
   }
 
   global = getGlobal();
@@ -252,7 +260,7 @@ addActionHandler('loadProfilePhotos', async (global, actions, payload) => {
     global = updateChat(global, profileId, { photos: result.photos });
   }
 
-  return global;
+  setGlobal(global);
 });
 
 addActionHandler('setUserSearchQuery', (global, actions, payload) => {
@@ -269,18 +277,17 @@ addActionHandler('importContact', async (global, actions, payload) => {
   const { phoneNumber: phone, firstName, lastName } = payload!;
 
   const result = await callApi('importContact', { phone, firstName, lastName });
+  if (!result) {
+    actions.showNotification({
+      message: langProvider.getTranslation('Contacts.PhoneNumber.NotRegistred'),
+    });
 
-  if (result) {
-    actions.openChat({ id: result });
-
-    return closeNewContactDialog(getGlobal());
+    return;
   }
 
-  actions.showNotification({
-    message: langProvider.getTranslation('Contacts.PhoneNumber.NotRegistred'),
-  });
+  actions.openChat({ id: result });
 
-  return undefined;
+  setGlobal(closeNewContactDialog(getGlobal()));
 });
 
 addActionHandler('reportSpam', (global, actions, payload) => {

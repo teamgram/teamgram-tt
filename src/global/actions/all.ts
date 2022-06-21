@@ -10,6 +10,7 @@ import './ui/misc';
 import './ui/payments';
 import './ui/calls';
 import './ui/mediaViewer';
+import './ui/passcode';
 
 import './api/initial';
 import './api/chats';
@@ -19,6 +20,7 @@ import './api/globalSearch';
 import './api/localSearch';
 import './api/management';
 import './api/sync';
+import './api/accounts';
 import './api/users';
 import './api/bots';
 import './api/settings';

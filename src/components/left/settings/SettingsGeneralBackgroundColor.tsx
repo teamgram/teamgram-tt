@@ -1,16 +1,18 @@
-import { ChangeEvent, MutableRefObject, RefObject } from 'react';
+import type { ChangeEvent, MutableRefObject, RefObject } from 'react';
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useRef, useState,
+  memo, useCallback, useEffect, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { SettingsScreens, ThemeKey } from '../../../types';
+import type { ThemeKey } from '../../../types';
 
 import { pick } from '../../../util/iteratees';
 import {
   getPatternColor, hex2rgb, hsb2rgb, rgb2hex, rgb2hsb,
 } from '../../../util/colors';
-import { captureEvents, RealTouchEvent } from '../../../util/captureEvents';
+import type { RealTouchEvent } from '../../../util/captureEvents';
+import { captureEvents } from '../../../util/captureEvents';
 import { selectTheme } from '../../../global/selectors';
 import useFlag from '../../../hooks/useFlag';
 import buildClassName from '../../../util/buildClassName';
@@ -22,7 +24,6 @@ import './SettingsGeneralBackgroundColor.scss';
 
 type OwnProps = {
   isActive?: boolean;
-  onScreenSelect: (screen: SettingsScreens) => void;
   onReset: () => void;
 };
 
@@ -52,7 +53,6 @@ const PREDEFINED_COLORS = [
 
 const SettingsGeneralBackground: FC<OwnProps & StateProps> = ({
   isActive,
-  onScreenSelect,
   onReset,
   theme,
   backgroundColor,
@@ -205,7 +205,10 @@ const SettingsGeneralBackground: FC<OwnProps & StateProps> = ({
     isDragging && 'is-dragging',
   );
 
-  useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.GeneralChatBackgroundColor);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   return (
     <div ref={containerRef} className={className}>

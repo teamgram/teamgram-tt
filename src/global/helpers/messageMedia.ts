@@ -1,5 +1,16 @@
+import type {
+  ApiAudio,
+  ApiMessage,
+  ApiMessageSearchType,
+  ApiPhoto,
+  ApiVideo,
+  ApiDimensions,
+  ApiLocation,
+  ApiGame,
+  ApiDocument,
+} from '../../api/types';
 import {
-  ApiAudio, ApiMediaFormat, ApiMessage, ApiMessageSearchType, ApiPhoto, ApiVideo, ApiDimensions, ApiLocation,
+  ApiMediaFormat,
 } from '../../api/types';
 
 import { IS_OPUS_SUPPORTED, IS_PROGRESSIVE_SUPPORTED, IS_SAFARI } from '../../util/environment';
@@ -127,6 +138,10 @@ export function getMessageMediaThumbDataUri(message: ApiMessage) {
   return getMessageMediaThumbnail(message)?.dataUri;
 }
 
+export function getDocumentMediaHash(document: ApiDocument) {
+  return `document${document.id}`;
+}
+
 export function buildStaticMapHash(
   geo: ApiLocation['geo'],
   width: number,
@@ -252,6 +267,26 @@ export function getMessageMediaHash(
   return undefined;
 }
 
+export function getGamePreviewPhotoHash(game: ApiGame) {
+  const { photo } = game;
+
+  if (photo) {
+    return `photo${photo.id}?size=x`;
+  }
+
+  return undefined;
+}
+
+export function getGamePreviewVideoHash(game: ApiGame) {
+  const { document } = game;
+
+  if (document) {
+    return `document${document.id}`;
+  }
+
+  return undefined;
+}
+
 function getVideoOrAudioBaseHash(media: ApiAudio | ApiVideo, base: string) {
   if (IS_PROGRESSIVE_SUPPORTED && IS_SAFARI) {
     return `${base}?fileSize=${media.size}&mimeType=${media.mimeType}`;
@@ -267,15 +302,10 @@ export function getAudioHasCover(media: ApiAudio) {
 export function getMessageMediaFormat(
   message: ApiMessage, target: Target,
 ): ApiMediaFormat {
-  const {
-    sticker, video, audio, voice,
-  } = message.content;
-
+  const { video, audio, voice } = message.content;
   const fullVideo = video || getMessageWebPageVideo(message);
 
-  if (sticker && target === 'inline' && sticker.isLottie) {
-    return ApiMediaFormat.Lottie;
-  } else if (fullVideo && IS_PROGRESSIVE_SUPPORTED && (
+  if (fullVideo && IS_PROGRESSIVE_SUPPORTED && (
     target === 'viewerFull' || target === 'inline'
   )) {
     return ApiMediaFormat.Progressive;

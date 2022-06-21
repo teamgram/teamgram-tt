@@ -1,8 +1,10 @@
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
 
-import {
-  ApiMessage, ApiPollResult, ApiThreadInfo, MAIN_THREAD_ID,
+import type {
+  ApiChat,
+  ApiMessage, ApiPollResult, ApiReactions, ApiThreadInfo,
 } from '../../../api/types';
+import { MAIN_THREAD_ID } from '../../../api/types';
 
 import { unique } from '../../../util/iteratees';
 import { areDeepEqual } from '../../../util/areDeepEqual';
@@ -19,7 +21,7 @@ import {
   deleteChatScheduledMessages,
   updateThreadUnreadFromForwardedMessage,
 } from '../../reducers';
-import { ActiveEmojiInteraction, GlobalActions, GlobalState } from '../../types';
+import type { ActiveEmojiInteraction, GlobalActions, GlobalState } from '../../types';
 import {
   selectChatMessage,
   selectChatMessages,
@@ -45,8 +47,10 @@ import {
   selectLocalAnimatedEmoji,
 } from '../../selectors';
 import {
-  getMessageContent, isUserId, isMessageLocal, getMessageText, checkIfReactionAdded,
+  getMessageContent, isUserId, isMessageLocal, getMessageText, checkIfHasUnreadReactions,
 } from '../../helpers';
+import { onTickEnd } from '../../../util/schedulers';
+import { updateUnreadReactions } from '../../reducers/reactions';
 
 const ANIMATION_DELAY = 350;
 
@@ -67,8 +71,6 @@ addActionHandler('apiUpdate', (global, actions, update) => {
           message.threadInfo,
         );
       }
-
-      setGlobal(global);
 
       const newMessage = selectChatMessage(global, chatId, id)!;
 
@@ -103,8 +105,10 @@ addActionHandler('apiUpdate', (global, actions, update) => {
           }, ANIMATION_DELAY);
         }
       } else {
-        setGlobal(updateChatLastMessage(getGlobal(), chatId, newMessage));
+        global = updateChatLastMessage(global, chatId, newMessage);
       }
+
+      setGlobal(global);
 
       // Edge case: New message in an old (not loaded) chat.
       if (!selectIsChatListed(global, chatId)) {
@@ -158,9 +162,8 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       const { chatId, id, message } = update;
 
       const currentMessage = selectChatMessage(global, chatId, id);
-      if (!currentMessage) {
-        return;
-      }
+
+      const chat = selectChat(global, chatId);
 
       global = updateWithLocalMedia(global, chatId, id, message);
 
@@ -173,15 +176,21 @@ addActionHandler('apiUpdate', (global, actions, update) => {
           message.threadInfo,
         );
       }
-      global = updateChatLastMessage(global, chatId, newMessage);
+      if (currentMessage) {
+        global = updateChatLastMessage(global, chatId, newMessage);
+      }
+
+      if (message.reactions && chat) {
+        global = updateReactions(global, chatId, id, message.reactions, chat, message.isOutgoing, currentMessage);
+      }
 
       setGlobal(global);
 
       // Scroll down if bot message height is changed with an updated inline keyboard.
       // A drawback: this will scroll down even if the previous scroll was not at bottom.
-      const chat = selectChat(global, chatId);
       if (
-        chat
+        currentMessage
+        && chat
         && !message.isOutgoing
         && chat.lastMessage?.id === message.id
         && selectIsChatWithBot(global, chat)
@@ -482,33 +491,66 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       const { chatId, id, reactions } = update;
       const message = selectChatMessage(global, chatId, id);
       const chat = selectChat(global, update.chatId);
-      const currentReactions = message?.reactions;
 
-      // `updateMessageReactions` happens with an interval, so we try to avoid redundant global state updates
-      if (currentReactions && areDeepEqual(reactions, currentReactions)) {
-        return;
-      }
+      if (!chat || !message) return;
 
-      // Only notify about added reactions, not removed ones
-      const shouldNotify = checkIfReactionAdded(currentReactions, reactions, global.currentUserId);
-
-      global = updateChatMessage(global, chatId, id, { reactions: update.reactions });
-
-      if (shouldNotify) {
-        const newMessage = selectChatMessage(global, chatId, id);
-        if (!chat || !newMessage) return;
-        notifyAboutMessage({
-          chat,
-          message: newMessage,
-          isReaction: true,
-        });
-      }
-
-      setGlobal(global);
+      setGlobal(updateReactions(global, chatId, id, reactions, chat, message.isOutgoing, message));
       break;
     }
   }
 });
+
+function updateReactions(
+  global: GlobalState,
+  chatId: string,
+  id: number,
+  reactions: ApiReactions,
+  chat: ApiChat,
+  isOutgoing?: boolean,
+  message?: ApiMessage,
+) {
+  const currentReactions = message?.reactions;
+
+  // `updateMessageReactions` happens with an interval, so we try to avoid redundant global state updates
+  if (currentReactions && areDeepEqual(reactions, currentReactions)) {
+    return global;
+  }
+
+  global = updateChatMessage(global, chatId, id, { reactions });
+
+  if (!isOutgoing) {
+    return global;
+  }
+
+  const alreadyHasUnreadReaction = chat.unreadReactions?.includes(id);
+
+  // Only notify about added reactions, not removed ones
+  if (checkIfHasUnreadReactions(global, reactions) && !alreadyHasUnreadReaction) {
+    global = updateUnreadReactions(global, chatId, {
+      unreadReactionsCount: (chat?.unreadReactionsCount || 0) + 1,
+      unreadReactions: [...(chat?.unreadReactions || []), id],
+    });
+
+    const newMessage = selectChatMessage(global, chatId, id);
+
+    if (!chat || !newMessage) return global;
+
+    onTickEnd(() => {
+      notifyAboutMessage({
+        chat,
+        message: newMessage,
+        isReaction: true,
+      });
+    });
+  } else if (alreadyHasUnreadReaction) {
+    global = updateUnreadReactions(global, chatId, {
+      unreadReactionsCount: (chat?.unreadReactionsCount || 1) - 1,
+      unreadReactions: chat?.unreadReactions?.filter((i) => i !== id),
+    });
+  }
+
+  return global;
+}
 
 function updateWithLocalMedia(
   global: GlobalState, chatId: string, id: number, message: Partial<ApiMessage>, isScheduled = false,
@@ -667,8 +709,6 @@ function deleteMessages(chatId: string | undefined, ids: number[], actions: Glob
         global = updateChatLastMessage(global, chatId, newLastMessage, true);
       }
     });
-
-    setGlobal(global);
 
     actions.requestChatUpdate({ chatId });
 

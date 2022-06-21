@@ -1,11 +1,16 @@
+// eslint-disable-next-line import/no-cycle
 export { default as MediaViewer } from '../components/mediaViewer/MediaViewer';
 
 export { default as ForwardPicker } from '../components/main/ForwardPicker';
 export { default as Dialogs } from '../components/main/Dialogs';
 export { default as Notifications } from '../components/main/Notifications';
 export { default as SafeLinkModal } from '../components/main/SafeLinkModal';
+export { default as UrlAuthModal } from '../components/main/UrlAuthModal';
 export { default as HistoryCalendar } from '../components/main/HistoryCalendar';
 export { default as NewContactModal } from '../components/main/NewContactModal';
+export { default as WebAppModal } from '../components/main/WebAppModal';
+export { default as BotTrustModal } from '../components/main/BotTrustModal';
+export { default as BotAttachModal } from '../components/main/BotAttachModal';
 
 export { default as CalendarModal } from '../components/common/CalendarModal';
 export { default as DeleteMessageModal } from '../components/common/DeleteMessageModal';
@@ -49,12 +54,15 @@ export { default as EmojiTooltip } from '../components/middle/composer/EmojiTool
 export { default as InlineBotTooltip } from '../components/middle/composer/InlineBotTooltip';
 export { default as SendAsMenu } from '../components/middle/composer/SendAsMenu';
 
+// eslint-disable-next-line import/no-cycle
 export { default as RightSearch } from '../components/right/RightSearch';
 // eslint-disable-next-line import/no-cycle
 export { default as StickerSearch } from '../components/right/StickerSearch';
 // eslint-disable-next-line import/no-cycle
 export { default as GifSearch } from '../components/right/GifSearch';
+// eslint-disable-next-line import/no-cycle
 export { default as Statistics } from '../components/right/statistics/Statistics';
+export { default as MessageStatistics } from '../components/right/statistics/MessageStatistics';
 export { default as PollResults } from '../components/right/PollResults';
 
 export { default as Management } from '../components/right/management/Management';

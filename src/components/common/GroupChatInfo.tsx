@@ -1,11 +1,10 @@
-import { MouseEvent as ReactMouseEvent } from 'react';
-import React, {
-  FC, useEffect, useCallback, memo,
-} from '../../lib/teact/teact';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { FC } from '../../lib/teact/teact';
+import React, { useEffect, useCallback, memo } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { ApiChat, ApiTypingStatus } from '../../api/types';
-import { GlobalState } from '../../global/types';
+import type { ApiChat, ApiTypingStatus } from '../../api/types';
+import type { GlobalState } from '../../global/types';
 import { MediaViewerOrigin } from '../../types';
 
 import {
@@ -15,12 +14,14 @@ import {
 } from '../../global/helpers';
 import { selectChat, selectChatMessages, selectChatOnlineCount } from '../../global/selectors';
 import renderText from './helpers/renderText';
-import useLang, { LangFn } from '../../hooks/useLang';
+import type { LangFn } from '../../hooks/useLang';
+import useLang from '../../hooks/useLang';
 
 import Avatar from './Avatar';
 import VerifiedIcon from './VerifiedIcon';
 import TypingStatus from './TypingStatus';
 import DotAnimation from './DotAnimation';
+import FakeIcon from './FakeIcon';
 
 type OwnProps = {
   chatId: string;
@@ -144,6 +145,7 @@ const GroupChatInfo: FC<OwnProps & StateProps> = ({
         <div className="title">
           <h3 dir="auto">{renderText(getChatTitle(lang, chat))}</h3>
           {chat.isVerified && <VerifiedIcon />}
+          {chat.fakeType && <FakeIcon fakeType={chat.fakeType} />}
         </div>
         {renderStatusOrTyping()}
       </div>

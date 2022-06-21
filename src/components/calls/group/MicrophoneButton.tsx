@@ -1,9 +1,11 @@
-import { GroupCallConnectionState } from '../../../lib/secret-sauce';
+import type { GroupCallConnectionState } from '../../../lib/secret-sauce';
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useEffect, useMemo, useRef, useState,
+  memo, useEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
+import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 import buildClassName from '../../../util/buildClassName';
 import { vibrateShort } from '../../../util/vibrate';
 import usePrevious from '../../../hooks/usePrevious';
@@ -51,7 +53,7 @@ const MicrophoneButton: FC<StateProps> = ({
 
   useEffect(() => {
     if (prevShouldRaiseHand && !shouldRaiseHand) {
-      playGroupCallSound('allowTalk');
+      playGroupCallSound({ sound: 'allowTalk' });
     }
   }, [playGroupCallSound, prevShouldRaiseHand, shouldRaiseHand]);
 
@@ -146,7 +148,7 @@ const MicrophoneButton: FC<StateProps> = ({
         onMouseUp={handleMouseUpMute}
       >
         <AnimatedIcon
-          name={animatedIconName}
+          tgsUrl={LOCAL_TGS_URLS[animatedIconName]}
           size={ICON_SIZE}
           playSegment={playSegment}
         />

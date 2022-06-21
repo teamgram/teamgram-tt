@@ -1,10 +1,11 @@
-import { ChangeEvent } from 'react';
+import type { ChangeEvent } from 'react';
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, useEffect, useRef, memo, useState, useCallback,
+  useEffect, useRef, memo, useState, useCallback,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { IAnchorPosition, ISettings } from '../../../types';
+import type { IAnchorPosition, ISettings } from '../../../types';
 
 import { EDITABLE_INPUT_ID } from '../../../config';
 import { selectReplyingToId } from '../../../global/selectors';
@@ -203,34 +204,20 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     openTextFormatter();
   }
 
-  function handleMouseDown(event: React.MouseEvent<HTMLDivElement, MouseEvent>) {
-    function handleMouseUp() {
-      processSelection();
-
-      event.target.removeEventListener('mouseup', handleMouseUp);
-    }
-
-    if (event.button !== 2) {
-      event.target.addEventListener('mouseup', handleMouseUp);
+  function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
+    if (e.button !== 2) {
+      e.target.addEventListener('mouseup', processSelection, { once: true });
       return;
     }
 
-    if (isContextMenuOpenRef.current === true) {
+    if (isContextMenuOpenRef.current) {
       return;
     }
 
     isContextMenuOpenRef.current = true;
 
-    function closeContextMenuMouseListener() {
-      setTimeout(() => {
-        isContextMenuOpenRef.current = false;
-      }, CONTEXT_MENU_CLOSE_DELAY_MS);
-
-      window.removeEventListener('mouseup', closeContextMenuMouseListener);
-    }
-
-    function closeContextMenuKeyListener(e: KeyboardEvent) {
-      if (e.key !== 'Esc' && e.key !== 'Escape') {
+    function handleCloseContextMenu(e2: KeyboardEvent | MouseEvent) {
+      if (e2 instanceof KeyboardEvent && e2.key !== 'Esc' && e2.key !== 'Escape') {
         return;
       }
 
@@ -238,20 +225,15 @@ const MessageInput: FC<OwnProps & StateProps> = ({
         isContextMenuOpenRef.current = false;
       }, CONTEXT_MENU_CLOSE_DELAY_MS);
 
-      window.removeEventListener('keydown', closeContextMenuKeyListener);
+      window.removeEventListener('keydown', handleCloseContextMenu);
+      window.removeEventListener('mousedown', handleCloseContextMenu);
     }
 
-    document.addEventListener('mousedown', closeContextMenuMouseListener);
-    document.addEventListener('keydown', closeContextMenuKeyListener);
+    document.addEventListener('mousedown', handleCloseContextMenu);
+    document.addEventListener('keydown', handleCloseContextMenu);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    function handleKeyUp() {
-      processSelection();
-
-      e.target.removeEventListener('keyup', handleKeyUp);
-    }
-
     if (!html.length && (e.metaKey || e.ctrlKey)) {
       const targetIndexDelta = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : undefined;
       if (targetIndexDelta) {
@@ -279,7 +261,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
       e.preventDefault();
       editLastMessage();
     } else {
-      e.target.addEventListener('keyup', handleKeyUp);
+      e.target.addEventListener('keyup', processSelection, { once: true });
     }
   }
 
@@ -425,7 +407,7 @@ export default memo(withGlobal<OwnProps>(
     return {
       messageSendKeyCombo,
       replyingToId: chatId && threadId ? selectReplyingToId(global, chatId, threadId) : undefined,
-      noTabCapture: global.isPollModalOpen || global.payment.isPaymentModalOpen,
+      noTabCapture: global.pollModal.isOpen || global.payment.isPaymentModalOpen,
     };
   },
 )(MessageInput));

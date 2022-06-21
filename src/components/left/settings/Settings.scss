@@ -40,8 +40,12 @@
   overflow-y: auto;
   @include overflow-y-overlay();
 
-  &.no-border, &.two-fa {
+  &.no-border, &.two-fa, &.local-passcode, &.password-form {
     border-top: none;
+  }
+
+  &.password-form .input-group.error label::first-letter {
+    text-transform: uppercase;
   }
 
   &.infinite-scroll {
@@ -86,22 +90,7 @@
 }
 
 .settings-content-icon {
-  width: 5rem;
-  height: 5rem;
   margin-bottom: 2.5rem;
-  position: relative;
-
-  .AnimatedSticker {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-
-    &.hidden {
-      display: none;
-    }
-  }
 }
 
 .settings-main-menu {
@@ -152,7 +141,9 @@
     margin-top: -0.5rem;
     margin-bottom: 1.5rem;
 
-    .settings-content.two-fa & {
+    .settings-content.two-fa &,
+    .settings-content.password-form &,
+    .settings-content.local-passcode & {
       font-size: 1rem;
     }
 
@@ -191,6 +182,7 @@
 
       &.full-size {
         width: 100%;
+        overflow: hidden;
       }
 
       .date {

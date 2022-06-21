@@ -1,7 +1,7 @@
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
 
-import { GlobalActions } from '../../types';
-import {
+import type { GlobalActions } from '../../types';
+import type {
   ApiAttachment,
   ApiChat,
   ApiMessage,
@@ -11,6 +11,8 @@ import {
   ApiSticker,
   ApiUser,
   ApiVideo,
+} from '../../../api/types';
+import {
   MAIN_THREAD_ID,
   MESSAGE_DELETED,
 } from '../../../api/types';
@@ -19,6 +21,8 @@ import { LoadMoreDirection } from '../../../types';
 import {
   MAX_MEDIA_FILES_FOR_ALBUM,
   MESSAGE_LIST_SLICE,
+  RE_TG_LINK,
+  RE_TME_LINK,
   SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../../config';
 import { IS_IOS } from '../../../util/environment';
@@ -65,8 +69,12 @@ import {
   selectSendAs,
   selectSponsoredMessage,
 } from '../../selectors';
-import { debounce, rafPromise } from '../../../util/schedulers';
-import { isServiceNotificationMessage } from '../../helpers';
+import { debounce, onTickEnd, rafPromise } from '../../../util/schedulers';
+import { getMessageOriginalId, isServiceNotificationMessage } from '../../helpers';
+import { getTranslation } from '../../../util/langProvider';
+import { ensureProtocol } from '../../../util/ensureProtocol';
+
+const AUTOLOGIN_TOKEN_KEY = 'autologin_token';
 
 const uploadProgressCallbacks = new Map<number, ApiOnProgress>();
 
@@ -113,7 +121,9 @@ addActionHandler('loadViewportMessages', (global, actions, payload) => {
     }
 
     if (!areAllLocal) {
-      void loadViewportMessages(chat, threadId, offsetId, LoadMoreDirection.Around, isOutlying, isBudgetPreload);
+      onTickEnd(() => {
+        void loadViewportMessages(chat, threadId, offsetId, LoadMoreDirection.Around, isOutlying, isBudgetPreload);
+      });
     }
   } else {
     const offsetId = direction === LoadMoreDirection.Backwards ? viewportIds[0] : viewportIds[viewportIds.length - 1];
@@ -127,7 +137,9 @@ addActionHandler('loadViewportMessages', (global, actions, payload) => {
       global = safeReplaceViewportIds(global, chatId, threadId, newViewportIds);
     }
 
-    void loadWithBudget(actions, areAllLocal, isOutlying, isBudgetPreload, chat, threadId, direction, offsetId);
+    onTickEnd(() => {
+      void loadWithBudget(actions, areAllLocal, isOutlying, isBudgetPreload, chat, threadId, direction, offsetId);
+    });
 
     if (isBudgetPreload) {
       return undefined;
@@ -149,8 +161,6 @@ async function loadWithBudget(
   }
 
   if (!isBudgetPreload) {
-    // Let reducer return and update global
-    await Promise.resolve();
     actions.loadViewportMessages({
       chatId: chat.id, threadId, direction, isBudgetPreload: true,
     });
@@ -164,23 +174,21 @@ addActionHandler('loadMessage', async (global, actions, payload) => {
 
   const chat = selectChat(global, chatId);
   if (!chat) {
-    return undefined;
+    return;
   }
 
   const message = await loadMessage(chat, messageId, replyOriginForId);
   if (message && threadUpdate) {
     const { lastMessageId, isDeleting } = threadUpdate;
 
-    return updateThreadUnreadFromForwardedMessage(
+    setGlobal(updateThreadUnreadFromForwardedMessage(
       getGlobal(),
       message,
       chatId,
       lastMessageId,
       isDeleting,
-    );
+    ));
   }
-
-  return undefined;
 });
 
 addActionHandler('sendMessage', (global, actions, payload) => {
@@ -227,7 +235,7 @@ addActionHandler('sendMessage', (global, actions, payload) => {
     const {
       text, entities, attachments, ...commonParams
     } = params;
-    const groupedAttachments = split(attachments, MAX_MEDIA_FILES_FOR_ALBUM);
+    const groupedAttachments = split(attachments as ApiAttachment[], MAX_MEDIA_FILES_FOR_ALBUM);
     for (let i = 0; i < groupedAttachments.length; i++) {
       const [firstAttachment, ...restAttachments] = groupedAttachments[i];
       const groupedId = `${Date.now()}${i}`;
@@ -299,7 +307,7 @@ addActionHandler('editMessage', (global, actions, payload) => {
 addActionHandler('cancelSendingMessage', (global, actions, payload) => {
   const { chatId, messageId } = payload!;
   const message = selectChatMessage(global, chatId, messageId);
-  const progressCallback = message && uploadProgressCallbacks.get(message.previousLocalId || message.id);
+  const progressCallback = message && uploadProgressCallbacks.get(getMessageOriginalId(message));
   if (progressCallback) {
     cancelApiProgress(progressCallback);
   }
@@ -460,8 +468,8 @@ addActionHandler('reportMessages', async (global, actions, payload) => {
 
   actions.showNotification({
     message: result
-      ? 'Thank you! Your report will be reviewed by our team.'
-      : 'Error occured while submiting report. Please, try again later.',
+      ? getTranslation('ReportPeer.AlertSuccess')
+      : 'An error occurred while submitting your report. Please, try again later.',
   });
 });
 
@@ -574,7 +582,9 @@ addActionHandler('loadPollOptionResults', (global, actions, payload) => {
 });
 
 addActionHandler('forwardMessages', (global, action, payload) => {
-  const { fromChatId, messageIds, toChatId } = global.forwardMessages;
+  const {
+    fromChatId, messageIds, toChatId, withMyScore,
+  } = global.forwardMessages;
   const fromChat = fromChatId ? selectChat(global, fromChatId) : undefined;
   const toChat = toChatId ? selectChat(global, toChatId) : undefined;
   const messages = fromChatId && messageIds
@@ -600,6 +610,7 @@ addActionHandler('forwardMessages', (global, action, payload) => {
       isSilent,
       scheduledAt,
       sendAs,
+      withMyScore,
     });
   }
 
@@ -958,17 +969,17 @@ addActionHandler('loadSeenBy', async (global, actions, payload) => {
   const { chatId, messageId } = payload;
   const chat = selectChat(global, chatId);
   if (!chat) {
-    return undefined;
+    return;
   }
 
   const result = await callApi('fetchSeenBy', { chat, messageId });
   if (!result) {
-    return undefined;
+    return;
   }
 
-  return updateChatMessage(getGlobal(), chatId, messageId, {
+  setGlobal(updateChatMessage(getGlobal(), chatId, messageId, {
     seenByUserIds: result,
-  });
+  }));
 });
 
 addActionHandler('saveDefaultSendAs', (global, actions, payload) => {
@@ -993,21 +1004,23 @@ addActionHandler('loadSendAs', async (global, actions, payload) => {
   const { chatId } = payload;
   const chat = selectChat(global, chatId);
   if (!chat) {
-    return undefined;
+    return;
   }
 
   const result = await callApi('fetchSendAs', { chat });
   if (!result) {
-    return updateChat(getGlobal(), chatId, {
+    setGlobal(updateChat(getGlobal(), chatId, {
       sendAsIds: [],
-    });
+    }));
+
+    return;
   }
 
   global = getGlobal();
   global = addUsers(global, buildCollectionByKey(result.users, 'id'));
   global = addChats(global, buildCollectionByKey(result.chats, 'id'));
   global = updateChat(global, chatId, { sendAsIds: result.ids });
-  return global;
+  setGlobal(global);
 });
 
 async function loadPinnedMessages(chat: ApiChat) {
@@ -1050,19 +1063,19 @@ addActionHandler('loadSponsoredMessages', async (global, actions, payload) => {
   const { chatId } = payload;
   const chat = selectChat(global, chatId);
   if (!chat) {
-    return undefined;
+    return;
   }
 
   const result = await callApi('fetchSponsoredMessages', { chat });
   if (!result) {
-    return undefined;
+    return;
   }
 
   global = getGlobal();
   global = updateSponsoredMessage(global, chatId, result.messages[0]);
   global = addUsers(global, buildCollectionByKey(result.users, 'id'));
   global = addChats(global, buildCollectionByKey(result.chats, 'id'));
-  return global;
+  setGlobal(global);
 });
 
 addActionHandler('viewSponsoredMessage', (global, actions, payload) => {
@@ -1074,6 +1087,111 @@ addActionHandler('viewSponsoredMessage', (global, actions, payload) => {
   }
 
   void callApi('viewSponsoredMessage', { chat, random: message.randomId });
+});
+
+addActionHandler('fetchUnreadMentions', async (global, actions, payload) => {
+  const { chatId, offsetId } = payload;
+  const chat = selectChat(global, chatId);
+  if (!chat) return;
+
+  const result = await callApi('fetchUnreadMentions', { chat, offsetId });
+
+  if (!result) return;
+
+  const { messages, chats, users } = result;
+
+  const byId = buildCollectionByKey(messages, 'id');
+  const ids = Object.keys(byId).map(Number);
+
+  global = getGlobal();
+  global = addChatMessagesById(global, chat.id, byId);
+  global = addUsers(global, buildCollectionByKey(users, 'id'));
+  global = addChats(global, buildCollectionByKey(chats, 'id'));
+  global = updateChat(global, chatId, {
+    unreadMentions: [...(chat.unreadMentions || []), ...ids],
+  });
+
+  setGlobal(global);
+});
+
+addActionHandler('markMentionsRead', (global, actions, payload) => {
+  const { messageIds } = payload;
+
+  const chat = selectCurrentChat(global);
+  if (!chat) return;
+
+  if (!chat.unreadMentionsCount) {
+    return;
+  }
+
+  const unreadMentionsCount = chat.unreadMentionsCount - messageIds.length;
+  const unreadMentions = (chat.unreadMentions || []).filter((id) => !messageIds.includes(id));
+  global = updateChat(global, chat.id, {
+    unreadMentions,
+  });
+
+  setGlobal(global);
+
+  if (!unreadMentions.length && unreadMentionsCount) {
+    actions.fetchUnreadMentions({
+      chatId: chat.id,
+      offsetId: Math.max(...messageIds),
+    });
+  }
+
+  actions.markMessagesRead({ messageIds });
+});
+
+addActionHandler('focusNextMention', (global, actions) => {
+  const chat = selectCurrentChat(global);
+
+  if (!chat?.unreadMentions) return;
+
+  actions.focusMessage({ chatId: chat.id, messageId: chat.unreadMentions[0] });
+});
+
+addActionHandler('readAllMentions', (global) => {
+  const chat = selectCurrentChat(global);
+  if (!chat) return undefined;
+
+  callApi('readAllMentions', { chat });
+
+  return updateChat(global, chat.id, {
+    unreadMentionsCount: undefined,
+    unreadMentions: undefined,
+  });
+});
+
+addActionHandler('openUrl', (global, actions, payload) => {
+  const { url, shouldSkipModal } = payload;
+  const urlWithProtocol = ensureProtocol(url)!;
+
+  if (urlWithProtocol.match(RE_TME_LINK) || urlWithProtocol.match(RE_TG_LINK)) {
+    actions.openTelegramLink({ url });
+    return;
+  }
+
+  const { appConfig } = global;
+  if (appConfig) {
+    const parsedUrl = new URL(urlWithProtocol);
+
+    if (appConfig.autologinDomains.includes(parsedUrl.hostname)) {
+      parsedUrl.searchParams.set(AUTOLOGIN_TOKEN_KEY, appConfig.autologinToken);
+      window.open(parsedUrl.href, '_blank', 'noopener');
+      return;
+    }
+
+    if (appConfig.urlAuthDomains.includes(parsedUrl.hostname)) {
+      actions.requestLinkUrlAuth({ url });
+      return;
+    }
+  }
+
+  if (!shouldSkipModal) {
+    actions.toggleSafeLinkModal({ url: urlWithProtocol });
+  } else {
+    window.open(urlWithProtocol, '_blank', 'noopener');
+  }
 });
 
 function countSortedIds(ids: number[], from: number, to: number) {

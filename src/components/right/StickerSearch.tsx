@@ -1,5 +1,6 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, memo, useEffect, useRef, useState,
+  memo, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
@@ -57,7 +58,10 @@ const StickerSearch: FC<OwnProps & StateProps> = ({
     });
   });
 
-  useHistoryBack(isActive, onClose);
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
 
   function renderContent() {
     if (query === undefined) {

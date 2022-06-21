@@ -1,11 +1,8 @@
-import { ChangeEvent } from 'react';
-import useDebounce from '../../../hooks/useDebounce';
-import React, {
-  FC, memo, useCallback, useEffect,
-} from '../../../lib/teact/teact';
+import type { ChangeEvent } from 'react';
+import useRunDebounced from '../../../hooks/useRunDebounced';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useCallback, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
-
-import { SettingsScreens } from '../../../types';
 
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -16,7 +13,6 @@ import RangeSlider from '../../ui/RangeSlider';
 
 type OwnProps = {
   isActive?: boolean;
-  onScreenSelect: (screen: SettingsScreens) => void;
   onReset: () => void;
 };
 
@@ -35,7 +31,6 @@ type StateProps = {
 
 const SettingsNotifications: FC<OwnProps & StateProps> = ({
   isActive,
-  onScreenSelect,
   onReset,
   hasPrivateChatsNotifications,
   hasPrivateChatsMessagePreview,
@@ -59,7 +54,7 @@ const SettingsNotifications: FC<OwnProps & StateProps> = ({
     loadNotificationSettings();
   }, [loadNotificationSettings]);
 
-  const runDebounced = useDebounce(500, true);
+  const runDebounced = useRunDebounced(500, true);
 
   const handleSettingsChange = useCallback((
     e: ChangeEvent<HTMLInputElement>,
@@ -136,7 +131,10 @@ const SettingsNotifications: FC<OwnProps & StateProps> = ({
 
   const lang = useLang();
 
-  useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.Notifications);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   return (
     <div className="settings-content custom-scroll">

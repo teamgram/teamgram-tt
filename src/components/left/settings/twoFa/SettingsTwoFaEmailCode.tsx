@@ -1,19 +1,19 @@
+import type { FC } from '../../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useRef, useState,
+  memo, useCallback, useEffect, useRef, useState,
 } from '../../../../lib/teact/teact';
 import { withGlobal } from '../../../../global';
 
-import { ApiSticker } from '../../../../api/types';
-import { SettingsScreens } from '../../../../types';
+import type { ApiSticker } from '../../../../api/types';
 
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../../../util/environment';
 import { selectAnimatedEmoji } from '../../../../global/selectors';
 import useLang from '../../../../hooks/useLang';
 import useHistoryBack from '../../../../hooks/useHistoryBack';
 
-import AnimatedEmoji from '../../../common/AnimatedEmoji';
 import InputText from '../../../ui/InputText';
 import Loading from '../../../ui/Loading';
+import AnimatedIconFromSticker from '../../../common/AnimatedIconFromSticker';
 
 type OwnProps = {
   isLoading?: boolean;
@@ -21,9 +21,7 @@ type OwnProps = {
   clearError: NoneToVoidFunction;
   onSubmit: (hint: string) => void;
   isActive?: boolean;
-  onScreenSelect: (screen: SettingsScreens) => void;
   onReset: () => void;
-  screen: SettingsScreens;
 };
 
 type StateProps = {
@@ -32,6 +30,7 @@ type StateProps = {
 };
 
 const FOCUS_DELAY_TIMEOUT_MS = IS_SINGLE_COLUMN_LAYOUT ? 550 : 400;
+const ICON_SIZE = 160;
 
 const SettingsTwoFaEmailCode: FC<OwnProps & StateProps> = ({
   animatedEmoji,
@@ -41,9 +40,7 @@ const SettingsTwoFaEmailCode: FC<OwnProps & StateProps> = ({
   clearError,
   onSubmit,
   isActive,
-  onScreenSelect,
   onReset,
-  screen,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const inputRef = useRef<HTMLInputElement>(null);
@@ -60,7 +57,10 @@ const SettingsTwoFaEmailCode: FC<OwnProps & StateProps> = ({
 
   const lang = useLang();
 
-  useHistoryBack(isActive, onReset, onScreenSelect, screen);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     if (error && clearError) {
@@ -80,7 +80,7 @@ const SettingsTwoFaEmailCode: FC<OwnProps & StateProps> = ({
   return (
     <div className="settings-content two-fa custom-scroll">
       <div className="settings-content-header no-border">
-        <AnimatedEmoji sticker={animatedEmoji} size="large" />
+        <AnimatedIconFromSticker sticker={animatedEmoji} size={ICON_SIZE} className="settings-content-icon" />
       </div>
 
       <div className="settings-item pt-0">

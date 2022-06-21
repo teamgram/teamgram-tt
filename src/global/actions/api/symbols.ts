@@ -1,9 +1,11 @@
-import { addActionHandler, getGlobal, setGlobal } from '../../index';
+import {
+  addActionHandler, getActions, getGlobal, setGlobal,
+} from '../../index';
 
-import { ApiSticker } from '../../../api/types';
-import { LangCode } from '../../../types';
+import type { ApiSticker } from '../../../api/types';
+import type { LangCode } from '../../../types';
 import { callApi } from '../../../api/gramjs';
-import { pause, throttle } from '../../../util/schedulers';
+import { onTickEnd, pause, throttle } from '../../../util/schedulers';
 import {
   updateStickerSets,
   updateStickerSet,
@@ -14,6 +16,7 @@ import {
 } from '../../reducers';
 import searchWords from '../../../util/searchWords';
 import { selectStickerSet } from '../../selectors';
+import { getTranslation } from '../../../util/langProvider';
 
 const ADDED_SETS_THROTTLE = 200;
 const ADDED_SETS_THROTTLE_CHUNK = 10;
@@ -34,7 +37,7 @@ addActionHandler('loadAddedStickers', async (global, actions) => {
 
   for (let i = 0; i < addedSetIds.length; i++) {
     const id = addedSetIds[i];
-    if (cached[id].stickers) {
+    if (cached[id]?.stickers) {
       continue; // Already loaded
     }
     actions.loadStickers({ stickerSetId: id });
@@ -60,12 +63,12 @@ addActionHandler('loadGreetingStickers', async (global) => {
 
   const greeting = await callApi('fetchStickersForEmoji', { emoji: '👋⭐️', hash });
   if (!greeting) {
-    return undefined;
+    return;
   }
 
   global = getGlobal();
 
-  return {
+  setGlobal({
     ...global,
     stickers: {
       ...global.stickers,
@@ -74,7 +77,7 @@ addActionHandler('loadGreetingStickers', async (global) => {
         stickers: greeting.stickers.filter((sticker) => sticker.emoji === '👋'),
       },
     },
-  };
+  });
 });
 
 addActionHandler('loadFeaturedStickers', (global) => {
@@ -89,13 +92,19 @@ addActionHandler('loadStickers', (global, actions, payload) => {
   if (!stickerSetAccessHash && !stickerSetShortName) {
     const stickerSet = selectStickerSet(global, stickerSetId);
     if (!stickerSet) {
+      if (global.openedStickerSetShortName === stickerSetShortName) {
+        setGlobal({
+          ...global,
+          openedStickerSetShortName: undefined,
+        });
+      }
       return;
     }
 
     stickerSetAccessHash = stickerSet.accessHash;
   }
 
-  void loadStickers(stickerSetId, stickerSetAccessHash, stickerSetShortName);
+  void loadStickers(stickerSetId, stickerSetAccessHash!, stickerSetShortName);
 });
 
 addActionHandler('loadAnimatedEmojis', () => {
@@ -112,14 +121,14 @@ addActionHandler('saveGif', async (global, actions, payload) => {
   const { gif, shouldUnsave } = payload!;
   const result = await callApi('saveGif', { gif, shouldUnsave });
   if (!result) {
-    return undefined;
+    return;
   }
 
   global = getGlobal();
   const gifs = global.gifs.saved.gifs?.filter(({ id }) => id !== gif.id) || [];
   const newGifs = shouldUnsave ? gifs : [gif, ...gifs];
 
-  return {
+  setGlobal({
     ...global,
     gifs: {
       ...global.gifs,
@@ -128,7 +137,7 @@ addActionHandler('saveGif', async (global, actions, payload) => {
         gifs: newGifs,
       },
     },
-  };
+  });
 });
 
 addActionHandler('faveSticker', (global, actions, payload) => {
@@ -145,6 +154,33 @@ addActionHandler('unfaveSticker', (global, actions, payload) => {
   if (sticker) {
     void unfaveSticker(sticker);
   }
+});
+
+addActionHandler('removeRecentSticker', async (global, action, payload) => {
+  const { sticker } = payload!;
+
+  const result = await callApi('removeRecentSticker', { sticker });
+
+  if (!result) return;
+
+  loadRecentStickers();
+});
+
+addActionHandler('clearRecentStickers', async (global) => {
+  const result = await callApi('clearRecentStickers');
+
+  if (!result) return;
+
+  global = getGlobal();
+  setGlobal({
+    ...global,
+    stickers: {
+      ...global.stickers,
+      recent: {
+        stickers: [],
+      },
+    },
+  });
 });
 
 addActionHandler('toggleStickerSet', (global, actions, payload) => {
@@ -164,7 +200,7 @@ addActionHandler('loadEmojiKeywords', async (global, actions, payload: { languag
 
   let currentEmojiKeywords = global.emojiKeywords[language];
   if (currentEmojiKeywords?.isLoading) {
-    return undefined;
+    return;
   }
 
   setGlobal({
@@ -187,7 +223,7 @@ addActionHandler('loadEmojiKeywords', async (global, actions, payload: { languag
   currentEmojiKeywords = global.emojiKeywords[language];
 
   if (!emojiKeywords) {
-    return {
+    setGlobal({
       ...global,
       emojiKeywords: {
         ...global.emojiKeywords,
@@ -196,10 +232,12 @@ addActionHandler('loadEmojiKeywords', async (global, actions, payload: { languag
           isLoading: false,
         },
       },
-    };
+    });
+
+    return;
   }
 
-  return {
+  setGlobal({
     ...global,
     emojiKeywords: {
       ...global.emojiKeywords,
@@ -212,7 +250,7 @@ addActionHandler('loadEmojiKeywords', async (global, actions, payload: { languag
         },
       },
     },
-  };
+  });
 });
 
 async function loadStickerSets(hash?: string) {
@@ -282,13 +320,24 @@ async function loadStickers(stickerSetId: string, accessHash: string, stickerSet
     'fetchStickers',
     { stickerSetShortName, stickerSetId, accessHash },
   );
+  let global = getGlobal();
+
   if (!stickerSet) {
+    onTickEnd(() => {
+      getActions().showNotification({
+        message: getTranslation('StickerPack.ErrorNotFound'),
+      });
+    });
+    if (global.openedStickerSetShortName === stickerSetShortName) {
+      setGlobal({
+        ...global,
+        openedStickerSetShortName: undefined,
+      });
+    }
     return;
   }
 
   const { set, stickers, packs } = stickerSet;
-
-  let global = getGlobal();
 
   global = updateStickerSet(global, set.id, { ...set, stickers, packs });
 
@@ -394,11 +443,37 @@ addActionHandler('clearStickersForEmoji', (global) => {
 });
 
 addActionHandler('openStickerSetShortName', (global, actions, payload) => {
-  const { stickerSetShortName } = payload!;
+  const { stickerSetShortName } = payload;
   return {
     ...global,
     openedStickerSetShortName: stickerSetShortName,
   };
+});
+
+addActionHandler('openStickerSet', async (global, actions, payload) => {
+  const { sticker } = payload;
+
+  if (!selectStickerSet(global, sticker.stickerSetId)) {
+    if (!sticker.stickerSetAccessHash) {
+      actions.showNotification({
+        message: getTranslation('StickerPack.ErrorNotFound'),
+      });
+      return;
+    }
+
+    await loadStickers(sticker.stickerSetId, sticker.stickerSetAccessHash);
+  }
+
+  global = getGlobal();
+  const set = selectStickerSet(global, sticker.stickerSetId);
+  if (!set?.shortName) {
+    return;
+  }
+
+  setGlobal({
+    ...global,
+    openedStickerSetShortName: set.shortName,
+  });
 });
 
 async function searchStickers(query: string, hash?: string) {

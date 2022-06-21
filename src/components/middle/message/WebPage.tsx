@@ -1,8 +1,9 @@
-import React, { FC, memo, useCallback } from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useCallback } from '../../../lib/teact/teact';
 
-import { ApiMessage } from '../../../api/types';
-import { ObserveFn } from '../../../hooks/useIntersectionObserver';
-import { ISettings } from '../../../types';
+import type { ApiMessage } from '../../../api/types';
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import type { ISettings } from '../../../types';
 
 import { getMessageWebPage } from '../../../global/helpers';
 import { calculateMediaDimensions } from './helpers/mediaDimensions';
@@ -77,6 +78,7 @@ const WebPage: FC<OwnProps> = ({
 
   const className = buildClassName(
     'WebPage',
+    inPreview && 'in-preview',
     isSquarePhoto && 'with-square-photo',
     !photo && !video && !inPreview && 'without-media',
     video && 'with-video',
@@ -100,6 +102,7 @@ const WebPage: FC<OwnProps> = ({
           onCancelUpload={onCancelMediaTransfer}
           isDownloading={isDownloading}
           isProtected={isProtected}
+          withAspectRatio
           theme={theme}
         />
       )}
@@ -124,6 +127,7 @@ const WebPage: FC<OwnProps> = ({
           onCancelUpload={onCancelMediaTransfer}
           isDownloading={isDownloading}
           isProtected={isProtected}
+          withAspectRatio
         />
       )}
     </div>

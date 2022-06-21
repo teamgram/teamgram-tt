@@ -1,11 +1,13 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useRef, useState,
+  memo, useCallback, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import { ManagementScreens, ProfileState } from '../../types';
-import { ApiExportedInvite } from '../../api/types';
+import type { ApiExportedInvite } from '../../api/types';
 
+import { ANIMATION_END_DELAY } from '../../config';
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
 import { debounce } from '../../util/schedulers';
 import buildClassName from '../../util/buildClassName';
@@ -39,11 +41,11 @@ type OwnProps = {
   isSearch?: boolean;
   isManagement?: boolean;
   isStatistics?: boolean;
+  isMessageStatistics?: boolean;
   isStickerSearch?: boolean;
   isGifSearch?: boolean;
   isPollResults?: boolean;
   isAddingChatMembers?: boolean;
-  shouldSkipAnimation?: boolean;
   profileState?: ProfileState;
   managementScreen?: ManagementScreens;
   onClose: () => void;
@@ -61,9 +63,10 @@ type StateProps = {
   gifSearchQuery?: string;
   isEditingInvite?: boolean;
   currentInviteInfo?: ApiExportedInvite;
+  shouldSkipHistoryAnimations?: boolean;
 };
 
-const COLUMN_CLOSE_DELAY_MS = 300;
+const COLUMN_ANIMATION_DURATION = 450 + ANIMATION_END_DELAY;
 const runDebouncedForSearch = debounce((cb) => cb(), 200, false);
 
 enum HeaderContent {
@@ -72,6 +75,7 @@ enum HeaderContent {
   SharedMedia,
   Search,
   Statistics,
+  MessageStatistics,
   Management,
   ManageInitial,
   ManageChannelSubscribers,
@@ -106,6 +110,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
   isSearch,
   isManagement,
   isStatistics,
+  isMessageStatistics,
   isStickerSearch,
   isGifSearch,
   isPollResults,
@@ -121,10 +126,10 @@ const RightHeader: FC<OwnProps & StateProps> = ({
   messageSearchQuery,
   stickerSearchQuery,
   gifSearchQuery,
-  shouldSkipAnimation,
   isEditingInvite,
   canViewStatistics,
   currentInviteInfo,
+  shouldSkipHistoryAnimations,
 }) => {
   const {
     setLocalTextSearchQuery,
@@ -179,7 +184,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
   useEffect(() => {
     setTimeout(() => {
       setShouldSkipTransition(!isColumnOpen);
-    }, COLUMN_CLOSE_DELAY_MS);
+    }, COLUMN_ANIMATION_DURATION);
   }, [isColumnOpen]);
 
   const lang = useLang();
@@ -245,6 +250,8 @@ const RightHeader: FC<OwnProps & StateProps> = ({
     ) : undefined // Never reached
   ) : isStatistics ? (
     HeaderContent.Statistics
+  ) : isMessageStatistics ? (
+    HeaderContent.MessageStatistics
   ) : undefined; // When column is closed
 
   const renderingContentKey = useCurrentOrPrev(contentKey, true) ?? -1;
@@ -371,7 +378,9 @@ const RightHeader: FC<OwnProps & StateProps> = ({
           />
         );
       case HeaderContent.Statistics:
-        return <h3>{lang('Statistics')}</h3>;
+        return <h3>{lang(isChannel ? 'ChannelStats.Title' : 'GroupStats.Title')}</h3>;
+      case HeaderContent.MessageStatistics:
+        return <h3>{lang('Stats.MessageTitle')}</h3>;
       case HeaderContent.SharedMedia:
         return <h3>{lang('SharedMedia')}</h3>;
       case HeaderContent.ManageChannelSubscribers:
@@ -430,13 +439,14 @@ const RightHeader: FC<OwnProps & StateProps> = ({
     || contentKey === HeaderContent.SharedMedia
     || contentKey === HeaderContent.MemberList
     || contentKey === HeaderContent.AddingMembers
+    || contentKey === HeaderContent.MessageStatistics
     || isManagement
   );
 
   const buttonClassName = buildClassName(
     'animated-close-icon',
     isBackButton && 'state-back',
-    (shouldSkipTransition || shouldSkipAnimation) && 'no-transition',
+    (shouldSkipTransition || shouldSkipHistoryAnimations) && 'no-transition',
   );
 
   return (
@@ -452,7 +462,7 @@ const RightHeader: FC<OwnProps & StateProps> = ({
         <div ref={backButtonRef} className={buttonClassName} />
       </Button>
       <Transition
-        name={(shouldSkipTransition || shouldSkipAnimation) ? 'none' : 'slide-fade'}
+        name={(shouldSkipTransition || shouldSkipHistoryAnimations) ? 'none' : 'slide-fade'}
         activeKey={renderingContentKey}
       >
         {renderHeaderContent()}
@@ -495,6 +505,7 @@ export default memo(withGlobal<OwnProps>(
       gifSearchQuery,
       isEditingInvite,
       currentInviteInfo,
+      shouldSkipHistoryAnimations: global.shouldSkipHistoryAnimations,
     };
   },
 )(RightHeader));

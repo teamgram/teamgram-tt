@@ -1,9 +1,8 @@
-import React, {
-  FC, memo, useCallback,
-} from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useCallback } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import {
+import type {
   ApiChat, ApiUser, ApiMessage, ApiMessageOutgoingStatus,
 } from '../../../api/types';
 
@@ -23,13 +22,15 @@ import { formatPastTimeShort } from '../../../util/dateFormat';
 import { renderMessageSummary } from '../../common/helpers/renderMessageText';
 
 import useMedia from '../../../hooks/useMedia';
-import useLang, { LangFn } from '../../../hooks/useLang';
+import type { LangFn } from '../../../hooks/useLang';
+import useLang from '../../../hooks/useLang';
 import useSelectWithEnter from '../../../hooks/useSelectWithEnter';
 
 import Avatar from '../../common/Avatar';
 import VerifiedIcon from '../../common/VerifiedIcon';
 import ListItem from '../../ui/ListItem';
 import Link from '../../ui/Link';
+import FakeIcon from '../../common/FakeIcon';
 
 import './ChatMessage.scss';
 
@@ -61,7 +62,7 @@ const ChatMessage: FC<OwnProps & StateProps> = ({
   const isRoundVideo = Boolean(getMessageRoundVideo(message));
 
   const handleClick = useCallback(() => {
-    focusMessage({ chatId, messageId: message.id });
+    focusMessage({ chatId, messageId: message.id, shouldReplaceHistory: true });
   }, [chatId, focusMessage, message.id]);
 
   const lang = useLang();
@@ -90,6 +91,7 @@ const ChatMessage: FC<OwnProps & StateProps> = ({
           <div className="title">
             <h3 dir="auto">{renderText(getChatTitle(lang, chat, privateChatUser))}</h3>
             {chat.isVerified && <VerifiedIcon />}
+            {chat.fakeType && <FakeIcon fakeType={chat.fakeType} />}
           </div>
           <div className="message-date">
             <Link className="date">

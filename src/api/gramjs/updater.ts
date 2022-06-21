@@ -1,6 +1,6 @@
-import { GroupCallConnectionData } from '../../lib/secret-sauce';
+import type { GroupCallConnectionData } from '../../lib/secret-sauce';
 import { Api as GramJs, connection } from '../../lib/gramjs';
-import { ApiMessage, ApiUpdateConnectionStateType, OnApiUpdate } from '../types';
+import type { ApiMessage, ApiUpdateConnectionStateType, OnApiUpdate } from '../types';
 
 import { pick } from '../../util/iteratees';
 import {
@@ -45,10 +45,12 @@ import { buildApiPhoto } from './apiBuilders/common';
 import {
   buildApiGroupCall,
   buildApiGroupCallParticipant,
+  buildPhoneCall,
   getGroupCallId,
 } from './apiBuilders/calls';
 import { buildApiPeerId, getApiChatIdFromMtpPeer } from './apiBuilders/peers';
-import { buildApiEmojiInteraction } from './apiBuilders/symbols';
+import { buildApiEmojiInteraction, buildStickerSet } from './apiBuilders/symbols';
+import { buildApiBotMenuButton } from './apiBuilders/bots';
 
 type Update = (
   (GramJs.TypeUpdate | GramJs.TypeUpdates) & { _entities?: (GramJs.TypeUser | GramJs.TypeChat)[] }
@@ -379,8 +381,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
     || originRequest instanceof GramJs.messages.SendMultiMedia
     || originRequest instanceof GramJs.messages.ForwardMessages
   ) && (
-    update instanceof GramJs.UpdateMessageID
-    || update instanceof GramJs.UpdateShortSentMessage
+    update instanceof GramJs.UpdateMessageID || update instanceof GramJs.UpdateShortSentMessage
   )) {
     let randomId;
     if ('randomId' in update) {
@@ -859,6 +860,23 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
     onUpdate({ '@type': 'updateResetContactList' });
   } else if (update instanceof GramJs.UpdateFavedStickers) {
     onUpdate({ '@type': 'updateFavoriteStickers' });
+  } else if (update instanceof GramJs.UpdateRecentStickers) {
+    onUpdate({ '@type': 'updateRecentStickers' });
+  } else if (update instanceof GramJs.UpdateStickerSets) {
+    onUpdate({ '@type': 'updateStickerSets' });
+  } else if (update instanceof GramJs.UpdateStickerSetsOrder) {
+    onUpdate({ '@type': 'updateStickerSetsOrder', order: update.order.map((n) => n.toString()) });
+  } else if (update instanceof GramJs.UpdateNewStickerSet) {
+    if (update.stickerset instanceof GramJs.messages.StickerSet) {
+      const stickerSet = buildStickerSet(update.stickerset.set);
+      onUpdate({
+        '@type': 'updateStickerSet',
+        id: stickerSet.id,
+        stickerSet,
+      });
+    }
+  } else if (update instanceof GramJs.UpdateSavedGifs) {
+    onUpdate({ '@type': 'updateSavedGifs' });
   } else if (update instanceof GramJs.UpdateGroupCall) {
     onUpdate({
       '@type': 'updateGroupCall',
@@ -896,6 +914,41 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       chatId: getApiChatIdFromMtpPeer(update.peer),
       recentRequesterIds: update.recentRequesters.map((id) => buildApiPeerId(id, 'user')),
       requestsPending: update.requestsPending,
+    });
+  } else if (update instanceof GramJs.UpdatePhoneCall) {
+    // eslint-disable-next-line no-underscore-dangle
+    const entities = update._entities;
+    if (entities) {
+      addEntitiesWithPhotosToLocalDb(entities);
+      dispatchUserAndChatUpdates(entities);
+    }
+
+    onUpdate({
+      '@type': 'updatePhoneCall',
+      call: buildPhoneCall(update.phoneCall),
+    });
+  } else if (update instanceof GramJs.UpdatePhoneCallSignalingData) {
+    onUpdate({
+      '@type': 'updatePhoneCallSignalingData',
+      callId: update.phoneCallId.toString(),
+      data: Array.from(update.data),
+    });
+  } else if (update instanceof GramJs.UpdateWebViewResultSent) {
+    const { queryId } = update;
+
+    onUpdate({
+      '@type': 'updateWebViewResultSent',
+      queryId: queryId.toString(),
+    });
+  } else if (update instanceof GramJs.UpdateBotMenuButton) {
+    const { botId, button } = update;
+
+    const id = buildApiPeerId(botId, 'user');
+
+    onUpdate({
+      '@type': 'updateBotMenuButton',
+      botId: id,
+      button: buildApiBotMenuButton(button),
     });
   } else if (DEBUG) {
     const params = typeof update === 'object' && 'className' in update ? update.className : update;

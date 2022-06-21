@@ -1,17 +1,19 @@
-import { RefObject } from 'react';
-import React, { FC, memo } from '../../lib/teact/teact';
+import type { RefObject } from 'react';
+import type { FC } from '../../lib/teact/teact';
+import React, { memo } from '../../lib/teact/teact';
 
-import { MessageListType } from '../../global/types';
+import type { MessageListType } from '../../global/types';
 
 import { SCHEDULED_WHEN_ONLINE } from '../../config';
 import buildClassName from '../../util/buildClassName';
-import { compact, flatten } from '../../util/iteratees';
+import { compact } from '../../util/iteratees';
 import { formatHumanDate } from '../../util/dateFormat';
 import {
-  getMessageHtmlId, getMessageOriginalId, isActionMessage, isOwnMessage,
+  getMessageHtmlId, getMessageOriginalId, isActionMessage, isOwnMessage, isServiceNotificationMessage,
 } from '../../global/helpers';
 import useLang from '../../hooks/useLang';
-import { isAlbum, MessageDateGroup } from './helpers/groupMessages';
+import type { MessageDateGroup } from './helpers/groupMessages';
+import { isAlbum } from './helpers/groupMessages';
 import { preventMessageInputBlur } from './helpers/preventMessageInputBlur';
 import useScrollHooks from './hooks/useScrollHooks';
 import useMessageObservers from './hooks/useMessageObservers';
@@ -108,7 +110,7 @@ const MessageListContent: FC<OwnProps> = ({
   );
 
   const messageCountToAnimate = noAppearanceAnimation ? 0 : messageGroups.reduce((acc, messageGroup) => {
-    return acc + flatten(messageGroup.senderGroups).length;
+    return acc + messageGroup.senderGroups.flat().length;
   }, 0);
   let appearanceIndex = 0;
 
@@ -122,7 +124,12 @@ const MessageListContent: FC<OwnProps> = ({
       senderGroupIndex,
       senderGroupsArray,
     ) => {
-      if (senderGroup.length === 1 && !isAlbum(senderGroup[0]) && isActionMessage(senderGroup[0])) {
+      if (
+        senderGroup.length === 1
+        && !isAlbum(senderGroup[0])
+        && isActionMessage(senderGroup[0])
+        && !senderGroup[0].content.action?.phoneCall
+      ) {
         const message = senderGroup[0];
         const isLastInList = (
           senderGroupIndex === senderGroupsArray.length - 1
@@ -143,7 +150,7 @@ const MessageListContent: FC<OwnProps> = ({
 
       let currentDocumentGroupId: string | undefined;
 
-      return flatten(senderGroup.map((
+      return senderGroup.map((
         messageOrAlbum,
         messageIndex,
       ) => {
@@ -175,10 +182,8 @@ const MessageListContent: FC<OwnProps> = ({
         currentDocumentGroupId = documentGroupId;
 
         const originalId = getMessageOriginalId(message);
-        // Scheduled messages can have local IDs in the middle of the list,
-        // and keys should be ordered, so we prefix it with a date.
-        // However, this may lead to issues if server date is not synchronized with the local one.
-        const key = type !== 'scheduled' ? originalId : `${message.date}_${originalId}`;
+        // Service notifications saved in cache in previous versions may share the same `previousLocalId`
+        const key = isServiceNotificationMessage(message) ? `${message.date}_${originalId}` : originalId;
 
         return compact([
           message.id === memoUnreadDividerBeforeIdRef.current && unreadDivider,
@@ -209,7 +214,7 @@ const MessageListContent: FC<OwnProps> = ({
             </div>
           ),
         ]);
-      }));
+      }).flat();
     });
 
     return (
@@ -235,7 +240,7 @@ const MessageListContent: FC<OwnProps> = ({
             {!isSchedule && formatHumanDate(lang, dateGroup.datetime)}
           </span>
         </div>
-        {flatten(senderGroups)}
+        {senderGroups.flat()}
       </div>
     );
   });
@@ -243,7 +248,7 @@ const MessageListContent: FC<OwnProps> = ({
   return (
     <div className="messages-container" teactFastList>
       <div ref={backwardsTriggerRef} key="backwards-trigger" className="backwards-trigger" />
-      {flatten(dateGroups)}
+      {dateGroups.flat()}
       {isViewportNewest && <SponsoredMessage key={chatId} chatId={chatId} containerRef={containerRef} />}
       <div
         ref={forwardsTriggerRef}

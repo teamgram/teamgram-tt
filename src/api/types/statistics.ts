@@ -1,10 +1,11 @@
-import { ApiMessage } from './messages';
+import type { ApiChat } from './chats';
+import type { ApiMessage } from './messages';
 
 export interface ApiChannelStatistics {
-  growthGraph: StatisticsGraph;
-  followersGraph: StatisticsGraph;
-  muteGraph: StatisticsGraph;
-  topHoursGraph: StatisticsGraph;
+  growthGraph?: StatisticsGraph | string;
+  followersGraph?: StatisticsGraph | string;
+  muteGraph?: StatisticsGraph | string;
+  topHoursGraph?: StatisticsGraph | string;
   interactionsGraph: StatisticsGraph | string;
   viewsBySourceGraph: StatisticsGraph | string;
   newFollowersBySourceGraph: StatisticsGraph | string;
@@ -17,9 +18,9 @@ export interface ApiChannelStatistics {
 }
 
 export interface ApiGroupStatistics {
-  growthGraph: StatisticsGraph;
-  membersGraph: StatisticsGraph;
-  topHoursGraph: StatisticsGraph;
+  growthGraph?: StatisticsGraph | string;
+  membersGraph?: StatisticsGraph | string;
+  topHoursGraph?: StatisticsGraph | string;
   languagesGraph: StatisticsGraph | string;
   messagesGraph: StatisticsGraph | string;
   actionsGraph: StatisticsGraph | string;
@@ -28,6 +29,21 @@ export interface ApiGroupStatistics {
   viewers: StatisticsOverviewItem;
   messages: StatisticsOverviewItem;
   posters: StatisticsOverviewItem;
+}
+
+export interface ApiMessageStatistics {
+  viewsGraph?: StatisticsGraph | string;
+  forwards?: number;
+  views?: number;
+  publicForwards?: number;
+  publicForwardsData?: ApiMessagePublicForward[];
+}
+
+export interface ApiMessagePublicForward {
+  messageId: number;
+  views?: number;
+  title?: string;
+  chat: ApiChat;
 }
 
 export interface StatisticsGraph {

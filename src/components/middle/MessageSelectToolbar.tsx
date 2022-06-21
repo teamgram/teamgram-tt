@@ -1,9 +1,8 @@
-import React, {
-  FC, memo, useCallback, useEffect,
-} from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import React, { memo, useCallback, useEffect } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { MessageListType } from '../../global/types';
+import type { MessageListType } from '../../global/types';
 
 import {
   selectCanDeleteSelectedMessages,
@@ -23,7 +22,7 @@ import useCopySelectedMessages from './hooks/useCopySelectedMessages';
 import Button from '../ui/Button';
 
 import DeleteSelectedMessageModal from './DeleteSelectedMessageModal';
-import ReportMessageModal from '../common/ReportMessageModal';
+import ReportModal from '../common/ReportModal';
 
 import './MessageSelectToolbar.scss';
 
@@ -60,7 +59,9 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
     openForwardMenuForSelectedMessages,
     downloadSelectedMessages,
     copySelectedMessages,
+    showNotification,
   } = getActions();
+  const lang = useLang();
 
   const [isDeleteModalOpen, openDeleteModal, closeDeleteModal] = useFlag();
   const [isReportModalOpen, openReportModal, closeReportModal] = useFlag();
@@ -78,8 +79,11 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
 
   const handleCopy = useCallback(() => {
     copySelectedMessages();
+    showNotification({
+      message: lang('Share.Link.Copied'),
+    });
     exitMessageSelectMode();
-  }, [copySelectedMessages, exitMessageSelectMode]);
+  }, [copySelectedMessages, exitMessageSelectMode, lang, showNotification]);
 
   const handleDownload = useCallback(() => {
     downloadSelectedMessages();
@@ -88,8 +92,6 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
 
   const prevSelectedMessagesCount = usePrevious(selectedMessagesCount || undefined, true);
   const renderingSelectedMessagesCount = isActive ? selectedMessagesCount : prevSelectedMessagesCount;
-
-  const lang = useLang();
 
   const formattedMessagesCount = lang('VoiceOver.Chat.MessagesSelected', renderingSelectedMessagesCount, 'i');
 
@@ -157,7 +159,7 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
         isSchedule={isSchedule}
         onClose={closeDeleteModal}
       />
-      <ReportMessageModal
+      <ReportModal
         isOpen={isReportModalOpen}
         onClose={closeReportModal}
         messageIds={selectedMessageIds}

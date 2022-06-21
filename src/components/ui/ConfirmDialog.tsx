@@ -1,9 +1,9 @@
-import React, {
-  FC, memo, useCallback, useRef,
-} from '../../lib/teact/teact';
+import type { FC, TeactNode } from '../../lib/teact/teact';
+import React, { memo, useCallback, useRef } from '../../lib/teact/teact';
+
+import type { TextPart } from '../../types';
 
 import useLang from '../../hooks/useLang';
-import { TextPart } from '../common/helpers/renderMessageText';
 import useKeyboardListNavigation from '../../hooks/useKeyboardListNavigation';
 
 import Modal from './Modal';
@@ -14,7 +14,7 @@ type OwnProps = {
   onClose: () => void;
   onCloseAnimationEnd?: () => void;
   title?: string;
-  header?: FC;
+  header?: TeactNode;
   textParts?: TextPart[];
   text?: string;
   confirmLabel?: string;
@@ -52,7 +52,7 @@ const ConfirmDialog: FC<OwnProps> = ({
   return (
     <Modal
       className="confirm"
-      title={title}
+      title={title || lang('Telegram')}
       header={header}
       isOpen={isOpen}
       onClose={onClose}

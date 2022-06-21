@@ -7,14 +7,14 @@ import {
     sha1,
 } from '../Helpers';
 
-const PUBLIC_KEYS = [
+export const SERVER_KEYS = [
     {
         fingerprint: bigInt('-6205835210776354611'),
         n: bigInt(
-            '2381306448659649164302690303076381265632668704723497020470395109308660514362364170229081106692857621740' + 
-            '7662304029739903180202186741388339194122731428033163392461508934209366018606125548366054726592597621897' + 
-            '3082720149482025777155599562826488748588535295468401288090233825534456644976428692936545848200589727693' + 
-            '5210354467286312442332644832723879423343018224783552507234685708030057684494633385257705768861429070097' + 
+            '2381306448659649164302690303076381265632668704723497020470395109308660514362364170229081106692857621740' +
+            '7662304029739903180202186741388339194122731428033163392461508934209366018606125548366054726592597621897' +
+            '3082720149482025777155599562826488748588535295468401288090233825534456644976428692936545848200589727693' +
+            '5210354467286312442332644832723879423343018224783552507234685708030057684494633385257705768861429070097' +
             '9666942677163711643994719528044002167040190181767491250722153710492547051038733909766620291079011906347' +
             '813649336894843319316782175618810042958656414976948048313098163484344821927424378043409879056691914519',
         ),
@@ -44,14 +44,10 @@ const PUBLIC_KEYS = [
     //     ),
     //     e: 65537,
     // },
-];
-
-export const _serverKeys = new Map<string, { n: bigInt.BigInteger; e: number }>();
-
-PUBLIC_KEYS.forEach(({ fingerprint, ...keyInfo }) => {
-    _serverKeys.set(fingerprint.toString(),
-        keyInfo);
-});
+].reduce((acc, { fingerprint, ...keyInfo }) => {
+    acc.set(fingerprint.toString(), keyInfo);
+    return acc;
+}, new Map<string, { n: bigInt.BigInteger; e: number }>());
 
 /**
  * Encrypts the given data known the fingerprint to be used
@@ -62,7 +58,7 @@ PUBLIC_KEYS.forEach(({ fingerprint, ...keyInfo }) => {
  * @returns {Buffer|*|undefined} the cipher text, or undefined if no key matching this fingerprint is found.
  */
 export async function encrypt(fingerprint: bigInt.BigInteger, data: Buffer) {
-    const key = _serverKeys.get(fingerprint.toString());
+    const key = SERVER_KEYS.get(fingerprint.toString());
     if (!key) {
         return undefined;
     }

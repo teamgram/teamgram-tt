@@ -1,20 +1,26 @@
 import React from '../../../lib/teact/teact';
-import EMOJI_REGEX, { removeVS16s } from '../../../lib/twemojiRegex';
+import EMOJI_REGEX from '../../../lib/twemojiRegex';
+
+import type { TextPart } from '../../../types';
 
 import { RE_LINK_TEMPLATE, RE_MENTION_TEMPLATE } from '../../../config';
 import { IS_EMOJI_SUPPORTED } from '../../../util/environment';
-import { fixNonStandardEmoji, nativeToUnified } from '../../../util/emoji';
+import {
+  fixNonStandardEmoji,
+  handleEmojiLoad,
+  LOADED_EMOJIS,
+  nativeToUnifiedExtendedWithCache,
+} from '../../../util/emoji';
 import buildClassName from '../../../util/buildClassName';
 import { compact } from '../../../util/iteratees';
 
 import MentionLink from '../../middle/message/MentionLink';
 import SafeLink from '../SafeLink';
 
-type TextPart = string | Element;
 export type TextFilter = (
   'escape_html' | 'hq_emoji' | 'emoji' | 'emoji_html' | 'br' | 'br_html' | 'highlight' | 'links' |
   'simple_markdown' | 'simple_markdown_html'
-);
+  );
 
 const RE_LETTER_OR_DIGIT = /^[\d\wа-яё]$/i;
 const SIMPLE_MARKDOWN_REGEX = /(\*\*|__).+?\1/g;
@@ -70,7 +76,7 @@ export default function renderText(
 
 function escapeHtml(textParts: TextPart[]): TextPart[] {
   const divEl = document.createElement('div');
-  return textParts.reduce((result, part) => {
+  return textParts.reduce((result: TextPart[], part) => {
     if (typeof part !== 'string') {
       result.push(part);
       return result;
@@ -80,7 +86,7 @@ function escapeHtml(textParts: TextPart[]): TextPart[] {
     result.push(divEl.innerHTML);
 
     return result;
-  }, [] as TextPart[]);
+  }, []);
 }
 
 function replaceEmojis(textParts: TextPart[], size: 'big' | 'small', type: 'jsx' | 'html'): TextPart[] {
@@ -88,7 +94,7 @@ function replaceEmojis(textParts: TextPart[], size: 'big' | 'small', type: 'jsx'
     return textParts;
   }
 
-  return textParts.reduce((result, part) => {
+  return textParts.reduce((result: TextPart[], part: TextPart) => {
     if (typeof part !== 'string') {
       result.push(part);
       return result;
@@ -96,22 +102,28 @@ function replaceEmojis(textParts: TextPart[], size: 'big' | 'small', type: 'jsx'
 
     part = fixNonStandardEmoji(part);
     const parts = part.split(EMOJI_REGEX);
-    const emojis = part.match(EMOJI_REGEX) || [];
+    const emojis: string[] = part.match(EMOJI_REGEX) || [];
     result.push(parts[0]);
 
     return emojis.reduce((emojiResult: TextPart[], emoji, i) => {
-      const code = nativeToUnified(removeVS16s(emoji));
+      const code = nativeToUnifiedExtendedWithCache(emoji);
       if (!code) return emojiResult;
+      const src = `./img-apple-${size === 'big' ? '160' : '64'}/${code}.png`;
       const className = buildClassName(
         'emoji',
         size === 'small' && 'emoji-small',
       );
+
       if (type === 'jsx') {
+        const isLoaded = LOADED_EMOJIS.has(src);
+
         emojiResult.push(
           <img
-            className={className}
-            src={`./img-apple-${size === 'big' ? '160' : '64'}/${code}.png`}
+            src={src}
+            className={`${className}${!isLoaded ? ' opacity-transition slow shown' : ''}`}
             alt={emoji}
+            data-path={src}
+            onLoad={!isLoaded ? handleEmojiLoad : undefined}
           />,
         );
       }
@@ -162,7 +174,7 @@ function addLineBreaks(textParts: TextPart[], type: 'jsx' | 'html'): TextPart[] 
 }
 
 function addHighlight(textParts: TextPart[], highlight: string | undefined): TextPart[] {
-  return textParts.reduce((result, part) => {
+  return textParts.reduce<TextPart[]>((result, part) => {
     if (typeof part !== 'string' || !highlight) {
       result.push(part);
       return result;
@@ -186,13 +198,13 @@ function addHighlight(textParts: TextPart[], highlight: string | undefined): Tex
     newParts.push(part.substring(queryPosition + highlight.length));
 
     return [...result, ...newParts];
-  }, [] as TextPart[]);
+  }, []);
 }
 
 const RE_LINK = new RegExp(`${RE_LINK_TEMPLATE}|${RE_MENTION_TEMPLATE}`, 'ig');
 
 function addLinks(textParts: TextPart[]): TextPart[] {
-  return textParts.reduce((result, part) => {
+  return textParts.reduce<TextPart[]>((result, part) => {
     if (typeof part !== 'string') {
       result.push(part);
       return result;
@@ -232,11 +244,11 @@ function addLinks(textParts: TextPart[]): TextPart[] {
     content.push(part.substring(lastIndex));
 
     return [...result, ...content];
-  }, [] as TextPart[]);
+  }, []);
 }
 
 function replaceSimpleMarkdown(textParts: TextPart[], type: 'jsx' | 'html'): TextPart[] {
-  return textParts.reduce((result, part) => {
+  return textParts.reduce<TextPart[]>((result, part) => {
     if (typeof part !== 'string') {
       result.push(part);
       return result;
@@ -268,5 +280,13 @@ function replaceSimpleMarkdown(textParts: TextPart[], type: 'jsx' | 'html'): Tex
 
       return entityResult;
     }, result);
-  }, [] as TextPart[]);
+  }, []);
+}
+
+export function areLinesWrapping(text: string, element: HTMLElement) {
+  const lines = (text.trim().match(/\n/g) || '').length + 1;
+  const { lineHeight } = getComputedStyle(element);
+  const lineHeightParsed = parseFloat(lineHeight.split('px')[0]);
+
+  return element.clientHeight >= (lines + 1) * lineHeightParsed;
 }

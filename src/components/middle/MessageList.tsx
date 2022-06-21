@@ -1,15 +1,15 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useMemo, useRef, useState,
+  memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../global';
 
-import {
-  ApiMessage, ApiRestrictionReason, MAIN_THREAD_ID,
-} from '../../api/types';
-import { MessageListType } from '../../global/types';
+import type { ApiMessage, ApiRestrictionReason } from '../../api/types';
+import { MAIN_THREAD_ID } from '../../api/types';
+import type { MessageListType } from '../../global/types';
 import { LoadMoreDirection } from '../../types';
 
-import { ANIMATION_END_DELAY, LOCAL_MESSAGE_ID_BASE, MESSAGE_LIST_SLICE } from '../../config';
+import { ANIMATION_END_DELAY, LOCAL_MESSAGE_MIN_ID, MESSAGE_LIST_SLICE } from '../../config';
 import {
   selectChatMessages,
   selectIsViewportNewest,
@@ -303,7 +303,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     }
 
     // Loading history while sending a message can return the same message and cause ambiguity
-    const isLastMessageLocal = messageIds && messageIds[messageIds.length - 1] >= LOCAL_MESSAGE_ID_BASE;
+    const isLastMessageLocal = messageIds && messageIds[messageIds.length - 1] > LOCAL_MESSAGE_MIN_ID;
     if (isLastMessageLocal) {
       return;
     }
@@ -591,7 +591,7 @@ export default memo(withGlobal<OwnProps>(
     let botDescription: string | undefined;
     if (selectIsChatBotNotStarted(global, chatId)) {
       if (chatBot.fullInfo) {
-        botDescription = chatBot.fullInfo.botDescription || 'NoMessages';
+        botDescription = chatBot.fullInfo.botInfo?.description || 'NoMessages';
       } else {
         botDescription = 'Updating bot info...';
       }

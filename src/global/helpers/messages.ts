@@ -1,11 +1,12 @@
-import {
-  ApiChat, ApiMessage, ApiMessageEntityTypes, ApiReactions, ApiUser,
+import type {
+  ApiChat, ApiMessage, ApiReactions, ApiUser,
 } from '../../api/types';
-import { LangFn } from '../../hooks/useLang';
+import { ApiMessageEntityTypes } from '../../api/types';
+import type { LangFn } from '../../hooks/useLang';
 
 import {
   CONTENT_NOT_SUPPORTED,
-  LOCAL_MESSAGE_ID_BASE,
+  LOCAL_MESSAGE_MIN_ID,
   RE_LINK_TEMPLATE,
   SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../config';
@@ -23,9 +24,9 @@ export function getMessageHtmlId(messageId: number) {
 }
 
 export function getMessageKey(message: ApiMessage): MessageKey {
-  const { chatId, id } = message;
+  const { chatId, id, previousLocalId } = message;
 
-  return buildMessageKey(chatId, id);
+  return buildMessageKey(chatId, isServiceNotificationMessage(message) ? previousLocalId || id : id);
 }
 
 export function buildMessageKey(chatId: string, msgId: number): MessageKey {
@@ -45,6 +46,7 @@ export function getMessageOriginalId(message: ApiMessage) {
 export function getMessageText(message: ApiMessage) {
   const {
     text, sticker, photo, video, audio, voice, document, poll, webPage, contact, invoice, location,
+    game, action,
   } = message.content;
 
   if (text) {
@@ -52,7 +54,7 @@ export function getMessageText(message: ApiMessage) {
   }
 
   if (sticker || photo || video || audio || voice || document
-    || contact || poll || webPage || invoice || location) {
+    || contact || poll || webPage || invoice || location || game || action?.phoneCall) {
     return undefined;
   }
 
@@ -173,7 +175,7 @@ export function getSendingState(message: ApiMessage) {
 }
 
 export function isMessageLocal(message: ApiMessage) {
-  return message.id >= LOCAL_MESSAGE_ID_BASE;
+  return message.id > LOCAL_MESSAGE_MIN_ID;
 }
 
 export function isHistoryClearMessage(message: ApiMessage) {
@@ -225,4 +227,10 @@ export function isGeoLiveExpired(message: ApiMessage, timestamp = Date.now() / 1
   const { location } = message.content;
   if (location?.type !== 'geoLive') return false;
   return (timestamp - (message.date || 0) >= location.period);
+}
+
+export function getMessageSingleInlineButton(message: ApiMessage) {
+  return message.inlineButtons?.length === 1
+    && message.inlineButtons[0].length === 1
+    && message.inlineButtons[0][0];
 }

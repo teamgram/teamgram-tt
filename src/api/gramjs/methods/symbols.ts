@@ -1,6 +1,6 @@
 import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
-import { ApiSticker, ApiVideo, OnApiUpdate } from '../../types';
+import type { ApiSticker, ApiVideo, OnApiUpdate } from '../../types';
 
 import { invokeRequest } from './client';
 import { buildStickerFromDocument, buildStickerSet, buildStickerSetCovered } from '../apiBuilders/symbols';
@@ -92,6 +92,23 @@ export async function faveSticker({
       '@type': 'updateFavoriteStickers',
     });
   }
+}
+
+export function removeRecentSticker({
+  sticker,
+}: {
+  sticker: ApiSticker;
+}) {
+  const request = new GramJs.messages.SaveRecentSticker({
+    id: buildInputDocument(sticker),
+    unsave: true,
+  });
+
+  return invokeRequest(request);
+}
+
+export function clearRecentStickers() {
+  return invokeRequest(new GramJs.messages.ClearRecentStickers());
 }
 
 export async function fetchStickers(

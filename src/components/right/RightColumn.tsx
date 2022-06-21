@@ -1,5 +1,6 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useState,
+  memo, useCallback, useEffect, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
@@ -7,7 +8,7 @@ import {
   ManagementScreens, NewChatMembersProgress, ProfileState, RightColumnContent,
 } from '../../types';
 
-import { MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN } from '../../config';
+import { ANIMATION_END_DELAY, MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN } from '../../config';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import {
   selectAreActiveChatsLoaded,
@@ -25,6 +26,7 @@ import Transition from '../ui/Transition';
 import RightSearch from './RightSearch.async';
 import Management from './management/Management.async';
 import Statistics from './statistics/Statistics.async';
+import MessageStatistics from './statistics/MessageStatistics.async';
 import StickerSearch from './StickerSearch.async';
 import GifSearch from './GifSearch.async';
 import PollResults from './PollResults.async';
@@ -41,7 +43,7 @@ type StateProps = {
   nextManagementScreen?: ManagementScreens;
 };
 
-const CLOSE_ANIMATION_DURATION = 300;
+const ANIMATION_DURATION = 450 + ANIMATION_END_DELAY;
 const MAIN_SCREENS_COUNT = Object.keys(RightColumnContent).length / 2;
 const MANAGEMENT_SCREENS_COUNT = Object.keys(ManagementScreens).length / 2;
 
@@ -71,6 +73,7 @@ const RightColumn: FC<StateProps> = ({
     setNewChatMembersDialogState,
     setEditingExportedInvite,
     toggleStatistics,
+    toggleMessageStatistics,
     setOpenedInviteInfo,
     requestNextManagementScreen,
   } = getActions();
@@ -87,6 +90,7 @@ const RightColumn: FC<StateProps> = ({
   const isSearch = contentKey === RightColumnContent.Search;
   const isManagement = contentKey === RightColumnContent.Management;
   const isStatistics = contentKey === RightColumnContent.Statistics;
+  const isMessageStatistics = contentKey === RightColumnContent.MessageStatistics;
   const isStickerSearch = contentKey === RightColumnContent.StickerSearch;
   const isGifSearch = contentKey === RightColumnContent.GifSearch;
   const isPollResults = contentKey === RightColumnContent.PollResults;
@@ -150,6 +154,9 @@ const RightColumn: FC<StateProps> = ({
 
         break;
       }
+      case RightColumnContent.MessageStatistics:
+        toggleMessageStatistics();
+        break;
       case RightColumnContent.Statistics:
         toggleStatistics();
         break;
@@ -174,7 +181,7 @@ const RightColumn: FC<StateProps> = ({
   }, [
     contentKey, isScrolledDown, toggleChatInfo, closePollResults, setNewChatMembersDialogState,
     managementScreen, toggleManagement, closeLocalTextSearch, setStickerSearchQuery, setGifSearchQuery,
-    setEditingExportedInvite, chatId, setOpenedInviteInfo, toggleStatistics,
+    setEditingExportedInvite, chatId, setOpenedInviteInfo, toggleStatistics, toggleMessageStatistics,
   ]);
 
   const handleSelectChatMember = useCallback((memberId, isPromoted) => {
@@ -191,7 +198,7 @@ const RightColumn: FC<StateProps> = ({
   useEffect(() => {
     setTimeout(() => {
       setShouldSkipTransition(!isOpen);
-    }, CLOSE_ANIMATION_DURATION);
+    }, ANIMATION_DURATION);
   }, [isOpen]);
 
   useEffect(() => {
@@ -217,11 +224,13 @@ const RightColumn: FC<StateProps> = ({
     }
   }, [chatId]);
 
-  useHistoryBack(isChatSelected && (
-    contentKey === RightColumnContent.ChatInfo
-    || contentKey === RightColumnContent.Management
-    || contentKey === RightColumnContent.AddingMembers
-  ), () => close(false), toggleChatInfo);
+  useHistoryBack({
+    isActive: isChatSelected && (
+      contentKey === RightColumnContent.ChatInfo
+      || contentKey === RightColumnContent.Management
+      || contentKey === RightColumnContent.AddingMembers),
+    onBack: () => close(false),
+  });
 
   // eslint-disable-next-line consistent-return
   function renderContent(isActive: boolean) {
@@ -267,7 +276,9 @@ const RightColumn: FC<StateProps> = ({
         );
 
       case RightColumnContent.Statistics:
-        return <Statistics chatId={chatId!} isActive={isOpen && isActive} />;
+        return <Statistics chatId={chatId!} />;
+      case RightColumnContent.MessageStatistics:
+        return <MessageStatistics chatId={chatId!} isActive={isOpen && isActive} />;
       case RightColumnContent.StickerSearch:
         return <StickerSearch onClose={close} isActive={isOpen && isActive} />;
       case RightColumnContent.GifSearch:
@@ -293,6 +304,7 @@ const RightColumn: FC<StateProps> = ({
           isSearch={isSearch}
           isManagement={isManagement}
           isStatistics={isStatistics}
+          isMessageStatistics={isMessageStatistics}
           isStickerSearch={isStickerSearch}
           isGifSearch={isGifSearch}
           isPollResults={isPollResults}
@@ -300,7 +312,6 @@ const RightColumn: FC<StateProps> = ({
           profileState={profileState}
           managementScreen={managementScreen}
           onClose={close}
-          shouldSkipAnimation={shouldSkipTransition || shouldSkipHistoryAnimations}
           onScreenSelect={setManagementScreen}
         />
         <Transition
@@ -308,6 +319,10 @@ const RightColumn: FC<StateProps> = ({
           renderCount={MAIN_SCREENS_COUNT + MANAGEMENT_SCREENS_COUNT}
           activeKey={isManagement ? MAIN_SCREENS_COUNT + managementScreen : renderingContentKey}
           shouldCleanup
+          cleanupExceptionKey={
+            renderingContentKey === RightColumnContent.MessageStatistics
+              ? RightColumnContent.Statistics : undefined
+          }
         >
           {renderContent}
         </Transition>

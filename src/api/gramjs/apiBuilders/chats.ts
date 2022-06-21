@@ -1,6 +1,6 @@
-import BigInt from 'big-integer';
+import type BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
-import {
+import type {
   ApiChat,
   ApiChatAdminRights,
   ApiChatBannedRights,
@@ -34,6 +34,8 @@ function buildApiChatFieldsFromPeerEntity(
   const avatarHash = ('photo' in peerEntity) && peerEntity.photo && buildAvatarHash(peerEntity.photo);
   const isSignaturesShown = Boolean('signatures' in peerEntity && peerEntity.signatures);
   const hasPrivateLink = Boolean('hasLink' in peerEntity && peerEntity.hasLink);
+  const isScam = Boolean('scam' in peerEntity && peerEntity.scam);
+  const isFake = Boolean('fake' in peerEntity && peerEntity.fake);
 
   return {
     isMin,
@@ -60,6 +62,7 @@ function buildApiChatFieldsFromPeerEntity(
     ...(('creator' in peerEntity) && { isCreator: peerEntity.creator }),
     ...buildApiChatRestrictions(peerEntity),
     ...buildApiChatMigrationInfo(peerEntity),
+    fakeType: isScam ? 'scam' : (isFake ? 'fake' : undefined),
   };
 }
 
@@ -69,7 +72,8 @@ export function buildApiChatFromDialog(
   serverTimeOffset: number,
 ): ApiChat {
   const {
-    peer, folderId, unreadMark, unreadCount, unreadMentionsCount, notifySettings: { silent, muteUntil },
+    peer, folderId, unreadMark, unreadCount, unreadMentionsCount, unreadReactionsCount,
+    notifySettings: { silent, muteUntil },
     readOutboxMaxId, readInboxMaxId, draft,
   } = dialog;
   const isMuted = silent || (typeof muteUntil === 'number' && getServerTime(serverTimeOffset) < muteUntil);
@@ -83,6 +87,7 @@ export function buildApiChatFromDialog(
     lastReadInboxMessageId: readInboxMaxId,
     unreadCount,
     unreadMentionsCount,
+    unreadReactionsCount,
     isMuted,
     ...(unreadMark && { hasUnreadMark: true }),
     ...(draft instanceof GramJs.DraftMessage && { draftDate: draft.date }),
@@ -146,7 +151,6 @@ function buildApiChatRestrictions(peerEntity: GramJs.TypeUser | GramJs.TypeChat)
   if (peerEntity instanceof GramJs.Chat) {
     Object.assign(restrictions, {
       isNotJoined: peerEntity.left,
-      isForbidden: peerEntity.kicked,
     });
   }
 

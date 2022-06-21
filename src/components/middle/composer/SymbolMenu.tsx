@@ -1,9 +1,10 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useLayoutEffect, useRef, useState,
+  memo, useCallback, useEffect, useLayoutEffect, useRef, useState,
 } from '../../../lib/teact/teact';
 import { withGlobal } from '../../../global';
 
-import { ApiSticker, ApiVideo } from '../../../api/types';
+import type { ApiSticker, ApiVideo } from '../../../api/types';
 
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../../util/environment';
 import { fastRaf } from '../../../util/schedulers';
@@ -211,7 +212,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
     const className = buildClassName(
       'SymbolMenu mobile-menu',
       transitionClassNames,
-      !isLeftColumnShown && 'middle-column-open',
+      isLeftColumnShown && 'left-column-open',
     );
 
     return (

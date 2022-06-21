@@ -1,14 +1,14 @@
-import React, {
-  FC, useCallback, useEffect, useMemo,
-} from '../../lib/teact/teact';
+import React, { useCallback, useEffect, useMemo } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { AudioOrigin } from '../../types';
-import {
+import type { FC } from '../../lib/teact/teact';
+import type { AudioOrigin } from '../../types';
+import type {
   ApiAudio, ApiChat, ApiMessage, ApiUser,
 } from '../../api/types';
 
 import { IS_IOS, IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../util/environment';
+import { PLAYBACK_RATE_FOR_AUDIO_MIN_DURATION } from '../../config';
 
 import * as mediaLoader from '../../util/mediaLoader';
 import {
@@ -68,6 +68,7 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
   const lang = useLang();
   const { audio, voice, video } = getMessageContent(message);
   const isVoice = Boolean(voice || video);
+  const shouldRenderPlaybackButton = isVoice || (audio?.duration || 0) > PLAYBACK_RATE_FOR_AUDIO_MIN_DURATION;
   const senderName = sender ? getSenderTitle(lang, sender) : undefined;
   const mediaData = mediaLoader.getFromMemory(getMessageMediaHash(message, 'inline')!) as (string | undefined);
   const mediaMetadata = useMessageMediaMetadata(message, sender, chat);
@@ -160,6 +161,11 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
 
   return (
     <div className={buildClassName('AudioPlayer', className)} dir={lang.isRtl ? 'rtl' : undefined}>
+      <div className="AudioPlayer-content" onClick={handleClick}>
+        {audio ? renderAudio(audio) : renderVoice(lang('AttachAudio'), senderName)}
+        <RippleEffect />
+      </div>
+
       <Button
         round
         ripple={!IS_SINGLE_COLUMN_LAYOUT}
@@ -197,18 +203,13 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
         <i className="icon-skip-next" />
       </Button>
 
-      <div className="AudioPlayer-content" onClick={handleClick}>
-        {audio ? renderAudio(audio) : renderVoice(lang('AttachAudio'), senderName)}
-        <RippleEffect />
-      </div>
-
       <Button
         round
         className="player-button volume-button"
         color="translucent"
         size="smaller"
         ariaLabel="Volume"
-        withClickPropagation
+        noPreventDefault
       >
         <i className={volumeIcon} onClick={handleVolumeClick} />
         {!IS_IOS && (
@@ -221,7 +222,7 @@ const AudioPlayer: FC<OwnProps & StateProps> = ({
         )}
       </Button>
 
-      {isVoice && (
+      {shouldRenderPlaybackButton && (
         <Button
           round
           className={buildClassName('playback-button', playbackRate !== 1 && 'applied')}

@@ -1,9 +1,12 @@
-import {
+import type { TeactNode } from '../lib/teact/teact';
+import type {
   ApiBotInlineMediaResult, ApiBotInlineResult, ApiBotInlineSwitchPm,
   ApiChatInviteImporter,
   ApiExportedInvite,
   ApiLanguage, ApiMessage, ApiShippingAddress, ApiStickerSet,
 } from '../api/types';
+
+export type TextPart = TeactNode;
 
 export enum LoadMoreDirection {
   Backwards,
@@ -167,6 +170,8 @@ export enum SettingsScreens {
   PrivacyPhoneNumber,
   PrivacyLastSeen,
   PrivacyProfilePhoto,
+  PrivacyPhoneCall,
+  PrivacyPhoneP2P,
   PrivacyForwarding,
   PrivacyGroupChats,
   PrivacyPhoneNumberAllowedContacts,
@@ -175,6 +180,10 @@ export enum SettingsScreens {
   PrivacyLastSeenDeniedContacts,
   PrivacyProfilePhotoAllowedContacts,
   PrivacyProfilePhotoDeniedContacts,
+  PrivacyPhoneCallAllowedContacts,
+  PrivacyPhoneCallDeniedContacts,
+  PrivacyPhoneP2PAllowedContacts,
+  PrivacyPhoneP2PDeniedContacts,
   PrivacyForwardingAllowedContacts,
   PrivacyForwardingDeniedContacts,
   PrivacyGroupChatsAllowedContacts,
@@ -205,6 +214,16 @@ export enum SettingsScreens {
   TwoFaRecoveryEmailCode,
   TwoFaCongratulations,
   QuickReaction,
+  ActiveWebsites,
+  PasscodeDisabled,
+  PasscodeNewPasscode,
+  PasscodeNewPasscodeConfirm,
+  PasscodeEnabled,
+  PasscodeChangePasscodeCurrent,
+  PasscodeChangePasscodeNew,
+  PasscodeChangePasscodeConfirm,
+  PasscodeTurnOff,
+  PasscodeCongratulations,
 }
 
 export type StickerSetOrRecent = Pick<ApiStickerSet, (
@@ -237,6 +256,7 @@ export enum RightColumnContent {
   Search,
   Management,
   Statistics,
+  MessageStatistics,
   StickerSearch,
   GifSearch,
   PollResults,
@@ -305,7 +325,8 @@ export enum NewChatMembersProgress {
 
 export type ProfileTabType = 'members' | 'commonChats' | 'media' | 'documents' | 'links' | 'audio' | 'voice';
 export type SharedMediaType = 'media' | 'documents' | 'links' | 'audio' | 'voice';
-export type ApiPrivacyKey = 'phoneNumber' | 'lastSeen' | 'profilePhoto' | 'forwards' | 'chatInvite';
+export type ApiPrivacyKey = 'phoneNumber' | 'lastSeen' | 'profilePhoto' |
+'forwards' | 'chatInvite' | 'phoneCall' | 'phoneP2P';
 export type PrivacyVisibility = 'everybody' | 'contacts' | 'nonContacts' | 'nobody';
 
 export enum ProfileState {

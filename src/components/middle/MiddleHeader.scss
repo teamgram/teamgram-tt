@@ -185,7 +185,7 @@
     }
 
     // @optimization
-    @include while-transition() {
+    #Main.right-column-animating & {
       pointer-events: none;
     }
   }
@@ -253,6 +253,10 @@
     cursor: pointer;
     display: flex;
     align-items: center;
+
+    @media (max-width: 600px) {
+      user-select: none;
+    }
 
     .info {
       display: flex;
@@ -421,8 +425,9 @@
     position: relative;
     overflow: hidden;
     cursor: pointer;
+    align-items: center;
 
-    &:hover {
+    &:hover:not(.no-hover) {
       background-color: var(--color-interactive-element-hover);
     }
 
@@ -465,6 +470,8 @@
       margin-inline-start: 0.375rem;
       margin-top: 0.125rem;
       max-width: 15rem;
+      min-width: 8rem;
+      flex-grow: 1;
 
       @media (min-width: 1440px) and (max-width: 1500px) {
         max-width: 14rem;
@@ -498,6 +505,21 @@
           font-size: 0.9375rem;
         }
       }
+    }
+
+    .inline-button {
+      display: block;
+      width: auto;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      border-radius: 1.5rem;
+      padding: 0 0.75rem;
+      font-weight: 500;
+      text-transform: none;
+      height: 2rem;
+      max-width: 10rem;
+      flex-shrink: 1;
     }
 
     .emoji-small {

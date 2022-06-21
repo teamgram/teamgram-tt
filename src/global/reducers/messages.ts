@@ -1,12 +1,12 @@
-import {
+import type {
   GlobalState, MessageList, MessageListType, Thread,
 } from '../types';
-import {
-  ApiMessage, ApiSponsoredMessage, ApiThreadInfo, MAIN_THREAD_ID,
-} from '../../api/types';
-import { FocusDirection } from '../../types';
+import type { ApiMessage, ApiSponsoredMessage, ApiThreadInfo } from '../../api/types';
+import { MAIN_THREAD_ID } from '../../api/types';
+import type { FocusDirection } from '../../types';
 
 import {
+  IS_MOCKED_CLIENT,
   IS_TEST, MESSAGE_LIST_SLICE, MESSAGE_LIST_VIEWPORT_LIMIT, TMP_CHAT_ID,
 } from '../../config';
 import {
@@ -41,7 +41,7 @@ export function updateCurrentMessageList(
 ): GlobalState {
   const { messageLists } = global.messages;
   let newMessageLists: MessageList[] = messageLists;
-  if (shouldReplaceHistory || IS_TEST) {
+  if (shouldReplaceHistory || (IS_TEST && !IS_MOCKED_CLIENT)) {
     newMessageLists = chatId ? [{ chatId, threadId, type }] : [];
   } else if (chatId) {
     const last = messageLists[messageLists.length - 1];

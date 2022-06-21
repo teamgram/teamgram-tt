@@ -1,10 +1,11 @@
-import { ChangeEvent } from 'react';
+import type { ChangeEvent } from 'react';
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useState,
+  memo, useCallback, useEffect, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { ApiUser } from '../../../api/types';
+import type { ApiUser } from '../../../api/types';
 import { ManagementProgress } from '../../../types';
 
 import {
@@ -58,7 +59,10 @@ const ManageUser: FC<OwnProps & StateProps> = ({
   const [error, setError] = useState<string | undefined>();
   const lang = useLang();
 
-  useHistoryBack(isActive, onClose);
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
 
   const currentFirstName = user ? (user.firstName || '') : '';
   const currentLastName = user ? (user.lastName || '') : '';

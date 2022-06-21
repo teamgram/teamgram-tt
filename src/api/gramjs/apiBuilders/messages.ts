@@ -1,5 +1,5 @@
 import { Api as GramJs } from '../../../lib/gramjs';
-import {
+import type {
   ApiMessage,
   ApiMessageForwardInfo,
   ApiPhoto,
@@ -29,11 +29,12 @@ import {
   ApiSponsoredMessage,
   ApiUser,
   ApiLocation,
+  ApiGame,
+  PhoneCallAction,
 } from '../../types';
 
 import {
   DELETED_COMMENTS_CHANNEL_ID,
-  LOCAL_MESSAGE_ID_BASE,
   SERVICE_NOTIFICATIONS_USER_ID,
   SPONSORED_MESSAGE_CACHE_MS,
   SUPPORTED_AUDIO_CONTENT_TYPES,
@@ -49,11 +50,14 @@ import { interpolateArray } from '../../../util/waveform';
 import { buildPeer } from '../gramjsBuilders';
 import { addPhotoToLocalDb, resolveMessageApiChatId, serializeBytes } from '../helpers';
 import { buildApiPeerId, getApiChatIdFromMtpPeer, isPeerUser } from './peers';
+import { buildApiCallDiscardReason } from './calls';
 
 const LOCAL_MEDIA_UPLOADING_TEMP_ID = 'temp';
 const INPUT_WAVEFORM_LENGTH = 63;
 
-let localMessageCounter = LOCAL_MESSAGE_ID_BASE;
+let localMessageCounter = 0;
+const getNextLocalMessageId = () => parseFloat(`${Date.now()}.${localMessageCounter++}`);
+
 let currentUserId!: string;
 
 export function setMessageBuilderCurrentUserId(_currentUserId: string) {
@@ -117,7 +121,7 @@ export function buildApiMessageFromNotification(
   notification: GramJs.UpdateServiceNotification,
   currentDate: number,
 ): ApiMessage {
-  const localId = localMessageCounter++;
+  const localId = getNextLocalMessageId();
   const content = buildMessageContent(notification);
 
   return {
@@ -134,7 +138,7 @@ type UniversalMessage = (
   & Pick<Partial<GramJs.Message & GramJs.MessageService>, (
     'out' | 'message' | 'entities' | 'fromId' | 'peerId' | 'fwdFrom' | 'replyTo' | 'replyMarkup' | 'post' |
     'media' | 'action' | 'views' | 'editDate' | 'editHide' | 'mediaUnread' | 'groupedId' | 'mentioned' | 'viaBotId' |
-    'replies' | 'fromScheduled' | 'postAuthor' | 'noforwards' | 'reactions'
+    'replies' | 'fromScheduled' | 'postAuthor' | 'noforwards' | 'reactions' | 'forwards'
   )>
 );
 
@@ -169,6 +173,7 @@ export function buildApiMessageWithChatId(chatId: string, mtpMessage: UniversalM
     date: mtpMessage.date,
     senderId: fromId || (mtpMessage.out && mtpMessage.post && currentUserId) || chatId,
     views: mtpMessage.views,
+    forwards: mtpMessage.forwards,
     isFromScheduled: mtpMessage.fromScheduled,
     reactions: mtpMessage.reactions && buildMessageReactions(mtpMessage.reactions),
     ...(replyToMsgId && { replyToMessageId: replyToMsgId }),
@@ -217,11 +222,15 @@ function buildReactionCount(reactionCount: GramJs.ReactionCount): ApiReactionCou
 }
 
 export function buildMessagePeerReaction(userReaction: GramJs.MessagePeerReaction): ApiUserReaction {
-  const { peerId, reaction } = userReaction;
+  const {
+    peerId, reaction, big, unread,
+  } = userReaction;
 
   return {
     userId: getApiChatIdFromMtpPeer(peerId),
     reaction,
+    isUnread: unread,
+    isBig: big,
   };
 }
 
@@ -327,6 +336,9 @@ export function buildMessageMediaContent(media: GramJs.TypeMessageMedia): ApiMes
   const location = buildLocationFromMedia(media);
   if (location) return { location };
 
+  const game = buildGameFromMedia(media);
+  if (game) return { game };
+
   return undefined;
 }
 
@@ -340,7 +352,7 @@ function buildApiMessageForwardInfo(fwdFrom: GramJs.MessageFwdHeader, isChatWith
     channelPostId: fwdFrom.channelPost,
     isLinkedChannelPost: Boolean(fwdFrom.channelPost && savedFromPeerId && !isChatWithSelf),
     fromChatId: savedFromPeerId || fromId,
-    fromMessageId: fwdFrom.channelPost || fwdFrom.savedFromMsgId,
+    fromMessageId: fwdFrom.savedFromMsgId || fwdFrom.channelPost,
     senderUserId: fromId,
     hiddenUserName: fwdFrom.fromName,
     adminTitle: fwdFrom.postAuthor,
@@ -532,6 +544,16 @@ export function buildApiDocument(document: GramJs.TypeDocument): ApiDocument | u
       }
     } else if (SUPPORTED_VIDEO_CONTENT_TYPES.has(mimeType)) {
       mediaType = 'video';
+      const videoAttribute = attributes
+        .find((a: any): a is GramJs.DocumentAttributeVideo => a instanceof GramJs.DocumentAttributeVideo);
+
+      if (videoAttribute) {
+        const { w: width, h: height } = videoAttribute;
+        mediaSize = {
+          width,
+          height,
+        };
+      }
     }
   }
 
@@ -638,6 +660,33 @@ function buildGeoPoint(geo: GramJs.TypeGeoPoint): ApiLocation['geo'] | undefined
   };
 }
 
+function buildGameFromMedia(media: GramJs.TypeMessageMedia): ApiGame | undefined {
+  if (!(media instanceof GramJs.MessageMediaGame)) {
+    return undefined;
+  }
+
+  return buildGame(media);
+}
+
+function buildGame(media: GramJs.MessageMediaGame): ApiGame | undefined {
+  const {
+    id, accessHash, shortName, title, description, photo: apiPhoto, document: apiDocument,
+  } = media.game;
+
+  const photo = apiPhoto instanceof GramJs.Photo ? buildApiPhoto(apiPhoto) : undefined;
+  const document = apiDocument instanceof GramJs.Document ? buildApiDocument(apiDocument) : undefined;
+
+  return {
+    id: id.toString(),
+    accessHash: accessHash.toString(),
+    shortName,
+    title,
+    description,
+    photo,
+    document,
+  };
+}
+
 export function buildPoll(poll: GramJs.Poll, pollResults: GramJs.PollResults): ApiPoll {
   const { id, answers: rawAnswers } = poll;
   const answers = rawAnswers.map((answer) => ({
@@ -668,10 +717,22 @@ export function buildInvoice(media: GramJs.MessageMediaInvoice): ApiInvoice {
     description: text, title, photo, test, totalAmount, currency, receiptMsgId,
   } = media;
 
+  const imageAttribute = photo?.attributes
+    .find((a: any): a is GramJs.DocumentAttributeImageSize => a instanceof GramJs.DocumentAttributeImageSize);
+
+  let photoWidth: number | undefined;
+  let photoHeight: number | undefined;
+  if (imageAttribute) {
+    photoWidth = imageAttribute.w;
+    photoHeight = imageAttribute.h;
+  }
+
   return {
     text,
     title,
     photoUrl: photo?.url,
+    photoWidth,
+    photoHeight,
     receiptMsgId,
     amount: Number(totalAmount),
     currency,
@@ -744,6 +805,7 @@ function buildAction(
     return undefined;
   }
 
+  let phoneCall: PhoneCallAction | undefined;
   let call: Partial<ApiGroupCall> | undefined;
   let amount: number | undefined;
   let currency: string | undefined;
@@ -751,6 +813,7 @@ function buildAction(
   const translationValues = [];
   let type: ApiAction['type'] = 'other';
   let photo: ApiPhoto | undefined;
+  let score: number | undefined;
 
   const targetUserIds = 'users' in action
     ? action.users && action.users.map((id) => buildApiPeerId(id, 'user'))
@@ -829,6 +892,13 @@ function buildAction(
       const mins = Math.max(Math.round(action.duration! / 60), 1);
       translationValues.push(`${mins} min${mins > 1 ? 's' : ''}`);
     }
+
+    phoneCall = {
+      isOutgoing,
+      isVideo: action.video,
+      duration: action.duration,
+      reason: buildApiCallDiscardReason(action.reason),
+    };
   } else if (action instanceof GramJs.MessageActionInviteToGroupCall) {
     text = 'Notification.VoiceChatInvitation';
     call = {
@@ -868,6 +938,13 @@ function buildAction(
   } else if (action instanceof GramJs.MessageActionChatJoinedByRequest) {
     text = 'ChatService.UserJoinedGroupByRequest';
     translationValues.push('%action_origin%');
+  } else if (action instanceof GramJs.MessageActionGameScore) {
+    text = senderId === currentUserId ? 'ActionYouScoredInGame' : 'ActionUserScoredInGame';
+    translationValues.push('%score%');
+    score = action.score;
+  } else if (action instanceof GramJs.MessageActionWebViewDataSent) {
+    text = 'Notification.WebAppSentData';
+    translationValues.push(action.text);
   } else {
     text = 'ChatList.UnsupportedMessage';
   }
@@ -887,21 +964,23 @@ function buildAction(
     currency,
     translationValues,
     call,
+    phoneCall,
+    score,
   };
 }
 
 function buildReplyButtons(message: UniversalMessage): ApiReplyKeyboard | undefined {
-  const { id: messageId, replyMarkup, media } = message;
+  const { replyMarkup, media } = message;
 
+  // TODO Move to the proper button inside preview
   if (!replyMarkup) {
     if (media instanceof GramJs.MessageMediaWebPage && media.webpage instanceof GramJs.WebPage) {
       if (media.webpage.type === 'telegram_message') {
         return {
           inlineButtons: [[{
-            type: 'url' as const,
+            type: 'url',
             text: 'Show Message',
-            messageId,
-            value: media.webpage.url,
+            url: media.webpage.url,
           }]],
         };
       }
@@ -916,40 +995,128 @@ function buildReplyButtons(message: UniversalMessage): ApiReplyKeyboard | undefi
   }
 
   const markup = replyMarkup.rows.map(({ buttons }) => {
-    return buttons.map((button) => {
-      let { text } = button;
+    return buttons.map((button): ApiKeyboardButton => {
+      const { text } = button;
 
-      let type;
-      let value;
       if (button instanceof GramJs.KeyboardButton) {
-        type = 'command';
-        value = text;
-      } else if (button instanceof GramJs.KeyboardButtonUrl) {
-        type = 'url';
-        value = button.url;
-      } else if (button instanceof GramJs.KeyboardButtonCallback) {
-        type = 'callback';
-        value = serializeBytes(button.data);
-      } else if (button instanceof GramJs.KeyboardButtonRequestPoll) {
-        type = 'requestPoll';
-      } else if (button instanceof GramJs.KeyboardButtonRequestPhone) {
-        type = 'requestSelfContact';
-      } else if (button instanceof GramJs.KeyboardButtonBuy) {
-        if (media instanceof GramJs.MessageMediaInvoice && media.receiptMsgId) {
-          text = 'PaymentReceipt';
-          value = media.receiptMsgId;
+        return {
+          type: 'command',
+          text,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonUrl) {
+        if (button.url.includes('?startgroup=')) {
+          return {
+            type: 'unsupported',
+            text,
+          };
         }
-        type = 'buy';
-      } else {
-        type = 'NOT_SUPPORTED';
+
+        return {
+          type: 'url',
+          text,
+          url: button.url,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonCallback) {
+        if (button.requiresPassword) {
+          return {
+            type: 'unsupported',
+            text,
+          };
+        }
+
+        return {
+          type: 'callback',
+          text,
+          data: serializeBytes(button.data),
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonRequestPoll) {
+        return {
+          type: 'requestPoll',
+          text,
+          isQuiz: button.quiz,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonRequestPhone) {
+        return {
+          type: 'requestPhone',
+          text,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonBuy) {
+        if (media instanceof GramJs.MessageMediaInvoice && media.receiptMsgId) {
+          return {
+            type: 'receipt',
+            text: 'PaymentReceipt',
+            receiptMessageId: media.receiptMsgId,
+          };
+        }
+        return {
+          type: 'buy',
+          text,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonGame) {
+        return {
+          type: 'game',
+          text,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonSwitchInline) {
+        return {
+          type: 'switchBotInline',
+          text,
+          query: button.query,
+          isSamePeer: button.samePeer,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonUserProfile) {
+        return {
+          type: 'userProfile',
+          text,
+          userId: button.userId.toString(),
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonSimpleWebView) {
+        return {
+          type: 'simpleWebView',
+          text,
+          url: button.url,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonWebView) {
+        return {
+          type: 'webView',
+          text,
+          url: button.url,
+        };
+      }
+
+      if (button instanceof GramJs.KeyboardButtonUrlAuth) {
+        return {
+          type: 'urlAuth',
+          text,
+          url: button.url,
+          buttonId: button.buttonId,
+        };
       }
 
       return {
-        type,
+        type: 'unsupported',
         text,
-        messageId,
-        value,
-      } as ApiKeyboardButton;
+      };
     });
   });
 
@@ -991,7 +1158,7 @@ export function buildLocalMessage(
   sendAs?: ApiChat | ApiUser,
   serverTimeOffset = 0,
 ): ApiMessage {
-  const localId = localMessageCounter++;
+  const localId = getNextLocalMessageId();
   const media = attachment && buildUploadingMedia(attachment);
   const isChannel = chat.type === 'chatTypeChannel';
 
@@ -1029,7 +1196,7 @@ export function buildLocalForwardedMessage(
   serverTimeOffset: number,
   scheduledAt?: number,
 ): ApiMessage {
-  const localId = localMessageCounter++;
+  const localId = getNextLocalMessageId();
   const {
     content,
     chatId: fromChatId,
@@ -1161,6 +1328,7 @@ function buildApiMessageEntity(entity: GramJs.TypeMessageEntity): ApiMessageEnti
     length,
     ...(entity instanceof GramJs.MessageEntityMentionName && { userId: buildApiPeerId(entity.userId, 'user') }),
     ...('url' in entity && { url: entity.url }),
+    ...('language' in entity && { language: entity.language }),
   };
 }
 

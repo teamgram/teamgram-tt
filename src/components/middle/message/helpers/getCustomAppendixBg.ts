@@ -1,4 +1,4 @@
-import { ISettings } from '../../../../types';
+import type { ISettings } from '../../../../types';
 
 const SELECTED_APPENDIX_COLORS = {
   dark: {
@@ -23,6 +23,7 @@ export default function getCustomAppendixBg(
 async function getAppendixColorFromImage(src: string, isOwn: boolean) {
   const img = new Image();
   img.src = src;
+  img.crossOrigin = 'anonymous';
 
   if (!img.width) {
     await new Promise((resolve) => {

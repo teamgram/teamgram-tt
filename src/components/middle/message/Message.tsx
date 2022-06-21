@@ -1,5 +1,5 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC,
   memo,
   useCallback,
   useEffect,
@@ -8,18 +8,18 @@ import React, {
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { ActiveEmojiInteraction, ActiveReaction, MessageListType } from '../../../global/types';
-import {
+import type { ActiveEmojiInteraction, ActiveReaction, MessageListType } from '../../../global/types';
+import type {
   ApiMessage,
   ApiMessageOutgoingStatus,
   ApiUser,
   ApiChat,
-  ApiSticker,
   ApiThreadInfo,
   ApiAvailableReaction,
 } from '../../../api/types';
+import type { FocusDirection, IAlbum, ISettings } from '../../../types';
 import {
-  AudioOrigin, FocusDirection, IAlbum, ISettings,
+  AudioOrigin,
 } from '../../../types';
 
 import { IS_ANDROID, IS_TOUCH_ENV } from '../../../util/environment';
@@ -32,7 +32,6 @@ import {
   selectUser,
   selectIsMessageFocused,
   selectCurrentTextSearch,
-  selectAnimatedEmoji,
   selectIsInSelectMode,
   selectIsMessageSelected,
   selectIsDocumentGroupSelected,
@@ -46,13 +45,12 @@ import {
   selectAllowedMessageActions,
   selectIsDownloading,
   selectThreadInfo,
-  selectAnimatedEmojiEffect,
-  selectAnimatedEmojiSound,
   selectMessageIdsByGroupId,
-  selectLocalAnimatedEmoji,
   selectIsMessageProtected,
-  selectLocalAnimatedEmojiEffect,
   selectDefaultReaction,
+  selectReplySender,
+  selectAnimatedEmoji,
+  selectLocalAnimatedEmoji,
 } from '../../../global/selectors';
 import {
   getMessageContent,
@@ -81,7 +79,8 @@ import { getMinMediaWidth, calculateMediaDimensions } from './helpers/mediaDimen
 import { calculateAlbumLayout } from './helpers/calculateAlbumLayout';
 import renderText from '../../common/helpers/renderText';
 import calculateAuthorWidth from './helpers/calculateAuthorWidth';
-import { ObserveFn, useOnIntersect } from '../../../hooks/useIntersectionObserver';
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import { useOnIntersect } from '../../../hooks/useIntersectionObserver';
 import useLang from '../../../hooks/useLang';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useFlag from '../../../hooks/useFlag';
@@ -89,6 +88,7 @@ import useFocusMessage from './hooks/useFocusMessage';
 import useOuterHandlers from './hooks/useOuterHandlers';
 import useInnerHandlers from './hooks/useInnerHandlers';
 import { getServerTime } from '../../../util/serverTime';
+import { isElementInViewport } from '../../../util/isElementInViewport';
 
 import Button from '../../ui/Button';
 import Avatar from '../../common/Avatar';
@@ -98,7 +98,7 @@ import Audio from '../../common/Audio';
 import MessageMeta from './MessageMeta';
 import ContextMenuContainer from './ContextMenuContainer.async';
 import Sticker from './Sticker';
-import AnimatedEmoji from '../../common/AnimatedEmoji';
+import AnimatedEmoji from './AnimatedEmoji';
 import Photo from './Photo';
 import Video from './Video';
 import Contact from './Contact';
@@ -106,13 +106,14 @@ import Poll from './Poll';
 import WebPage from './WebPage';
 import Invoice from './Invoice';
 import Location from './Location';
+import Game from './Game';
 import Album from './Album';
 import RoundVideo from './RoundVideo';
 import InlineButtons from './InlineButtons';
 import CommentButton from './CommentButton';
 import Reactions from './Reactions';
 import ReactionStaticEmoji from '../../common/ReactionStaticEmoji';
-import LocalAnimatedEmoji from '../../common/LocalAnimatedEmoji';
+import MessagePhoneCall from './MessagePhoneCall';
 
 import './Message.scss';
 
@@ -170,12 +171,7 @@ type StateProps = {
   lastSyncTime?: number;
   serverTimeOffset: number;
   highlight?: string;
-  isSingleEmoji?: boolean;
-  animatedEmoji?: ApiSticker;
-  localSticker?: string;
-  localEffect?: string;
-  animatedEmojiEffect?: ApiSticker;
-  animatedEmojiSoundId?: string;
+  animatedEmoji?: string;
   isInSelectMode?: boolean;
   isSelected?: boolean;
   isGroupSelected?: boolean;
@@ -192,6 +188,7 @@ type StateProps = {
   defaultReaction?: string;
   activeReaction?: ActiveReaction;
   activeEmojiInteractions?: ActiveEmojiInteraction[];
+  hasUnreadReaction?: boolean;
 };
 
 type MetaPosition =
@@ -257,10 +254,6 @@ const Message: FC<OwnProps & StateProps> = ({
   serverTimeOffset,
   highlight,
   animatedEmoji,
-  localSticker,
-  localEffect,
-  animatedEmojiEffect,
-  animatedEmojiSoundId,
   isInSelectMode,
   isSelected,
   isGroupSelected,
@@ -278,11 +271,13 @@ const Message: FC<OwnProps & StateProps> = ({
   shouldLoopStickers,
   autoLoadFileMaxSizeMb,
   threadInfo,
+  hasUnreadReaction,
 }) => {
   const {
     toggleMessageSelection,
-    clickInlineButton,
+    clickBotInlineButton,
     disableContextMenuHint,
+    animateUnreadReaction,
   } = getActions();
 
   // eslint-disable-next-line no-null/no-null
@@ -329,7 +324,7 @@ const Message: FC<OwnProps & StateProps> = ({
   const hasReply = isReplyMessage(message) && !shouldHideReply;
   const hasThread = Boolean(threadInfo) && messageListType === 'thread';
   const customShape = getMessageCustomShape(message);
-  const hasAnimatedEmoji = localSticker || animatedEmoji;
+  const hasAnimatedEmoji = animatedEmoji;
   const hasReactions = reactionMessage?.reactions && !areReactionsEmpty(reactionMessage.reactions);
   const asForwarded = (
     forwardInfo
@@ -352,9 +347,6 @@ const Message: FC<OwnProps & StateProps> = ({
       && (forwardInfo.isChannelPost || (isChatWithSelf && !isOwn) || isRepliesChat)
       && forwardInfo.fromMessageId
     ));
-
-  const withCommentButton = threadInfo && !isInDocumentGroupNotLast && messageListType === 'thread' && !noComments;
-  const withQuickReactionButton = !IS_TOUCH_ENV && !isInSelectMode && defaultReaction && !isInDocumentGroupNotLast;
 
   const selectMessage = useCallback((e?: React.MouseEvent<HTMLDivElement, MouseEvent>, groupedId?: string) => {
     toggleMessageSelection({
@@ -461,8 +453,14 @@ const Message: FC<OwnProps & StateProps> = ({
   );
 
   const {
-    text, photo, video, audio, voice, document, sticker, contact, poll, webPage, invoice, location,
+    text, photo, video, audio, voice, document, sticker, contact, poll, webPage, invoice, location, action, game,
   } = getMessageContent(message);
+
+  const { phoneCall } = action || {};
+
+  const withCommentButton = threadInfo && !isInDocumentGroupNotLast && messageListType === 'thread' && !noComments;
+  const withQuickReactionButton = !IS_TOUCH_ENV && !phoneCall && !isInSelectMode && defaultReaction
+    && !isInDocumentGroupNotLast;
 
   const contentClassName = buildContentClassName(message, {
     hasReply,
@@ -478,10 +476,14 @@ const Message: FC<OwnProps & StateProps> = ({
   });
 
   const withAppendix = contentClassName.includes('has-appendix');
-  const textParts = renderMessageText(message, highlight, isEmojiOnlyMessage(customShape));
+  const textParts = renderMessageText(
+    message, highlight, isEmojiOnlyMessage(customShape), undefined, undefined, isProtected,
+  );
 
   let metaPosition!: MetaPosition;
-  if (isInDocumentGroupNotLast) {
+  if (phoneCall) {
+    metaPosition = 'none';
+  } else if (isInDocumentGroupNotLast) {
     metaPosition = 'none';
   } else if (textParts && !hasAnimatedEmoji && !webPage) {
     metaPosition = 'in-text';
@@ -512,6 +514,13 @@ const Message: FC<OwnProps & StateProps> = ({
     message.id,
   );
   useFocusMessage(ref, chatId, isFocused, focusDirection, noFocusHighlight, isResizingContainer);
+
+  useEffect(() => {
+    const bottomMarker = bottomMarkerRef.current;
+    if (hasUnreadReaction && bottomMarker && isElementInViewport(bottomMarker)) {
+      animateUnreadReaction({ messageIds: [messageId] });
+    }
+  }, [hasUnreadReaction, messageId, animateUnreadReaction]);
 
   let style = '';
   let calculatedWidth;
@@ -639,26 +648,9 @@ const Message: FC<OwnProps & StateProps> = ({
         )}
         {animatedEmoji && (
           <AnimatedEmoji
-            size="small"
+            emoji={animatedEmoji}
+            withEffects={isUserId(chatId)}
             isOwn={isOwn}
-            sticker={animatedEmoji}
-            effect={animatedEmojiEffect}
-            soundId={animatedEmojiSoundId}
-            observeIntersection={observeIntersectionForMedia}
-            lastSyncTime={lastSyncTime}
-            forceLoadPreview={isLocal}
-            messageId={messageId}
-            chatId={chatId}
-            activeEmojiInteractions={activeEmojiInteractions}
-          />
-        )}
-        {localSticker && (
-          <LocalAnimatedEmoji
-            size="small"
-            isOwn={isOwn}
-            localSticker={localSticker}
-            localEffect={localEffect}
-            soundId={animatedEmojiSoundId}
             observeIntersection={observeIntersectionForMedia}
             lastSyncTime={lastSyncTime}
             forceLoadPreview={isLocal}
@@ -677,6 +669,13 @@ const Message: FC<OwnProps & StateProps> = ({
             hasCustomAppendix={hasCustomAppendix}
             lastSyncTime={lastSyncTime}
             onMediaClick={handleAlbumMediaClick}
+          />
+        )}
+        {phoneCall && (
+          <MessagePhoneCall
+            message={message}
+            phoneCall={phoneCall}
+            chatId={chatId}
           />
         )}
         {!isAlbum && photo && (
@@ -753,6 +752,13 @@ const Message: FC<OwnProps & StateProps> = ({
         {poll && (
           <Poll message={message} poll={poll} onSendVote={handleVoteSend} />
         )}
+        {game && (
+          <Game
+            message={message}
+            canAutoLoadMedia={canAutoLoadMedia}
+            lastSyncTime={lastSyncTime}
+          />
+        )}
         {!hasAnimatedEmoji && textParts && (
           <p className={textContentClass} dir="auto">
             {textParts}
@@ -775,7 +781,15 @@ const Message: FC<OwnProps & StateProps> = ({
             theme={theme}
           />
         )}
-        {invoice && <Invoice message={message} />}
+        {invoice && (
+          <Invoice
+            message={message}
+            shouldAffectAppendix={hasCustomAppendix}
+            isInSelectMode={isInSelectMode}
+            isSelected={isSelected}
+            theme={theme}
+          />
+        )}
         {location && (
           <Location
             message={message}
@@ -866,7 +880,8 @@ const Message: FC<OwnProps & StateProps> = ({
         className="bottom-marker"
         data-message-id={messageId}
         data-last-message-id={album ? album.messages[album.messages.length - 1].id : undefined}
-        data-has-unread-mention={message.hasUnreadMention}
+        data-has-unread-mention={message.hasUnreadMention || undefined}
+        data-has-unread-reaction={hasUnreadReaction || undefined}
       />
       {!isInDocumentGroup && (
         <div className="message-select-control">
@@ -935,7 +950,7 @@ const Message: FC<OwnProps & StateProps> = ({
           )}
         </div>
         {message.inlineButtons && (
-          <InlineButtons message={message} onClick={clickInlineButton} />
+          <InlineButtons message={message} onClick={clickBotInlineButton} />
         )}
         {reactionsPosition === 'outside' && (
           <Reactions
@@ -971,7 +986,7 @@ export default memo(withGlobal<OwnProps>(
       message, album, withSenderName, withAvatar, threadId, messageListType, isLastInDocumentGroup,
     } = ownProps;
     const {
-      id, chatId, viaBotId, replyToChatId, replyToMessageId, isOutgoing, threadInfo,
+      id, chatId, viaBotId, replyToChatId, replyToMessageId, isOutgoing, threadInfo, forwardInfo,
     } = message;
 
     const chat = selectChat(global, chatId);
@@ -993,7 +1008,7 @@ export default memo(withGlobal<OwnProps>(
     const replyMessage = replyToMessageId && !shouldHideReply
       ? selectChatMessage(global, isRepliesChat && replyToChatId ? replyToChatId : chatId, replyToMessageId)
       : undefined;
-    const replyMessageSender = replyMessage && selectSender(global, replyMessage);
+    const replyMessageSender = replyMessage && selectReplySender(global, replyMessage, Boolean(forwardInfo));
 
     const uploadProgress = selectUploadProgress(global, message);
     const isFocused = messageListType === 'thread' && (
@@ -1011,8 +1026,11 @@ export default memo(withGlobal<OwnProps>(
     const { query: highlight } = selectCurrentTextSearch(global) || {};
 
     const singleEmoji = getMessageSingleEmoji(message);
-    let isSelected: boolean;
+    const animatedEmoji = singleEmoji && (
+      selectAnimatedEmoji(global, singleEmoji) || selectLocalAnimatedEmoji(global, singleEmoji)
+    ) ? singleEmoji : undefined;
 
+    let isSelected: boolean;
     if (album?.messages) {
       isSelected = album.messages.every(({ id: messageId }) => selectIsMessageSelected(global, messageId));
     } else {
@@ -1033,7 +1051,7 @@ export default memo(withGlobal<OwnProps>(
       isLastInDocumentGroup ? selectChatMessage(global, chatId, documentGroupFirstMessageId!) : undefined
     ) : message;
 
-    const localSticker = singleEmoji ? selectLocalAnimatedEmoji(global, singleEmoji) : undefined;
+    const hasUnreadReaction = chat?.unreadReactions?.includes(message.id);
 
     return {
       theme: selectTheme(global),
@@ -1059,12 +1077,7 @@ export default memo(withGlobal<OwnProps>(
       lastSyncTime,
       serverTimeOffset,
       highlight,
-      isSingleEmoji: Boolean(singleEmoji),
-      animatedEmoji: singleEmoji ? selectAnimatedEmoji(global, singleEmoji) : undefined,
-      animatedEmojiEffect: singleEmoji && isUserId(chatId) ? selectAnimatedEmojiEffect(global, singleEmoji) : undefined,
-      animatedEmojiSoundId: singleEmoji ? selectAnimatedEmojiSound(global, singleEmoji) : undefined,
-      localSticker,
-      localEffect: localSticker && isUserId(chatId) ? selectLocalAnimatedEmojiEffect(localSticker) : undefined,
+      animatedEmoji,
       isInSelectMode: selectIsInSelectMode(global),
       isSelected,
       isGroupSelected: (
@@ -1087,6 +1100,7 @@ export default memo(withGlobal<OwnProps>(
       ...(isOutgoing && { outgoingStatus: selectOutgoingStatus(global, message, messageListType === 'scheduled') }),
       ...(typeof uploadProgress === 'number' && { uploadProgress }),
       ...(isFocused && { focusDirection, noFocusHighlight, isResizingContainer }),
+      hasUnreadReaction,
     };
   },
 )(Message));

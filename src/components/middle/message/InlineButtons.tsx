@@ -1,6 +1,7 @@
-import React, { FC } from '../../../lib/teact/teact';
+import React from '../../../lib/teact/teact';
 
-import { ApiKeyboardButton, ApiMessage } from '../../../api/types';
+import type { FC } from '../../../lib/teact/teact';
+import type { ApiKeyboardButton, ApiMessage } from '../../../api/types';
 
 import { RE_TME_LINK } from '../../../config';
 import renderText from '../../common/helpers/renderText';
@@ -12,11 +13,34 @@ import './InlineButtons.scss';
 
 type OwnProps = {
   message: ApiMessage;
-  onClick: ({ button }: { button: ApiKeyboardButton }) => void;
+  onClick: ({ messageId, button }: { messageId: number; button: ApiKeyboardButton }) => void;
 };
 
 const InlineButtons: FC<OwnProps> = ({ message, onClick }) => {
   const lang = useLang();
+
+  const renderIcon = (button: ApiKeyboardButton) => {
+    const { type } = button;
+    switch (type) {
+      case 'url': {
+        if (!RE_TME_LINK.test(button.url)) {
+          return <i className="icon-arrow-right" />;
+        }
+        break;
+      }
+      case 'urlAuth':
+        return <i className="icon-arrow-right" />;
+      case 'buy':
+      case 'receipt':
+        return <i className="icon-cart" />;
+      case 'switchBotInline':
+        return <i className="icon-share-filled" />;
+      case 'webView':
+      case 'simpleWebView':
+        return <i className="icon-webapp" />;
+    }
+    return undefined;
+  };
 
   return (
     <div className="InlineButtons">
@@ -26,13 +50,12 @@ const InlineButtons: FC<OwnProps> = ({ message, onClick }) => {
             <Button
               size="tiny"
               ripple
-              disabled={button.type === 'NOT_SUPPORTED'}
+              disabled={button.type === 'unsupported'}
               // eslint-disable-next-line react/jsx-no-bind
-              onClick={() => onClick({ button })}
+              onClick={() => onClick({ messageId: message.id, button })}
             >
-              {renderText(lang(button.text))}
-              {button.type === 'buy' && <i className="icon-card" />}
-              {button.type === 'url' && !button.value!.match(RE_TME_LINK) && <i className="icon-arrow-right" />}
+              <span className="inline-button-text">{renderText(lang(button.text))}</span>
+              {renderIcon(button)}
             </Button>
           ))}
         </div>

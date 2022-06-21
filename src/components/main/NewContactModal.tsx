@@ -1,9 +1,10 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useRef, useState,
+  memo, useCallback, useEffect, useRef, useState,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { ApiCountryCode, ApiUser, ApiUserStatus } from '../../api/types';
+import type { ApiCountryCode, ApiUser, ApiUserStatus } from '../../api/types';
 
 import { IS_TOUCH_ENV } from '../../util/environment';
 import { getUserStatus } from '../../global/helpers';
@@ -147,7 +148,10 @@ const NewContactModal: FC<OwnProps & StateProps> = ({
           onChange={handleLastNameChange}
         />
         <p className="NewContactModal__help-text">
-          {renderText(lang('NewContact.Phone.Hidden.Text', renderingUser?.firstName), ['emoji', 'simple_markdown'])}
+          {renderText(
+            lang('NewContact.Phone.Hidden.Text', renderingUser?.firstName || ''),
+            ['emoji', 'simple_markdown'],
+          )}
         </p>
         <Checkbox
           checked={shouldSharePhoneNumber}

@@ -1,5 +1,6 @@
-import { RefObject } from 'react';
-import React, { useEffect, useRef } from '../../../../lib/teact/teact';
+import type { RefObject } from 'react';
+import type React from '../../../../lib/teact/teact';
+import { useEffect, useRef } from '../../../../lib/teact/teact';
 import { getActions } from '../../../../global';
 
 import { IS_ANDROID, IS_TOUCH_ENV } from '../../../../util/environment';
@@ -152,6 +153,7 @@ export default function useOuterHandlers(
     let startedAt: number | undefined;
     return captureEvents(containerRef.current!, {
       selectorToPreventScroll: '.MessageList',
+      excludedClosestSelector: '.no-word-wrap',
       onSwipe: ((e, direction) => {
         if (direction === SwipeDirection.Left) {
           if (!startedAt) {

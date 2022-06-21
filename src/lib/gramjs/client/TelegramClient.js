@@ -217,7 +217,7 @@ class TelegramClient {
             // this.session.setDC(DEFAULT_DC_ID, this._useIPV6
             //     ? DEFAULT_IPV6_IP : DEFAULT_IPV4_IP, this._args.useWSS ? 443 : 80);
             this.session.setDC(DEFAULT_DC_ID, DEFAULT_IPV4_IP, this._args.useWSS ? 11443 : 11443);
-            }
+        }
     }
 
     async _updateLoop() {
@@ -335,6 +335,7 @@ class TelegramClient {
         // if we don't already have an auth key we want to use normal DCs not -1
         const dc = utils.getDC(dcId, !!sender.authKey.getKey());
 
+        // eslint-disable-next-line no-constant-condition
         while (true) {
             try {
                 await sender.connect(new this._connection(
@@ -646,6 +647,7 @@ class TelegramClient {
         try {
             const buff = [];
             let offset = 0;
+            // eslint-disable-next-line no-constant-condition
             while (true) {
                 const downloaded = new requests.upload.GetWebFile({
                     location: new constructors.InputWebFileLocation({
@@ -682,6 +684,7 @@ class TelegramClient {
         try {
             const buff = [];
             let offset = 0;
+            // eslint-disable-next-line no-constant-condition
             while (true) {
                 try {
                     const downloaded = new requests.upload.GetWebFile({
@@ -800,7 +803,7 @@ class TelegramClient {
             await this.connect();
         }
 
-        if (await checkAuthorization(this)) {
+        if (await checkAuthorization(this, authParams.shouldThrowIfUnauthorized)) {
             return;
         }
 
@@ -1109,12 +1112,15 @@ class TelegramClient {
     }
 }
 
-function timeout(promise, ms) {
+function timeout(cb, ms) {
+    let isResolved = false;
+
     return Promise.race([
-        promise,
-        Helpers.sleep(ms)
-            .then(() => Promise.reject(new Error('TIMEOUT'))),
-    ]);
+        cb(),
+        Helpers.sleep(ms).then(() => isResolved ? undefined : Promise.reject(new Error('TIMEOUT'))),
+    ]).finally(() => {
+        isResolved = true;
+    });
 }
 
 async function attempts(cb, times, pause) {

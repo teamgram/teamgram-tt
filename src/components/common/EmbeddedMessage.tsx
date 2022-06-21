@@ -1,6 +1,7 @@
-import React, { FC, useRef } from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import React, { useRef } from '../../lib/teact/teact';
 
-import { ApiUser, ApiMessage, ApiChat } from '../../api/types';
+import type { ApiUser, ApiMessage, ApiChat } from '../../api/types';
 
 import {
   getMessageMediaHash,
@@ -11,7 +12,8 @@ import {
 import renderText from './helpers/renderText';
 import { getPictogramDimensions } from './helpers/mediaDimensions';
 import buildClassName from '../../util/buildClassName';
-import { ObserveFn, useIsIntersecting } from '../../hooks/useIntersectionObserver';
+import type { ObserveFn } from '../../hooks/useIntersectionObserver';
+import { useIsIntersecting } from '../../hooks/useIntersectionObserver';
 import useMedia from '../../hooks/useMedia';
 import useWebpThumbnail from '../../hooks/useWebpThumbnail';
 import useLang from '../../hooks/useLang';
@@ -54,7 +56,7 @@ const EmbeddedMessage: FC<OwnProps> = ({
 
   const lang = useLang();
 
-  const senderTitle = message?.forwardInfo?.hiddenUserName || (sender && getSenderTitle(lang, sender));
+  const senderTitle = sender ? getSenderTitle(lang, sender) : message?.forwardInfo?.hiddenUserName;
 
   return (
     <div

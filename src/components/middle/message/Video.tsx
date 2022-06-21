@@ -1,10 +1,10 @@
-import React, {
-  FC, useCallback, useRef, useState,
-} from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { useCallback, useRef, useState } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
-import { ApiMediaFormat, ApiMessage } from '../../../api/types';
-import { IMediaDimensions } from './helpers/calculateAlbumLayout';
+import type { ApiMessage } from '../../../api/types';
+import { ApiMediaFormat } from '../../../api/types';
+import type { IMediaDimensions } from './helpers/calculateAlbumLayout';
 
 import { formatMediaDuration } from '../../../util/dateFormat';
 import buildClassName from '../../../util/buildClassName';
@@ -18,7 +18,8 @@ import {
   isForwardedMessage,
   isOwnMessage,
 } from '../../../global/helpers';
-import { ObserveFn, useIsIntersecting } from '../../../hooks/useIntersectionObserver';
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import { useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useMediaWithLoadProgress from '../../../hooks/useMediaWithLoadProgress';
 import useMedia from '../../../hooks/useMedia';
 import useShowTransition from '../../../hooks/useShowTransition';
@@ -43,6 +44,7 @@ export type OwnProps = {
   lastSyncTime?: number;
   isDownloading: boolean;
   isProtected?: boolean;
+  withAspectRatio?: boolean;
   onClick?: (id: number) => void;
   onCancelUpload?: (message: ApiMessage) => void;
 };
@@ -61,6 +63,7 @@ const Video: FC<OwnProps> = ({
   onCancelUpload,
   isDownloading,
   isProtected,
+  withAspectRatio,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);
@@ -150,10 +153,10 @@ const Video: FC<OwnProps> = ({
   }, [isUploading, isDownloading, fullMediaData, isPlayAllowed, onClick, onCancelUpload, message]);
 
   const className = buildClassName('media-inner dark', !isUploading && 'interactive');
+  const aspectRatio = withAspectRatio ? `aspect-ratio: ${(width / height).toFixed(3)}/ 1` : '';
   const style = dimensions
-    ? `width: ${width}px; height: ${height}px; left: ${dimensions.x}px; top: ${dimensions.y}px;`
+    ? `width: ${width}px; height: ${height}px; left: ${dimensions.x}px; top: ${dimensions.y}px;${aspectRatio}`
     : '';
-
   return (
     <div
       ref={ref}
@@ -165,12 +168,12 @@ const Video: FC<OwnProps> = ({
       <canvas
         ref={thumbRef}
         className="thumbnail"
-        style={`width: ${width}px; height: ${height}px;`}
+        style={`width: ${width}px; height: ${height}px;${aspectRatio}`}
       />
       <img
         src={previewBlobUrl}
         className={buildClassName('thumbnail', previewClassNames)}
-        style={`width: ${width}px; height: ${height}px;`}
+        style={`width: ${width}px; height: ${height}px;${aspectRatio}`}
         alt=""
         draggable={!isProtected}
       />
@@ -188,6 +191,7 @@ const Video: FC<OwnProps> = ({
           {...bufferingHandlers}
           draggable={!isProtected}
           onTimeUpdate={handleTimeUpdate}
+          style={aspectRatio}
         >
           <source src={fullMediaData} />
         </video>

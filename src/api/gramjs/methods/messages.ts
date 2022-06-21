@@ -1,5 +1,5 @@
 import { Api as GramJs } from '../../../lib/gramjs';
-import {
+import type {
   ApiAttachment,
   ApiChat,
   ApiGlobalMessageSearchType,
@@ -13,18 +13,20 @@ import {
   ApiThreadInfo,
   ApiUser,
   ApiVideo,
-  MAIN_THREAD_ID,
-  MESSAGE_DELETED,
   OnApiUpdate,
   ApiSponsoredMessage,
   ApiSendMessageAction,
   ApiContact,
 } from '../../types';
+import {
+  MAIN_THREAD_ID,
+  MESSAGE_DELETED,
+} from '../../types';
 
 import {
   ALL_FOLDER_ID,
-  DEBUG,
-  PINNED_MESSAGES_LIMIT,
+  DEBUG, MENTION_UNREAD_SLICE,
+  PINNED_MESSAGES_LIMIT, REACTION_UNREAD_SLICE,
   SUPPORTED_IMAGE_CONTENT_TYPES,
   SUPPORTED_VIDEO_CONTENT_TYPES,
 } from '../../../config';
@@ -1102,6 +1104,7 @@ export async function forwardMessages({
   isSilent,
   scheduledAt,
   sendAs,
+  withMyScore,
 }: {
   fromChat: ApiChat;
   toChat: ApiChat;
@@ -1110,6 +1113,7 @@ export async function forwardMessages({
   isSilent?: boolean;
   scheduledAt?: number;
   sendAs?: ApiUser | ApiChat;
+  withMyScore?: boolean;
 }) {
   const messageIds = messages.map(({ id }) => id);
   const randomIds = messages.map(generateRandomBigInt);
@@ -1131,7 +1135,8 @@ export async function forwardMessages({
     toPeer: buildInputPeer(toChat.id, toChat.accessHash),
     randomId: randomIds,
     id: messageIds,
-    ...(isSilent && { sil2ent: isSilent }),
+    withMyScore: withMyScore || undefined,
+    silent: isSilent || undefined,
     ...(scheduledAt && { scheduleDate: scheduledAt }),
     ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
   }), true);
@@ -1315,4 +1320,96 @@ export async function viewSponsoredMessage({ chat, random }: { chat: ApiChat; ra
     channel: buildInputPeer(chat.id, chat.accessHash),
     randomId: deserializeBytes(random),
   }));
+}
+
+export function readAllMentions({
+  chat,
+}: {
+  chat: ApiChat;
+}) {
+  return invokeRequest(new GramJs.messages.ReadMentions({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+  }), true);
+}
+
+export function readAllReactions({
+  chat,
+}: {
+  chat: ApiChat;
+}) {
+  return invokeRequest(new GramJs.messages.ReadReactions({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+  }), true);
+}
+
+export async function fetchUnreadMentions({
+  chat, ...pagination
+}: {
+  chat: ApiChat;
+  offsetId?: number;
+  addOffset?: number;
+  maxId?: number;
+  minId?: number;
+}) {
+  const result = await invokeRequest(new GramJs.messages.GetUnreadMentions({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+    limit: MENTION_UNREAD_SLICE,
+    ...pagination,
+  }));
+
+  if (
+    !result
+    || result instanceof GramJs.messages.MessagesNotModified
+    || !result.messages
+  ) {
+    return undefined;
+  }
+
+  updateLocalDb(result);
+
+  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
+  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
+
+  return {
+    messages,
+    users,
+    chats,
+  };
+}
+
+export async function fetchUnreadReactions({
+  chat, ...pagination
+}: {
+  chat: ApiChat;
+  offsetId?: number;
+  addOffset?: number;
+  maxId?: number;
+  minId?: number;
+}) {
+  const result = await invokeRequest(new GramJs.messages.GetUnreadReactions({
+    peer: buildInputPeer(chat.id, chat.accessHash),
+    limit: REACTION_UNREAD_SLICE,
+    ...pagination,
+  }));
+
+  if (
+    !result
+    || result instanceof GramJs.messages.MessagesNotModified
+    || !result.messages
+  ) {
+    return undefined;
+  }
+
+  updateLocalDb(result);
+
+  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
+  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
+
+  return {
+    messages,
+    users,
+    chats,
+  };
 }

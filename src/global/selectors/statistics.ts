@@ -1,4 +1,4 @@
-import { GlobalState } from '../types';
+import type { GlobalState } from '../types';
 
 import { selectCurrentMessageList } from './messages';
 import { selectChat } from './chats';
@@ -16,4 +16,12 @@ export function selectIsStatisticsShown(global: GlobalState) {
   const chat = currentChatId ? selectChat(global, currentChatId) : undefined;
 
   return chat?.fullInfo?.canViewStatistics;
+}
+
+export function selectIsMessageStatisticsShown(global: GlobalState) {
+  if (!global.isStatisticsShown) {
+    return false;
+  }
+
+  return Boolean(global.statistics.currentMessageId);
 }

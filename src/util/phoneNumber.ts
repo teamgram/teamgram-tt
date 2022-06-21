@@ -1,5 +1,4 @@
-import { ApiCountryCode } from '../api/types';
-import { flatten } from './iteratees';
+import type { ApiCountryCode } from '../api/types';
 
 const PATTERN_PLACEHOLDER = 'X';
 const DEFAULT_PATTERN = 'XXX XXX XXX XXX';
@@ -16,13 +15,14 @@ export function getCountryFromPhoneNumber(phoneCodeList: ApiCountryCode[], input
 
   const possibleCountries = phoneCodeList
     .filter((country) => phoneNumber.startsWith(country.countryCode));
-  const codesWithPrefix: { code: string; country: ApiCountryCode }[] = flatten(possibleCountries
+  const codesWithPrefix: { code: string; country: ApiCountryCode }[] = possibleCountries
     .map((country) => (country.prefixes || ['']).map((prefix) => {
       return {
         code: `${country.countryCode}${prefix}`,
         country,
       };
-    })));
+    }))
+    .flat();
 
   const bestMatches = codesWithPrefix
     .filter(({ code }) => phoneNumber.startsWith(code))
@@ -32,6 +32,10 @@ export function getCountryFromPhoneNumber(phoneCodeList: ApiCountryCode[], input
 }
 
 export function formatPhoneNumber(input: string, country?: ApiCountryCode) {
+  if (!input) {
+    return '';
+  }
+
   let phoneNumber = input.replace(/[^\d]+/g, '');
   if (country) {
     phoneNumber = phoneNumber.substr(country.countryCode.length);
@@ -81,6 +85,10 @@ function getBestPattern(numberWithoutCode: string, patterns?: string[]) {
 }
 
 export function formatPhoneNumberWithCode(phoneCodeList: ApiCountryCode[], phoneNumber: string) {
+  if (!phoneNumber) {
+    return '';
+  }
+
   const numberWithPlus = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
   const country = getCountryFromPhoneNumber(phoneCodeList, numberWithPlus);
   if (!country) {

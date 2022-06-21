@@ -1,10 +1,11 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, useCallback, useLayoutEffect, useRef, useState,
+  useCallback, useLayoutEffect, useRef, useState,
 } from '../../../lib/teact/teact';
 
-import { ApiMessage } from '../../../api/types';
-import { ISettings } from '../../../types';
-import { IMediaDimensions } from './helpers/calculateAlbumLayout';
+import type { ApiMessage } from '../../../api/types';
+import type { ISettings } from '../../../types';
+import type { IMediaDimensions } from './helpers/calculateAlbumLayout';
 
 import { CUSTOM_APPENDIX_ATTRIBUTE } from '../../../config';
 import {
@@ -14,7 +15,8 @@ import {
   getMediaTransferState,
   isOwnMessage,
 } from '../../../global/helpers';
-import { ObserveFn, useIsIntersecting } from '../../../hooks/useIntersectionObserver';
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import { useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useMediaWithLoadProgress from '../../../hooks/useMediaWithLoadProgress';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useBlurredMediaThumbRef from './hooks/useBlurredMediaThumbRef';
@@ -41,6 +43,7 @@ export type OwnProps = {
   nonInteractive?: boolean;
   isDownloading: boolean;
   isProtected?: boolean;
+  withAspectRatio?: boolean;
   theme: ISettings['theme'];
   onClick?: (id: number) => void;
   onCancelUpload?: (message: ApiMessage) => void;
@@ -61,6 +64,7 @@ const Photo: FC<OwnProps> = ({
   shouldAffectAppendix,
   isDownloading,
   isProtected,
+  withAspectRatio,
   theme,
   onClick,
   onCancelUpload,
@@ -143,8 +147,9 @@ const Photo: FC<OwnProps> = ({
     width === height && 'square-image',
   );
 
+  const aspectRatio = withAspectRatio ? `aspect-ratio: ${(width / height).toFixed(3)}/ 1` : '';
   const style = dimensions
-    ? `width: ${width}px; height: ${height}px; left: ${dimensions.x}px; top: ${dimensions.y}px;`
+    ? `width: ${width}px; height: ${height}px; left: ${dimensions.x}px; top: ${dimensions.y}px;${aspectRatio}`
     : '';
 
   return (
@@ -158,7 +163,7 @@ const Photo: FC<OwnProps> = ({
       <canvas
         ref={thumbRef}
         className="thumbnail"
-        style={`width: ${width}px; height: ${height}px`}
+        style={`width: ${width}px; height: ${height}px;${aspectRatio}`}
       />
       <img
         src={fullMediaData}

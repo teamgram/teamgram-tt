@@ -1,10 +1,9 @@
-import React, {
-  FC, memo, useCallback, useMemo,
-} from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useCallback, useMemo } from '../../../lib/teact/teact';
 import { getGlobal, withGlobal } from '../../../global';
 
 import { ManagementScreens } from '../../../types';
-import { ApiChat, ApiChatMember } from '../../../api/types';
+import type { ApiChat, ApiChatMember } from '../../../api/types';
 
 import { getUserFullName, isChatChannel } from '../../../global/helpers';
 import { selectChat } from '../../../global/selectors';
@@ -40,7 +39,10 @@ const ManageChatAdministrators: FC<OwnProps & StateProps> = ({
 }) => {
   const lang = useLang();
 
-  useHistoryBack(isActive, onClose);
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
 
   const handleRecentActionsClick = useCallback(() => {
     onScreenSelect(ManagementScreens.GroupRecentActions);

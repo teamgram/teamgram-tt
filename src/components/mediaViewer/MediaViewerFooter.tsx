@@ -1,9 +1,11 @@
-import React, { FC, useEffect, useState } from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import React, { useEffect, useState } from '../../lib/teact/teact';
+
+import type { TextPart } from '../../types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
 import { throttle } from '../../util/schedulers';
 import buildClassName from '../../util/buildClassName';
-import { TextPart } from '../common/helpers/renderMessageText';
 import { REM } from '../common/helpers/mediaDimensions';
 
 import './MediaViewerFooter.scss';

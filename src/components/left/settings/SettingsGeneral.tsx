@@ -1,10 +1,12 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, useCallback, memo, useRef, useState,
+  useCallback, memo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { SettingsScreens, ISettings, TimeFormat } from '../../../types';
-import { ApiSticker, ApiStickerSet } from '../../../api/types';
+import type { ISettings, TimeFormat } from '../../../types';
+import { SettingsScreens } from '../../../types';
+import type { ApiSticker, ApiStickerSet } from '../../../api/types';
 
 import {
   getSystemTheme, IS_IOS, IS_MAC_OS, IS_TOUCH_ENV,
@@ -19,7 +21,8 @@ import useHistoryBack from '../../../hooks/useHistoryBack';
 import ListItem from '../../ui/ListItem';
 import RangeSlider from '../../ui/RangeSlider';
 import Checkbox from '../../ui/Checkbox';
-import RadioGroup, { IRadioOption } from '../../ui/RadioGroup';
+import type { IRadioOption } from '../../ui/RadioGroup';
+import RadioGroup from '../../ui/RadioGroup';
 import SettingsStickerSet from './SettingsStickerSet';
 import StickerSetModal from '../../common/StickerSetModal.async';
 import ReactionStaticEmoji from '../../common/ReactionStaticEmoji';
@@ -167,7 +170,10 @@ const SettingsGeneral: FC<OwnProps & StateProps> = ({
     return stickerSetsById?.[id]?.installedDate ? stickerSetsById[id] : false;
   }).filter<ApiStickerSet>(Boolean as any);
 
-  useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.General);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   return (
     <div className="settings-content custom-scroll">

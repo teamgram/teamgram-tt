@@ -1,3 +1,137 @@
+## 1.48.0 (2022-06-06)
+
+👏 **Harder**
+* Meet Seamless Web Bots, such as [@discussbot](https://t.me/discussbot), that help you log in on websites with your Telegram account.
+
+🤩 **Better**
+* Podcasts and long audio can now be played at 2X speed.
+* Audio Player buttons do not jump anymore when navigating between tracks.
+
+💪 **Stronger**
+* Fixed pasting text after switching chat.
+* Fixed sending and playing `.mov` videos.
+
+## 1.47.0 (2022-05-31)
+
+### 👏 **Harder**
+* This update adds a Passcode Lock feature, giving Telegram users the most private and secure experience of any web app. To add a passcode, go to _Settings > Privacy and Security > Passcode Lock_.
+* When the app is locked, it encrypts its data, including your chats, text messages, contacts, and your session keys – making it impossible to access them without the code. By adding a passcode, users on shared PCs no longer need to log out to protect their privacy.
+* Remember the passcode you set, you will need to log out and back in to your account if you forget it.
+
+### 🤩 **Better**
+* Media Viewer now supports native zoom and pan gestures with a trackpad or Magic Mouse.
+* Statistics now include data about Public Shares for posts.
+* Improvements and tweaks for Group and Channel Statistics.
+
+### 🚀 **Faster**
+* Optimizations for the rendering engine.
+
+### 💪 **Stronger**
+* Various fixes for code syntax highlighting, including support for C#.
+
+## 1.46.0 (2022-05-20)
+
+### 👏 **Harder**
+* Web Z becomes the first official app to support code syntax highlighting – start a code block with a language code, and the app will highlight separate terms and functions:
+```js
+console.log('Hello world!');
+```
+* Use new buttons to copy code contents and switch word wrapping.
+* When available, Group Sticker Sets now appear in the sticker panel.
+* Improved Sticker Management – preview sticker sets faster or clear recently sent stickers by right-clicking and selecting ‘View Pack’ or ‘Remove from Recent’.
+
+### 🤩 **Better**
+* Added fresh and modern chat background.
+* Various layout improvements.
+
+### 🚀 **Faster**
+* Reduced bundle size.
+
+### 💪 **Stronger**
+* Fixed issues when copying chat titles.
+* Searching for chats no longer adds them to the history stack.
+* The ‘Discuss Post’ button in channels now properly redirects.
+* Background should no longer flicker after logging in.
+* Fixed closing the forward dialog when switching to inline bots.
+* Fixed scrolling in Channel Management > Join Requests.
+
+## 1.45.0 (2022-05-06)
+
+### 👏 **Harder**
+* Copy phone number from the contact card context menu.
+
+### 🤩 **Better**
+* Migrated chats do not appear in the chat list anymore.
+
+### 🚀 **Faster**
+* Optimized memory usage.
+
+### 💪 **Stronger**
+* Header buttons are now clickable when notifications are shown.
+* Fixed infinite spinner when clicking on a contact card.
+
+## 1.44.0 (2022-05-03)
+
+### 👏 **Harder**
+* Mention and reaction badges are now shown both in the chat list and inside chats – tapping the badge in chat jumps to the relevant message.
+* Improved Device Management – with a detailed overview of active sessions and new icons. Tap or click a session in the list to see more info or remotely log it out.
+* Privacy Settings now have options for Calls, including Exceptions.
+* From other chats, instantly open a 1-on-1 chat with a bot using ‘Open Bot' in the ⋮ menu of the bot's preview window.
+
+### 🤩 **Better**
+* Browser navigation has been rebuilt from scratch – no more freezes or crashes.
+
+### 💪 **Stronger**
+* Fixed an issue where chats could get stuck in the Unread folder.
+* The app no longer duplicates text pasted from the clipboard.
+* Random media files failing to load should no longer occur.
+* Fixed issues when adding a contact with a hidden phone number.
+
+## 1.43.0 (2022-04-26)
+
+### 🤩 **Better**
+* Some improvements for revolutionary web bots such as [@wallet](https://t.me/wallet_news/60).
+* Better app icon on macOS.
+* Layout improvements and fixes.
+
+### 💪 **Stronger**
+* Various improvements for Statistics screen.
+
+## 1.42.0 (2022-04-19)
+
+### 👏 **Harder**
+* Telegram bots just became even [more powerful](https://t.me/telegram/178) – and Web Z fully supports their flexible interfaces.
+* Statistics for large groups and channels have expanded – see new metrics for recent posts at the bottom of the statistics page.
+
+### 🤩 **Better**
+* Emoji load faster on all platforms.
+
+### 💪 **Stronger**
+* An issue when adding users to groups has been fixed.
+* Fixed unwanted notifications caused by reactions to posts.
+* Online indicators for group members now work as expected.
+* Unexpected logouts should no longer occur.
+* Service notifications containing media are now rendered properly.
+* Read receipts now appear in groups with exactly 100 members.
+
+🦄 **We also welcome** you to join our official channels in **[English](https://t.me/webztalks)** and **[Russian](https://t.me/webzchannelru)** — where we post app updates and share our experiences building one of the world’s most feature-rich web applications.
+
+## 1.41.0 (2022-04-08)
+
+### 👏 **Harder**
+* Telegram Peer-to-Peer Calls – send and receive voice and video calls with screen sharing from any up-to-date app – secured with end-to-end encryption.
+* Challenge your friends or enjoy solo 🎮 with the full support of game bots like @gamee or @gamebot.
+* Know who you can trust – `SCAM` and `FAKE` badges now appear in suspicious chats.
+* Report suspicious peers and their profile photos.
+* Configure bot extra settings (if available) in the chat via ⋮ > Settings.
+
+### 🤩 **Better**
+* More UI improvements, as always.
+* New font for Persian language.
+
+### 💪 **Stronger**
+* Smoother navigation in Group and Channel Statistics.
+
 ## 1.40.0 (2022-04-01)
 
 🤡 **Happy April Fool's Day!** 🤡

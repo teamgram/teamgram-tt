@@ -1,10 +1,10 @@
-import {
-  FC, memo, useCallback, useEffect,
-} from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import { memo, useCallback, useEffect } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { Thread } from '../../global/types';
-import { ApiMediaFormat, ApiMessage } from '../../api/types';
+import type { Thread } from '../../global/types';
+import type { ApiMessage } from '../../api/types';
+import { ApiMediaFormat } from '../../api/types';
 
 import * as mediaLoader from '../../util/mediaLoader';
 import download from '../../util/download';
@@ -12,7 +12,7 @@ import {
   getMessageContentFilename, getMessageMediaHash,
 } from '../../global/helpers';
 
-import useDebounce from '../../hooks/useDebounce';
+import useRunDebounced from '../../hooks/useRunDebounced';
 
 type StateProps = {
   activeDownloads: Record<string, number[]>;
@@ -33,17 +33,17 @@ const DownloadManager: FC<StateProps> = ({
 }) => {
   const { cancelMessagesMediaDownload } = getActions();
 
-  const debouncedGlobalUpdate = useDebounce(GLOBAL_UPDATE_DEBOUNCE, true);
+  const runDebounced = useRunDebounced(GLOBAL_UPDATE_DEBOUNCE, true);
 
   const handleMessageDownloaded = useCallback((message: ApiMessage) => {
     downloadedMessages.add(message);
-    debouncedGlobalUpdate(() => {
+    runDebounced(() => {
       if (downloadedMessages.size) {
         cancelMessagesMediaDownload({ messages: Array.from(downloadedMessages) });
         downloadedMessages.clear();
       }
     });
-  }, [cancelMessagesMediaDownload, debouncedGlobalUpdate]);
+  }, [cancelMessagesMediaDownload, runDebounced]);
 
   useEffect(() => {
     const activeMessages = Object.entries(activeDownloads).map(([chatId, messageIds]) => (

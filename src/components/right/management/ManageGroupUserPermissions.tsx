@@ -1,9 +1,10 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useMemo, useState,
+  memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { ApiChat, ApiChatBannedRights } from '../../../api/types';
+import type { ApiChat, ApiChatBannedRights } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
 import { selectChat } from '../../../global/selectors';
@@ -48,7 +49,10 @@ const ManageGroupUserPermissions: FC<OwnProps & StateProps> = ({
   const [isBanConfirmationDialogOpen, openBanConfirmationDialog, closeBanConfirmationDialog] = useFlag();
   const lang = useLang();
 
-  useHistoryBack(isActive, onClose);
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
 
   const selectedChatMember = useMemo(() => {
     if (!chat || !chat.fullInfo || !chat.fullInfo.members) {

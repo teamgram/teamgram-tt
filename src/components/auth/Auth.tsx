@@ -1,15 +1,16 @@
-import React, { FC, useEffect, memo } from '../../lib/teact/teact';
+import type { FC } from '../../lib/teact/teact';
+import React, { useEffect, memo } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { GlobalState } from '../../global/types';
+import type { GlobalState } from '../../global/types';
 
 import '../../global/actions/initial';
 import { pick } from '../../util/iteratees';
 import { PLATFORM_ENV } from '../../util/environment';
 import windowSize from '../../util/windowSize';
 import useHistoryBack from '../../hooks/useHistoryBack';
+import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
 
-import UiLoader from '../common/UiLoader';
 import AuthPhoneNumber from './AuthPhoneNumber';
 import AuthCode from './AuthCode.async';
 import AuthPassword from './AuthPassword.async';
@@ -18,19 +19,25 @@ import AuthQrCode from './AuthQrCode';
 
 import './Auth.scss';
 
+type OwnProps = {
+  isActive: boolean;
+};
+
 type StateProps = Pick<GlobalState, 'authState'>;
 
-const Auth: FC<StateProps> = ({
-  authState,
+const Auth: FC<OwnProps & StateProps> = ({
+  isActive, authState,
 }) => {
   const {
     reset, initApi, returnToAuthPhoneNumber, goToAuthQrCode,
   } = getActions();
 
   useEffect(() => {
-    reset();
-    initApi();
-  }, [reset, initApi]);
+    if (isActive) {
+      reset();
+      initApi();
+    }
+  }, [isActive, reset, initApi]);
 
   const isMobile = PLATFORM_ENV === 'iOS' || PLATFORM_ENV === 'Android';
 
@@ -42,10 +49,11 @@ const Auth: FC<StateProps> = ({
     }
   };
 
-  useHistoryBack(
-    (!isMobile && authState === 'authorizationStateWaitPhoneNumber')
-    || (isMobile && authState === 'authorizationStateWaitQrCode'), handleChangeAuthorizationMethod,
-  );
+  useHistoryBack({
+    isActive: (!isMobile && authState === 'authorizationStateWaitPhoneNumber')
+    || (isMobile && authState === 'authorizationStateWaitQrCode'),
+    onBack: handleChangeAuthorizationMethod,
+  });
 
   // Prevent refresh when rotating device
   useEffect(() => {
@@ -56,24 +64,28 @@ const Auth: FC<StateProps> = ({
     };
   }, []);
 
-  switch (authState) {
+  // For animation purposes
+  const renderingAuthState = useCurrentOrPrev(
+    authState !== 'authorizationStateReady' ? authState : undefined,
+    true,
+  );
+
+  switch (renderingAuthState) {
     case 'authorizationStateWaitCode':
-      return <UiLoader page="authCode" key="authCode"><AuthCode /></UiLoader>;
+      return <AuthCode />;
     case 'authorizationStateWaitPassword':
-      return <UiLoader page="authPassword" key="authPassword"><AuthPassword /></UiLoader>;
+      return <AuthPassword />;
     case 'authorizationStateWaitRegistration':
       return <AuthRegister />;
     case 'authorizationStateWaitPhoneNumber':
-      return <UiLoader page="authPhoneNumber" key="authPhoneNumber"><AuthPhoneNumber /></UiLoader>;
+      return <AuthPhoneNumber />;
     case 'authorizationStateWaitQrCode':
-      return <UiLoader page="authQrCode" key="authQrCode"><AuthQrCode /></UiLoader>;
+      return <AuthQrCode />;
     default:
-      return isMobile
-        ? <UiLoader page="authPhoneNumber" key="authPhoneNumber"><AuthPhoneNumber /></UiLoader>
-        : <UiLoader page="authQrCode" key="authQrCode"><AuthQrCode /></UiLoader>;
+      return isMobile ? <AuthPhoneNumber /> : <AuthQrCode />;
   }
 };
 
-export default memo(withGlobal(
+export default memo(withGlobal<OwnProps>(
   (global): StateProps => pick(global, ['authState']),
 )(Auth));

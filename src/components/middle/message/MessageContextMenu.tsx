@@ -1,18 +1,21 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useRef,
+  memo, useCallback, useEffect, useRef,
 } from '../../../lib/teact/teact';
+import { getActions } from '../../../global';
 
-import { ApiAvailableReaction, ApiMessage, ApiUser } from '../../../api/types';
-import { IAnchorPosition } from '../../../types';
+import type { ApiAvailableReaction, ApiMessage, ApiUser } from '../../../api/types';
+import type { IAnchorPosition } from '../../../types';
 
 import { getMessageCopyOptions } from './helpers/copyOptions';
 import { disableScrolling, enableScrolling } from '../../../util/scrollLock';
 import { getUserFullName } from '../../../global/helpers';
+import buildClassName from '../../../util/buildClassName';
+import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
+
+import useFlag from '../../../hooks/useFlag';
 import useContextMenuPosition from '../../../hooks/useContextMenuPosition';
 import useLang from '../../../hooks/useLang';
-import buildClassName from '../../../util/buildClassName';
-import useFlag from '../../../hooks/useFlag';
-import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 
 import Menu from '../../ui/Menu';
 import MenuItem from '../../ui/MenuItem';
@@ -66,6 +69,7 @@ type OwnProps = {
   onCloseAnimationEnd?: () => void;
   onCopyLink?: () => void;
   onCopyMessages?: (messageIds: number[]) => void;
+  onCopyNumber?: () => void;
   onDownload?: () => void;
   onSaveGif?: () => void;
   onShowSeenBy?: () => void;
@@ -121,6 +125,7 @@ const MessageContextMenu: FC<OwnProps> = ({
   onClose,
   onCloseAnimationEnd,
   onCopyLink,
+  onCopyNumber,
   onDownload,
   onSaveGif,
   onShowSeenBy,
@@ -128,15 +133,27 @@ const MessageContextMenu: FC<OwnProps> = ({
   onSendReaction,
   onCopyMessages,
 }) => {
+  const { showNotification } = getActions();
   // eslint-disable-next-line no-null/no-null
   const menuRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
   const scrollableRef = useRef<HTMLDivElement>(null);
-  const copyOptions = getMessageCopyOptions(message, onClose, canCopyLink ? onCopyLink : undefined, onCopyMessages);
+  const lang = useLang();
   const noReactions = !isPrivate && !enabledReactions?.length;
   const withReactions = canShowReactionList && !noReactions;
 
   const [isReady, markIsReady, unmarkIsReady] = useFlag();
+
+  const handleAfterCopy = useCallback(() => {
+    showNotification({
+      message: lang('Share.Link.Copied'),
+    });
+    onClose();
+  }, [lang, onClose, showNotification]);
+
+  const copyOptions = getMessageCopyOptions(
+    message, handleAfterCopy, canCopyLink ? onCopyLink : undefined, onCopyMessages, onCopyNumber,
+  );
 
   const getTriggerElement = useCallback(() => {
     return document.querySelector(`.Transition__slide--active > .MessageList div[data-message-id="${message.id}"]`);
@@ -193,8 +210,6 @@ const MessageContextMenu: FC<OwnProps> = ({
     return enableScrolling;
   }, [withScroll]);
 
-  const lang = useLang();
-
   return (
     <Menu
       ref={menuRef}
@@ -226,7 +241,7 @@ const MessageContextMenu: FC<OwnProps> = ({
         style={menuStyle}
         ref={scrollableRef}
       >
-        {canRemoveReaction && <MenuItem icon="reactions" onClick={handleRemoveReaction}>Remove Reaction</MenuItem>}
+        {canRemoveReaction && <MenuItem icon="heart-outline" onClick={handleRemoveReaction}>Remove Reaction</MenuItem>}
         {canSendNow && <MenuItem icon="send-outline" onClick={onSend}>{lang('MessageScheduleSend')}</MenuItem>}
         {canReschedule && (
           <MenuItem icon="schedule" onClick={onReschedule}>{lang('MessageScheduleEditTime')}</MenuItem>
@@ -256,7 +271,7 @@ const MessageContextMenu: FC<OwnProps> = ({
         {(canShowSeenBy || canShowReactionsCount) && (
           <MenuItem
             className="MessageContextMenu--seen-by"
-            icon={canShowReactionsCount ? 'reactions' : 'group'}
+            icon={canShowReactionsCount ? 'heart-outline' : 'group'}
             onClick={canShowReactionsCount ? onShowReactors : onShowSeenBy}
             disabled={!canShowReactionsCount && !message.seenByUserIds?.length}
           >

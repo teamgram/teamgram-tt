@@ -1,5 +1,6 @@
-import { RefObject } from 'react';
-import React, { FC, useEffect, useRef } from '../../lib/teact/teact';
+import type { RefObject } from 'react';
+import type { FC } from '../../lib/teact/teact';
+import React, { useEffect, useRef } from '../../lib/teact/teact';
 
 import useShowTransition from '../../hooks/useShowTransition';
 import useKeyboardListNavigation from '../../hooks/useKeyboardListNavigation';
@@ -7,6 +8,7 @@ import useVirtualBackdrop from '../../hooks/useVirtualBackdrop';
 import useEffectWithPrevDeps from '../../hooks/useEffectWithPrevDeps';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import buildClassName from '../../util/buildClassName';
+import buildStyle from '../../util/buildStyle';
 import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import useHistoryBack from '../../hooks/useHistoryBack';
 import { preventMessageInputBlurWithBubbling } from '../middle/helpers/preventMessageInputBlur';
@@ -34,7 +36,7 @@ type OwnProps = {
   noCompact?: boolean;
   onKeyDown?: (e: React.KeyboardEvent<any>) => void;
   onCloseAnimationEnd?: () => void;
-  onClose?: () => void;
+  onClose: () => void;
   onMouseEnter?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   onMouseLeave?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   children: React.ReactNode;
@@ -84,11 +86,15 @@ const Menu: FC<OwnProps> = ({
   );
 
   useEffect(
-    () => (isOpen && onClose ? captureEscKeyListener(onClose) : undefined),
+    () => (isOpen ? captureEscKeyListener(onClose) : undefined),
     [isOpen, onClose],
   );
 
-  useHistoryBack(isOpen, onClose, undefined, undefined, autoClose);
+  useHistoryBack({
+    isActive: isOpen,
+    onBack: onClose,
+    shouldBeReplaced: true,
+  });
 
   useEffectWithPrevDeps(([prevIsOpen]) => {
     if (isOpen || (!isOpen && prevIsOpen === true)) {
@@ -138,8 +144,10 @@ const Menu: FC<OwnProps> = ({
       <div
         ref={menuRef}
         className={bubbleClassName}
-        style={`transform-origin: ${transformOriginXStyle || positionX} ${transformOriginYStyle || positionY};${
-          bubbleStyle || ''}`}
+        style={buildStyle(
+          `transform-origin: ${transformOriginXStyle || positionX} ${transformOriginYStyle || positionY}`,
+          bubbleStyle,
+        )}
         onClick={autoClose ? onClose : undefined}
       >
         {children}

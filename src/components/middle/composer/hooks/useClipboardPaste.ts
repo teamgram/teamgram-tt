@@ -1,5 +1,6 @@
-import { StateHookSetter, useEffect } from '../../../../lib/teact/teact';
-import { ApiAttachment, ApiMessage } from '../../../../api/types';
+import type { StateHookSetter } from '../../../../lib/teact/teact';
+import { useEffect } from '../../../../lib/teact/teact';
+import type { ApiAttachment, ApiMessage } from '../../../../api/types';
 
 import buildAttachment from '../helpers/buildAttachment';
 import { EDITABLE_INPUT_ID, EDITABLE_INPUT_MODAL_ID } from '../../../../config';
@@ -9,11 +10,16 @@ const CLIPBOARD_ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/gif'];
 const MAX_MESSAGE_LENGTH = 4096;
 
 const useClipboardPaste = (
+  isActive: boolean,
   insertTextAndUpdateCursor: (text: string, inputId?: string) => void,
   setAttachments: StateHookSetter<ApiAttachment[]>,
   editedMessage: ApiMessage | undefined,
 ) => {
   useEffect(() => {
+    if (!isActive) {
+      return undefined;
+    }
+
     async function handlePaste(e: ClipboardEvent) {
       if (!e.clipboardData) {
         return;
@@ -54,7 +60,7 @@ const useClipboardPaste = (
     return () => {
       document.removeEventListener('paste', handlePaste, false);
     };
-  }, [insertTextAndUpdateCursor, editedMessage, setAttachments]);
+  }, [insertTextAndUpdateCursor, editedMessage, setAttachments, isActive]);
 };
 
 export default useClipboardPaste;

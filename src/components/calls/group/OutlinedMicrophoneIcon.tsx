@@ -1,7 +1,12 @@
-import { GroupCallParticipant, THRESHOLD } from '../../../lib/secret-sauce';
-import React, { FC, memo, useMemo } from '../../../lib/teact/teact';
-import AnimatedIcon from '../../common/AnimatedIcon';
+import type { GroupCallParticipant } from '../../../lib/secret-sauce';
+import { THRESHOLD } from '../../../lib/secret-sauce';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useMemo } from '../../../lib/teact/teact';
+
+import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 import usePrevious from '../../../hooks/usePrevious';
+
+import AnimatedIcon from '../../common/AnimatedIcon';
 
 type OwnProps = {
   participant: GroupCallParticipant;
@@ -57,7 +62,7 @@ const OutlinedMicrophoneIcon: FC<OwnProps> = ({
 
   return (
     <AnimatedIcon
-      name="VoiceOutlined"
+      tgsUrl={LOCAL_TGS_URLS.VoiceOutlined}
       playSegment={playSegment}
       size={28}
       color={microphoneColor}

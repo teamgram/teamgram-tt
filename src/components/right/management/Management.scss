@@ -36,22 +36,7 @@
     }
 
     .section-icon {
-      width: 8.75rem;
-      height: 8.75rem;
       margin: 0 auto 2rem;
-      position: relative;
-
-      .AnimatedSticker {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-
-        &.hidden {
-          display: none;
-        }
-      }
     }
 
     .ListItem {
@@ -163,7 +148,10 @@
 
   &__filter {
     padding: 0 1rem 0.25rem 0.75rem;
-    border-bottom: 1px solid var(--color-borders);
+    background-color: var(--color-background);
+    box-shadow: inset 0 -0.0625rem 0 0 var(--color-background-secondary-accent);
+    margin-bottom: 0.625rem;
+
     display: flex;
     flex-flow: row wrap;
     flex-shrink: 0;

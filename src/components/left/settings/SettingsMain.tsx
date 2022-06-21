@@ -1,8 +1,9 @@
-import React, { FC, memo, useEffect } from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import { SettingsScreens } from '../../../types';
-import { ApiUser } from '../../../api/types';
+import type { ApiUser } from '../../../api/types';
 
 import { selectUser } from '../../../global/selectors';
 import useLang from '../../../hooks/useLang';
@@ -32,7 +33,7 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
   sessionCount,
   lastSyncTime,
 }) => {
-  const { loadProfilePhotos, loadAuthorizations } = getActions();
+  const { loadProfilePhotos, loadAuthorizations, loadWebAuthorizations } = getActions();
 
   const lang = useLang();
   const profileId = currentUser?.id;
@@ -43,13 +44,17 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
     }
   }, [lastSyncTime, profileId, loadProfilePhotos]);
 
-  useHistoryBack(isActive, onReset, onScreenSelect, SettingsScreens.Main);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   useEffect(() => {
     if (lastSyncTime) {
       loadAuthorizations();
+      loadWebAuthorizations();
     }
-  }, [lastSyncTime, loadAuthorizations]);
+  }, [lastSyncTime, loadAuthorizations, loadWebAuthorizations]);
 
   return (
     <div className="settings-content custom-scroll">
@@ -127,7 +132,7 @@ export default memo(withGlobal<OwnProps>(
     const { currentUserId, lastSyncTime } = global;
 
     return {
-      sessionCount: global.activeSessions.length,
+      sessionCount: global.activeSessions.orderedHashes.length,
       currentUser: currentUserId ? selectUser(global, currentUserId) : undefined,
       lastSyncTime,
     };

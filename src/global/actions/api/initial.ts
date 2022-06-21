@@ -1,4 +1,6 @@
-import { addActionHandler, getActions, getGlobal } from '../../index';
+import {
+  addActionHandler, getActions, getGlobal, setGlobal,
+} from '../../index';
 
 import { initApi, callApi } from '../../../api/gramjs';
 
@@ -9,6 +11,7 @@ import {
   MEDIA_CACHE_NAME_AVATARS,
   MEDIA_PROGRESSIVE_CACHE_NAME,
   IS_TEST,
+  LOCK_SCREEN_ANIMATION_DURATION_MS,
 } from '../../../config';
 import { IS_MOV_SUPPORTED, IS_WEBM_SUPPORTED, PLATFORM_ENV } from '../../../util/environment';
 import { unsubscribe } from '../../../util/notifications';
@@ -22,6 +25,9 @@ import {
   clearLegacySessions,
 } from '../../../util/sessions';
 import { forceWebsync } from '../../../util/websync';
+import { clearGlobalForLockScreen, updatePasscodeSettings } from '../../reducers';
+import { clearEncryptedSession, encryptSession, forgetPasscode } from '../../../util/passcode';
+import { serializeGlobal } from '../../cache';
 
 addActionHandler('initApi', async (global, actions) => {
   if (!IS_TEST) {
@@ -113,8 +119,11 @@ addActionHandler('goToAuthQrCode', (global) => {
 });
 
 addActionHandler('saveSession', (global, actions, payload) => {
-  const { sessionData } = payload;
+  if (global.passcode.isScreenLocked) {
+    return;
+  }
 
+  const { sessionData } = payload;
   if (sessionData) {
     storeSession(payload.sessionData, global.currentUserId);
   } else {
@@ -140,6 +149,7 @@ addActionHandler('signOut', async (_global, _actions, payload) => {
 
 addActionHandler('reset', () => {
   clearStoredSession();
+  clearEncryptedSession();
 
   void cacheApi.clear(MEDIA_CACHE_NAME);
   void cacheApi.clear(MEDIA_CACHE_NAME_AVATARS);
@@ -165,15 +175,15 @@ addActionHandler('disconnect', () => {
 
 addActionHandler('loadNearestCountry', async (global) => {
   if (global.connectionState !== 'connectionStateReady') {
-    return undefined;
+    return;
   }
 
   const authNearestCountry = await callApi('fetchNearestCountry');
 
-  return {
+  setGlobal({
     ...getGlobal(),
     authNearestCountry,
-  };
+  });
 });
 
 addActionHandler('setDeviceToken', (global, actions, deviceToken) => {
@@ -191,4 +201,34 @@ addActionHandler('deleteDeviceToken', (global) => {
     ...global,
     push: undefined,
   };
+});
+
+addActionHandler('lockScreen', async (global) => {
+  const sessionJson = JSON.stringify({ ...loadStoredSession(), userId: global.currentUserId });
+  const globalJson = serializeGlobal(global);
+
+  await encryptSession(sessionJson, globalJson);
+  forgetPasscode();
+  clearStoredSession();
+  updateAppBadge(0);
+
+  global = getGlobal();
+  setGlobal(updatePasscodeSettings(
+    global,
+    {
+      isScreenLocked: true,
+      invalidAttemptsCount: 0,
+    },
+  ));
+
+  setTimeout(() => {
+    setGlobal(clearGlobalForLockScreen(getGlobal()));
+  }, LOCK_SCREEN_ANIMATION_DURATION_MS);
+
+  try {
+    await unsubscribe();
+    await callApi('destroy', true);
+  } catch (err) {
+    // Do nothing
+  }
 });

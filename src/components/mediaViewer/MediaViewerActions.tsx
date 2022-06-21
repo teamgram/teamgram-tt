@@ -1,12 +1,12 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC,
   memo,
   useCallback,
   useMemo,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { ApiMessage } from '../../api/types';
+import type { ApiMessage } from '../../api/types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
 import { getMessageMediaHash } from '../../global/helpers';
@@ -29,27 +29,31 @@ type StateProps = {
 type OwnProps = {
   mediaData?: string;
   isVideo: boolean;
-  isZoomed: boolean;
+  zoomLevelChange: number;
   message?: ApiMessage;
   fileName?: string;
   isAvatar?: boolean;
+  canReport?: boolean;
+  onReport: NoneToVoidFunction;
   onCloseMediaViewer: NoneToVoidFunction;
   onForward: NoneToVoidFunction;
-  onZoomToggle: NoneToVoidFunction;
+  setZoomLevelChange: (change: number) => void;
 };
 
 const MediaViewerActions: FC<OwnProps & StateProps> = ({
   mediaData,
   isVideo,
-  isZoomed,
   message,
   fileName,
   isAvatar,
   isDownloading,
   isProtected,
+  canReport,
+  onReport,
   onCloseMediaViewer,
+  zoomLevelChange,
+  setZoomLevelChange,
   onForward,
-  onZoomToggle,
 }) => {
   const {
     downloadMessageMedia,
@@ -68,6 +72,16 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
       downloadMessageMedia({ message: message! });
     }
   }, [cancelMessageMediaDownload, downloadMessageMedia, isDownloading, message]);
+
+  const handleZoomOut = useCallback(() => {
+    const change = zoomLevelChange < 0 ? zoomLevelChange : 0;
+    setZoomLevelChange(change - 1);
+  }, [setZoomLevelChange, zoomLevelChange]);
+
+  const handleZoomIn = useCallback(() => {
+    const change = zoomLevelChange > 0 ? zoomLevelChange : 0;
+    setZoomLevelChange(change + 1);
+  }, [setZoomLevelChange, zoomLevelChange]);
 
   const lang = useLang();
 
@@ -154,6 +168,14 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
               {lang('AccActionDownload')}
             </MenuItem>
           )}
+          {canReport && (
+            <MenuItem
+              icon="flag"
+              onClick={onReport}
+            >
+              {lang('ReportPeer.Report')}
+            </MenuItem>
+          )}
         </DropdownMenu>
         {isDownloading && <ProgressSpinner progress={downloadProgress} size="s" noCross />}
       </div>
@@ -178,11 +200,31 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
         round
         size="smaller"
         color="translucent-white"
-        ariaLabel={isZoomed ? 'Zoom Out' : 'Zoom In'}
-        onClick={onZoomToggle}
+        ariaLabel={lang('MediaZoomOut')}
+        onClick={handleZoomOut}
       >
-        <i className={isZoomed ? 'icon-zoom-out' : 'icon-zoom-in'} />
+        <i className="icon-zoom-out" />
       </Button>
+      <Button
+        round
+        size="smaller"
+        color="translucent-white"
+        ariaLabel={lang('MediaZoomIn')}
+        onClick={handleZoomIn}
+      >
+        <i className="icon-zoom-in" />
+      </Button>
+      {canReport && (
+        <Button
+          round
+          size="smaller"
+          color="translucent-white"
+          ariaLabel={lang(isVideo ? 'PeerInfo.ReportProfileVideo' : 'PeerInfo.ReportProfilePhoto')}
+          onClick={onReport}
+        >
+          <i className="icon-flag" />
+        </Button>
+      )}
       <Button
         round
         size="smaller"

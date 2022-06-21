@@ -1,6 +1,5 @@
-import React, {
-  FC, FC_withDebug, Props, useEffect, useState,
-} from './teact';
+import type { FC, FC_withDebug, Props } from './teact';
+import React, { useEffect, useState } from './teact';
 
 import { DEBUG, DEBUG_MORE } from '../../config';
 import useForceUpdate from '../../hooks/useForceUpdate';
@@ -13,7 +12,9 @@ import { isHeavyAnimating } from '../../hooks/useHeavyAnimationCheck';
 
 export default React;
 
-type GlobalState = AnyLiteral;
+type GlobalState =
+  AnyLiteral
+  & { DEBUG_capturedId?: number };
 type ActionNames = string;
 type ActionPayload = any;
 
@@ -29,11 +30,18 @@ type ActionHandler = (
   global: GlobalState,
   actions: Actions,
   payload: any,
-) => GlobalState | void | Promise<GlobalState | void>;
+) => GlobalState | void | Promise<void>;
 
 type MapStateToProps<OwnProps = undefined> = ((global: GlobalState, ownProps: OwnProps) => AnyLiteral);
 
 let currentGlobal = {} as GlobalState;
+
+// eslint-disable-next-line @typescript-eslint/naming-convention
+let DEBUG_currentCapturedId: number | undefined;
+// eslint-disable-next-line @typescript-eslint/naming-convention
+const DEBUG_releaseCapturedIdThrottled = throttleWithTickEnd(() => {
+  DEBUG_currentCapturedId = undefined;
+});
 
 const actionHandlers: Record<string, ActionHandler[]> = {};
 const callbacks: Function[] = [updateContainers];
@@ -61,6 +69,14 @@ function runCallbacks(forceOnHeavyAnimation = false) {
 
 export function setGlobal(newGlobal?: GlobalState, options?: ActionOptions) {
   if (typeof newGlobal === 'object' && newGlobal !== currentGlobal) {
+    if (DEBUG) {
+      if (newGlobal.DEBUG_capturedId && newGlobal.DEBUG_capturedId !== DEBUG_currentCapturedId) {
+        throw new Error('[TeactN.setGlobal] Attempt to set an outdated global');
+      }
+
+      DEBUG_currentCapturedId = undefined;
+    }
+
     currentGlobal = newGlobal;
     if (options?.forceSyncOnIOs) {
       runCallbacks(true);
@@ -71,6 +87,15 @@ export function setGlobal(newGlobal?: GlobalState, options?: ActionOptions) {
 }
 
 export function getGlobal() {
+  if (DEBUG) {
+    DEBUG_currentCapturedId = Math.random();
+    currentGlobal = {
+      ...currentGlobal,
+      DEBUG_capturedId: DEBUG_currentCapturedId,
+    };
+    DEBUG_releaseCapturedIdThrottled();
+  }
+
   return currentGlobal;
 }
 
@@ -78,23 +103,30 @@ export function getActions() {
   return actions;
 }
 
-function handleAction(name: string, payload?: ActionPayload, options?: ActionOptions) {
-  actionHandlers[name]?.forEach((handler) => {
-    const response = handler(currentGlobal, actions, payload);
-    if (!response) {
-      return;
-    }
+let actionQueue: NoneToVoidFunction[] = [];
 
-    if (typeof response.then === 'function') {
-      response.then((newGlobal: GlobalState | void) => {
-        if (newGlobal) {
-          setGlobal(newGlobal, options);
-        }
-      });
-    } else {
-      setGlobal(response, options);
-    }
+function handleAction(name: string, payload?: ActionPayload, options?: ActionOptions) {
+  actionQueue.push(() => {
+    actionHandlers[name]?.forEach((handler) => {
+      const response = handler(DEBUG ? getGlobal() : currentGlobal, actions, payload);
+      if (!response || typeof response.then === 'function') {
+        return;
+      }
+
+      setGlobal(response as GlobalState, options);
+    });
   });
+
+  if (actionQueue.length === 1) {
+    try {
+      while (actionQueue.length) {
+        actionQueue[0]();
+        actionQueue.shift();
+      }
+    } finally {
+      actionQueue = [];
+    }
+  }
 }
 
 function updateContainers() {
@@ -254,7 +286,7 @@ export function typify<ProjectGlobalState, ActionPayloads, NonTypedActionNames e
       global: ProjectGlobalState,
       actions: ProjectActions,
       payload: ProjectActionTypes[ActionName],
-    ) => ProjectGlobalState | void | Promise<ProjectGlobalState | void>;
+    ) => ProjectGlobalState | void | Promise<void>;
   };
 
   return {
@@ -267,7 +299,7 @@ export function typify<ProjectGlobalState, ActionPayloads, NonTypedActionNames e
     ) => void,
     withGlobal: withGlobal as <OwnProps>(
       mapStateToProps: ((global: ProjectGlobalState, ownProps: OwnProps) => AnyLiteral),
-    ) => (Component: FC) => FC,
+    ) => (Component: FC) => FC<OwnProps>,
   };
 }
 

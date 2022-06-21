@@ -1,19 +1,21 @@
-import { MouseEvent } from 'react';
+import type { MouseEvent } from 'react';
 import React from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
-import { ApiFormattedText, ApiMessageEntity, ApiMessageEntityTypes } from '../../../api/types';
-import renderText, { TextFilter } from './renderText';
+import type { TextPart } from '../../../types';
+import type { ApiFormattedText, ApiMessageEntity } from '../../../api/types';
+import { ApiMessageEntityTypes } from '../../../api/types';
+
+import type { TextFilter } from './renderText';
+import renderText from './renderText';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { getTranslation } from '../../../util/langProvider';
 
 import MentionLink from '../../middle/message/MentionLink';
 import SafeLink from '../SafeLink';
 import Spoiler from '../spoiler/Spoiler';
-
-export type TextPart =
-  string
-  | Element;
+import CodeBlock from '../code/CodeBlock';
+import buildClassName from '../../../util/buildClassName';
 
 interface IOrganizedEntity {
   entity: ApiMessageEntity;
@@ -29,6 +31,7 @@ export function renderTextWithEntities(
   shouldRenderAsHtml?: boolean,
   messageId?: number,
   isSimple?: boolean,
+  isProtected?: boolean,
 ) {
   if (!entities || !entities.length) {
     return renderMessagePart(text, highlight, shouldRenderHqEmoji, shouldRenderAsHtml, isSimple);
@@ -103,7 +106,7 @@ export function renderTextWithEntities(
     // Render the entity itself
     const newEntity = shouldRenderAsHtml
       ? processEntityAsHtml(entity, entityContent, nestedEntityContent)
-      : processEntity(entity, entityContent, nestedEntityContent, highlight, messageId, isSimple);
+      : processEntity(entity, entityContent, nestedEntityContent, highlight, messageId, isSimple, isProtected);
 
     if (Array.isArray(newEntity)) {
       renderResult.push(...newEntity);
@@ -278,6 +281,7 @@ function processEntity(
   highlight?: string,
   messageId?: number,
   isSimple?: boolean,
+  isProtected?: boolean,
 ) {
   const entityText = typeof entityContent === 'string' && entityContent;
   const renderedContent = nestedEntityContent.length ? nestedEntityContent : entityContent;
@@ -337,7 +341,12 @@ function processEntity(
       );
     case ApiMessageEntityTypes.Code:
       return (
-        <code className="text-entity-code" onClick={handleCodeClick} role="textbox" tabIndex={0}>
+        <code
+          className={buildClassName('text-entity-code', !isProtected && 'clickable')}
+          onClick={!isProtected ? handleCodeClick : undefined}
+          role="textbox"
+          tabIndex={0}
+        >
           {renderNestedMessagePart()}
         </code>
       );
@@ -378,7 +387,7 @@ function processEntity(
         </a>
       );
     case ApiMessageEntityTypes.Pre:
-      return <pre className="text-entity-pre">{renderNestedMessagePart()}</pre>;
+      return <CodeBlock text={entityText} language={entity.language} noCopy={isProtected} />;
     case ApiMessageEntityTypes.Strike:
       return <del>{renderNestedMessagePart()}</del>;
     case ApiMessageEntityTypes.TextUrl:
@@ -405,11 +414,14 @@ function processEntityAsHtml(
   entityContent: TextPart,
   nestedEntityContent: TextPart[],
 ) {
-  const rawEntityText = typeof entityContent === 'string' && entityContent;
+  const rawEntityText = typeof entityContent === 'string' ? entityContent : undefined;
+
+  // Prevent adding newlines when editing
+  const content = entity.type === ApiMessageEntityTypes.Pre ? (entityContent as string).trimEnd() : entityContent;
 
   const renderedContent = nestedEntityContent.length
     ? nestedEntityContent.join('')
-    : renderText(entityContent, ['escape_html', 'emoji_html', 'br_html']).join('');
+    : renderText(content, ['escape_html', 'emoji_html', 'br_html']).join('');
 
   if (!rawEntityText) {
     return renderedContent;
@@ -425,7 +437,7 @@ function processEntityAsHtml(
     case ApiMessageEntityTypes.Code:
       return `<code class="text-entity-code">${renderedContent}</code>`;
     case ApiMessageEntityTypes.Pre:
-      return `\`\`\`<br/>${renderedContent}<br/>\`\`\``;
+      return `\`\`\`${entity.language || ''}<br/>${renderedContent}<br/>\`\`\`<br/>`;
     case ApiMessageEntityTypes.Strike:
       return `<del>${renderedContent}</del>`;
     case ApiMessageEntityTypes.MentionName:

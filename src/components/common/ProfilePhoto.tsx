@@ -1,8 +1,8 @@
-import React, { FC, memo } from '../../lib/teact/teact';
+import type { FC, TeactNode } from '../../lib/teact/teact';
+import React, { memo } from '../../lib/teact/teact';
 
-import {
-  ApiChat, ApiMediaFormat, ApiPhoto, ApiUser,
-} from '../../api/types';
+import type { ApiChat, ApiPhoto, ApiUser } from '../../api/types';
+import { ApiMediaFormat } from '../../api/types';
 
 import {
   getChatAvatarHash,
@@ -68,7 +68,7 @@ const ProfilePhoto: FC<OwnProps> = ({
   const avatarBlobUrl = useMedia(avatarMediaHash, false, ApiMediaFormat.BlobUrl, lastSyncTime);
   const imageSrc = photoBlobUrl || avatarBlobUrl || photo?.thumbnail?.dataUri;
 
-  let content: string | undefined = '';
+  let content: TeactNode | undefined;
 
   if (isSavedMessages) {
     content = <i className="icon-avatar-saved-messages" />;

@@ -1,5 +1,7 @@
-import { GlobalState } from '../types';
-import { ApiChannelStatistics, ApiGroupStatistics, StatisticsGraph } from '../../api/types';
+import type { GlobalState } from '../types';
+import type {
+  ApiChannelStatistics, ApiGroupStatistics, ApiMessageStatistics, StatisticsGraph,
+} from '../../api/types';
 
 export function updateStatistics(
   global: GlobalState, chatId: string, statistics: ApiChannelStatistics | ApiGroupStatistics,
@@ -15,12 +17,25 @@ export function updateStatistics(
   };
 }
 
+export function updateMessageStatistics(
+  global: GlobalState, statistics: ApiMessageStatistics,
+): GlobalState {
+  return {
+    ...global,
+    statistics: {
+      ...global.statistics,
+      currentMessage: statistics,
+    },
+  };
+}
+
 export function updateStatisticsGraph(
   global: GlobalState, chatId: string, name: string, update: StatisticsGraph,
 ): GlobalState {
   return {
     ...global,
     statistics: {
+      ...global.statistics,
       byChatId: {
         ...global.statistics.byChatId,
         [chatId]: {

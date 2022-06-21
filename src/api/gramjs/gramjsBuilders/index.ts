@@ -1,21 +1,26 @@
 import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 
-import { ApiPrivacyKey } from '../../../types';
+import type { ApiPrivacyKey } from '../../../types';
 
 import { generateRandomBytes, readBigIntFromBuffer } from '../../../lib/gramjs/Helpers';
-import {
+import type {
   ApiChatAdminRights,
   ApiChatBannedRights,
   ApiChatFolder,
   ApiGroupCall,
   ApiMessageEntity,
-  ApiMessageEntityTypes,
   ApiNewPoll,
+  ApiPhoto,
+  ApiPhoneCall,
   ApiReportReason,
   ApiSendMessageAction,
   ApiSticker,
   ApiVideo,
+  ApiThemeParameters,
+} from '../../types';
+import {
+  ApiMessageEntityTypes,
 } from '../../types';
 import localDb from '../localDb';
 import { pick } from '../../../util/iteratees';
@@ -269,7 +274,7 @@ export function buildMessageFromUpdate(
 
 export function buildMtpMessageEntity(entity: ApiMessageEntity): GramJs.TypeMessageEntity {
   const {
-    type, offset, length, url, userId,
+    type, offset, length, url, userId, language,
   } = entity;
 
   const user = userId ? localDb.users[userId] : undefined;
@@ -286,7 +291,7 @@ export function buildMtpMessageEntity(entity: ApiMessageEntity): GramJs.TypeMess
     case ApiMessageEntityTypes.Code:
       return new GramJs.MessageEntityCode({ offset, length });
     case ApiMessageEntityTypes.Pre:
-      return new GramJs.MessageEntityPre({ offset, length, language: '' });
+      return new GramJs.MessageEntityPre({ offset, length, language: language || '' });
     case ApiMessageEntityTypes.Blockquote:
       return new GramJs.MessageEntityBlockquote({ offset, length });
     case ApiMessageEntityTypes.TextUrl:
@@ -326,6 +331,9 @@ export function isMessageWithMedia(message: GramJs.Message | GramJs.UpdateServic
           && media.webpage.document.mimeType.startsWith('video')
         )
       )
+    ) || (
+      media instanceof GramJs.MessageMediaGame
+      && (media.game.document instanceof GramJs.Document || media.game.photo instanceof GramJs.Photo)
     )
   );
 }
@@ -345,6 +353,20 @@ export function buildChatPhotoForLocalDb(photo: GramJs.TypePhoto) {
     dcId,
     photoId,
   });
+}
+
+export function buildInputPhoto(photo: ApiPhoto) {
+  const localPhoto = localDb.photos[photo?.id];
+
+  if (!localPhoto) {
+    return undefined;
+  }
+
+  return new GramJs.InputPhoto(pick(localPhoto, [
+    'id',
+    'accessHash',
+    'fileReference',
+  ]));
 }
 
 export function buildInputContact({
@@ -406,6 +428,12 @@ export function buildInputPrivacyKey(privacyKey: ApiPrivacyKey) {
 
     case 'chatInvite':
       return new GramJs.InputPrivacyKeyChatInvite();
+
+    case 'phoneCall':
+      return new GramJs.InputPrivacyKeyPhoneCall();
+
+    case 'phoneP2P':
+      return new GramJs.InputPrivacyKeyPhoneP2P();
   }
 
   return undefined;
@@ -448,8 +476,16 @@ export function buildSendMessageAction(action: ApiSendMessageAction) {
       return new GramJs.SendMessageRecordAudioAction();
     case 'chooseSticker':
       return new GramJs.SendMessageChooseStickerAction();
+    case 'playingGame':
+      return new GramJs.SendMessageGamePlayAction();
   }
   return undefined;
+}
+
+export function buildInputThemeParams(params: ApiThemeParameters) {
+  return new GramJs.DataJSON({
+    data: JSON.stringify(params),
+  });
 }
 
 export function buildMtpPeerId(id: string, type: 'user' | 'chat' | 'channel') {
@@ -465,5 +501,12 @@ export function buildInputGroupCall(groupCall: Partial<ApiGroupCall>) {
   return new GramJs.InputGroupCall({
     id: BigInt(groupCall.id!),
     accessHash: BigInt(groupCall.accessHash!),
+  });
+}
+
+export function buildInputPhoneCall({ id, accessHash }: ApiPhoneCall) {
+  return new GramJs.InputPhoneCall({
+    id: BigInt(id),
+    accessHash: BigInt(accessHash!),
   });
 }

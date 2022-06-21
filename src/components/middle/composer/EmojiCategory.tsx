@@ -1,9 +1,13 @@
-import React, { FC, memo, useRef } from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useRef } from '../../../lib/teact/teact';
 
+import { RECENT_SYMBOL_SET_ID } from '../../../config';
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import buildClassName from '../../../util/buildClassName';
 import windowSize from '../../../util/windowSize';
-import { ObserveFn, useOnIntersect } from '../../../hooks/useIntersectionObserver';
+
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import { useOnIntersect } from '../../../hooks/useIntersectionObserver';
 import useMediaTransition from '../../../hooks/useMediaTransition';
 import useLang from '../../../hooks/useLang';
 
@@ -47,9 +51,11 @@ const EmojiCategory: FC<OwnProps> = ({
       id={`emoji-category-${index}`}
       className="symbol-set"
     >
-      <p className="symbol-set-name" dir="auto">
-        {lang(category.id === 'recent' ? 'RecentStickers' : `Emoji${index}`)}
-      </p>
+      <div className="symbol-set-header">
+        <p className="symbol-set-name" dir="auto">
+          {lang(category.id === RECENT_SYMBOL_SET_ID ? 'RecentStickers' : `Emoji${index}`)}
+        </p>
+      </div>
       <div
         className={buildClassName('symbol-set-container', transitionClassNames)}
         style={`height: ${height}px;`}

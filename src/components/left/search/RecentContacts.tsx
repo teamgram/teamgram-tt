@@ -1,9 +1,10 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, useEffect, useCallback, useRef, memo,
+  useEffect, useCallback, useRef, memo,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { ApiUser } from '../../../api/types';
+import type { ApiUser } from '../../../api/types';
 
 import { getUserFirstOrLastName } from '../../../global/helpers';
 import renderText from '../../common/helpers/renderText';
@@ -37,7 +38,7 @@ const RecentContacts: FC<OwnProps & StateProps> = ({
   onReset,
 }) => {
   const {
-    loadTopUsers, loadContactList, openChat,
+    loadTopUsers, openChat,
     addRecentlyFoundChatId, clearRecentlyFoundChats,
   } = getActions();
 
@@ -49,10 +50,8 @@ const RecentContacts: FC<OwnProps & StateProps> = ({
   useEffect(() => {
     runThrottled(() => {
       loadTopUsers();
-      // Loading full contact list for quick local search before user enters the query
-      loadContactList();
     });
-  }, [loadTopUsers, loadContactList]);
+  }, [loadTopUsers]);
 
   useHorizontalScroll(topUsersRef.current, !topUserIds);
 

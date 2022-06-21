@@ -3,9 +3,9 @@
 
 export enum ApiMediaFormat {
   BlobUrl,
-  Lottie,
   Progressive,
   Stream,
+  Text,
 }
 
 export type ApiParsedMedia = string | Blob | ArrayBuffer;

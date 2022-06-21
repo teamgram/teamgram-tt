@@ -1,4 +1,4 @@
-import {
+import type {
   ApiPhoto, ApiSticker, ApiThumbnail, ApiVideo,
 } from './messages';
 
@@ -43,4 +43,23 @@ export interface ApiBotCommand {
   botId: string;
   command: string;
   description: string;
+}
+
+type ApiBotMenuButtonCommands = {
+  type: 'commands';
+};
+
+type ApiBotMenuButtonWebApp = {
+  type: 'webApp';
+  text: string;
+  url: string;
+};
+
+export type ApiBotMenuButton = ApiBotMenuButtonWebApp | ApiBotMenuButtonCommands;
+
+export interface ApiBotInfo {
+  botId: string;
+  commands?: ApiBotCommand[];
+  description: string;
+  menuButton: ApiBotMenuButton;
 }

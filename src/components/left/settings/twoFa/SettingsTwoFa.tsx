@@ -1,16 +1,15 @@
-import React, {
-  FC, memo, useCallback, useEffect,
-} from '../../../../lib/teact/teact';
+import type { FC } from '../../../../lib/teact/teact';
+import React, { memo, useCallback, useEffect } from '../../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../../global';
 
-import { GlobalState } from '../../../../global/types';
+import type { GlobalState } from '../../../../global/types';
 import { SettingsScreens } from '../../../../types';
 
-import { TwoFaDispatch, TwoFaState } from '../../../../hooks/reducers/useTwoFaReducer';
+import type { TwoFaDispatch, TwoFaState } from '../../../../hooks/reducers/useTwoFaReducer';
 import useLang from '../../../../hooks/useLang';
 
 import SettingsTwoFaEnabled from './SettingsTwoFaEnabled';
-import SettingsTwoFaPassword from './SettingsTwoFaPassword';
+import SettingsTwoFaPassword from '../SettingsPasswordForm';
 import SettingsTwoFaStart from './SettingsTwoFaStart';
 import SettingsTwoFaSkippableForm from './SettingsTwoFaSkippableForm';
 import SettingsTwoFaCongratulations from './SettingsTwoFaCongratulations';
@@ -161,7 +160,6 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
       return (
         <SettingsTwoFaStart
           onStart={handleStartWizard}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaNewPassword,
             SettingsScreens.TwoFaNewPasswordConfirm,
@@ -177,11 +175,9 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
     case SettingsScreens.TwoFaNewPassword:
       return (
         <SettingsTwoFaPassword
-          screen={currentScreen}
           placeholder={lang('PleaseEnterPassword')}
           submitLabel={lang('Continue')}
           onSubmit={handleNewPassword}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaNewPasswordConfirm,
             SettingsScreens.TwoFaNewPasswordHint,
@@ -196,12 +192,10 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
     case SettingsScreens.TwoFaNewPasswordConfirm:
       return (
         <SettingsTwoFaPassword
-          screen={currentScreen}
           expectedPassword={state.password}
           placeholder={lang('PleaseReEnterPassword')}
           submitLabel={lang('Continue')}
           onSubmit={handleNewPasswordConfirm}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaNewPasswordHint,
             SettingsScreens.TwoFaNewPasswordEmail,
@@ -218,8 +212,6 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
           icon="hint"
           placeholder={lang('PasswordHintPlaceholder')}
           onSubmit={handleNewPasswordHint}
-          screen={currentScreen}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaNewPasswordEmail,
             SettingsScreens.TwoFaNewPasswordEmailCode,
@@ -240,8 +232,6 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
           placeholder={lang('RecoveryEmailTitle')}
           shouldConfirm
           onSubmit={handleNewPasswordEmail}
-          screen={currentScreen}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaNewPasswordEmailCode,
             SettingsScreens.TwoFaCongratulations,
@@ -257,8 +247,6 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
           error={error}
           clearError={clearTwoFaError}
           onSubmit={handleEmailCode}
-          screen={currentScreen}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || shownScreen === SettingsScreens.TwoFaCongratulations}
           onReset={onReset}
         />
@@ -295,13 +283,11 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
     case SettingsScreens.TwoFaChangePasswordCurrent:
       return (
         <SettingsTwoFaPassword
-          screen={currentScreen}
           isLoading={isLoading}
           error={error}
           clearError={clearTwoFaError}
           hint={hint}
           onSubmit={handleChangePasswordCurrent}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaChangePasswordNew,
             SettingsScreens.TwoFaChangePasswordConfirm,
@@ -315,10 +301,8 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
     case SettingsScreens.TwoFaChangePasswordNew:
       return (
         <SettingsTwoFaPassword
-          screen={currentScreen}
           placeholder={lang('PleaseEnterNewFirstPassword')}
           onSubmit={handleChangePasswordNew}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaChangePasswordConfirm,
             SettingsScreens.TwoFaChangePasswordHint,
@@ -331,11 +315,9 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
     case SettingsScreens.TwoFaChangePasswordConfirm:
       return (
         <SettingsTwoFaPassword
-          screen={currentScreen}
           expectedPassword={state.password}
           placeholder={lang('PleaseReEnterPassword')}
           onSubmit={handleChangePasswordConfirm}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaChangePasswordHint,
             SettingsScreens.TwoFaCongratulations,
@@ -353,10 +335,8 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
           icon="hint"
           placeholder={lang('PasswordHintPlaceholder')}
           onSubmit={handleChangePasswordHint}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || shownScreen === SettingsScreens.TwoFaCongratulations}
           onReset={onReset}
-          screen={currentScreen}
         />
       );
 
@@ -368,23 +348,19 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
           clearError={clearTwoFaError}
           hint={hint}
           onSubmit={handleTurnOff}
-          onScreenSelect={onScreenSelect}
           isActive={isActive}
           onReset={onReset}
-          screen={currentScreen}
         />
       );
 
     case SettingsScreens.TwoFaRecoveryEmailCurrentPassword:
       return (
         <SettingsTwoFaPassword
-          screen={currentScreen}
           isLoading={isLoading}
           error={error}
           clearError={clearTwoFaError}
           hint={hint}
           onSubmit={handleRecoveryEmailCurrentPassword}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaRecoveryEmail,
             SettingsScreens.TwoFaRecoveryEmailCode,
@@ -397,12 +373,10 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
     case SettingsScreens.TwoFaRecoveryEmail:
       return (
         <SettingsTwoFaSkippableForm
-          screen={currentScreen}
           icon="email"
           type="email"
           placeholder={lang('RecoveryEmailTitle')}
           onSubmit={handleRecoveryEmail}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || [
             SettingsScreens.TwoFaRecoveryEmailCode,
             SettingsScreens.TwoFaCongratulations,
@@ -414,12 +388,10 @@ const SettingsTwoFa: FC<OwnProps & StateProps> = ({
     case SettingsScreens.TwoFaRecoveryEmailCode:
       return (
         <SettingsTwoFaEmailCode
-          screen={currentScreen}
           isLoading={isLoading}
           error={error}
           clearError={clearTwoFaError}
           onSubmit={handleEmailCode}
-          onScreenSelect={onScreenSelect}
           isActive={isActive || shownScreen === SettingsScreens.TwoFaCongratulations}
           onReset={onReset}
         />

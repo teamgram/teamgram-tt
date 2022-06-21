@@ -1,10 +1,10 @@
-import React, {
-  FC, memo, useCallback, useMemo,
-} from '../../../lib/teact/teact';
+import type { FC } from '../../../lib/teact/teact';
+import React, { memo, useCallback, useMemo } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import { ApiChat, ApiUser } from '../../../api/types';
-import { ApiPrivacySettings, SettingsScreens } from '../../../types';
+import type { ApiChat, ApiUser } from '../../../api/types';
+import type { ApiPrivacySettings } from '../../../types';
+import { SettingsScreens } from '../../../types';
 
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -79,12 +79,19 @@ const SettingsPrivacyVisibility: FC<OwnProps & StateProps> = ({
         return lang('PrivacyForwardsTitle');
       case SettingsScreens.PrivacyGroupChats:
         return lang('WhoCanAddMe');
+      case SettingsScreens.PrivacyPhoneCall:
+        return lang('WhoCanCallMe');
+      case SettingsScreens.PrivacyPhoneP2P:
+        return lang('PrivacyP2P');
       default:
         return undefined;
     }
   }, [lang, screen]);
 
-  useHistoryBack(isActive, onReset, onScreenSelect, screen);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   const descriptionText = useMemo(() => {
     switch (screen) {
@@ -105,6 +112,10 @@ const SettingsPrivacyVisibility: FC<OwnProps & StateProps> = ({
         return SettingsScreens.PrivacyProfilePhotoAllowedContacts;
       case SettingsScreens.PrivacyForwarding:
         return SettingsScreens.PrivacyForwardingAllowedContacts;
+      case SettingsScreens.PrivacyPhoneCall:
+        return SettingsScreens.PrivacyPhoneCallAllowedContacts;
+      case SettingsScreens.PrivacyPhoneP2P:
+        return SettingsScreens.PrivacyPhoneP2PAllowedContacts;
       default:
         return SettingsScreens.PrivacyGroupChatsAllowedContacts;
     }
@@ -120,6 +131,10 @@ const SettingsPrivacyVisibility: FC<OwnProps & StateProps> = ({
         return SettingsScreens.PrivacyProfilePhotoDeniedContacts;
       case SettingsScreens.PrivacyForwarding:
         return SettingsScreens.PrivacyForwardingDeniedContacts;
+      case SettingsScreens.PrivacyPhoneCall:
+        return SettingsScreens.PrivacyPhoneCallDeniedContacts;
+      case SettingsScreens.PrivacyPhoneP2P:
+        return SettingsScreens.PrivacyPhoneP2PDeniedContacts;
       default:
         return SettingsScreens.PrivacyGroupChatsDeniedContacts;
     }
@@ -183,7 +198,7 @@ const SettingsPrivacyVisibility: FC<OwnProps & StateProps> = ({
           >
             <div className="multiline-menu-item full-size">
               {allowedCount > 0 && <span className="date" dir="auto">+{allowedCount}</span>}
-              <span className="title">{lang('AlwaysShareWith')}</span>
+              <span className="title">{lang('AlwaysAllow')}</span>
               <span className="subtitle">{lang('EditAdminAddUsers')}</span>
             </div>
           </ListItem>
@@ -199,7 +214,7 @@ const SettingsPrivacyVisibility: FC<OwnProps & StateProps> = ({
           >
             <div className="multiline-menu-item full-size">
               {blockCount > 0 && <span className="date" dir="auto">&minus;{blockCount}</span>}
-              <span className="title">{lang('NeverShareWith')}</span>
+              <span className="title">{lang('NeverAllow')}</span>
               <span className="subtitle">{lang('EditAdminAddUsers')}</span>
             </div>
           </ListItem>
@@ -229,6 +244,14 @@ export default memo(withGlobal<OwnProps>(
 
       case SettingsScreens.PrivacyProfilePhoto:
         privacySettings = privacy.profilePhoto;
+        break;
+
+      case SettingsScreens.PrivacyPhoneCall:
+        privacySettings = privacy.phoneCall;
+        break;
+
+      case SettingsScreens.PrivacyPhoneP2P:
+        privacySettings = privacy.phoneP2P;
         break;
 
       case SettingsScreens.PrivacyForwarding:

@@ -1,5 +1,6 @@
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, useState, useCallback, useEffect, memo,
+  useState, useCallback, useEffect, memo,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
@@ -46,7 +47,10 @@ const NewChatStep2: FC<OwnProps & StateProps > = ({
 
   const lang = useLang();
 
-  useHistoryBack(isActive, onReset);
+  useHistoryBack({
+    isActive,
+    onBack: onReset,
+  });
 
   const [title, setTitle] = useState('');
   const [about, setAbout] = useState('');

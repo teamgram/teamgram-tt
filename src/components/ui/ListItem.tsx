@@ -1,5 +1,6 @@
-import { RefObject } from 'react';
-import React, { FC, useRef, useCallback } from '../../lib/teact/teact';
+import type { RefObject } from 'react';
+import type { FC } from '../../lib/teact/teact';
+import React, { useRef, useCallback } from '../../lib/teact/teact';
 
 import { IS_TOUCH_ENV } from '../../util/environment';
 import { fastRaf } from '../../util/schedulers';
@@ -165,9 +166,9 @@ const ListItem: FC<OwnProps> = ({
     >
       <div
         className={buildClassName('ListItem-button', isTouched && 'active')}
-        role="button"
+        role={!isStatic ? 'button' : undefined}
         ref={buttonRef}
-        tabIndex={0}
+        tabIndex={!isStatic ? 0 : undefined}
         onClick={(!inactive && IS_TOUCH_ENV) ? handleClick : undefined}
         onMouseDown={handleMouseDown}
         onContextMenu={(!inactive && contextActions) ? handleContextMenu : undefined}

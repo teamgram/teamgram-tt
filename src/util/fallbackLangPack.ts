@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 
-import { ApiLangPack } from '../api/types';
+import type { ApiLangPack } from '../api/types';
 
 export default {
   Search: {
@@ -1848,5 +1848,9 @@ export default {
   'ChannelVisibility.Forwarding.Disabled': {
     key: 'ChannelVisibility.Forwarding.Disabled',
     value: 'Restrict Forwarding',
+  },
+  'Settings.TipsUsername': {
+    key: 'Settings.TipsUsername',
+    value: 'TelegramTips',
   },
 } as ApiLangPack;

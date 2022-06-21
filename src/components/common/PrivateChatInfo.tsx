@@ -1,11 +1,10 @@
-import { MouseEvent as ReactMouseEvent } from 'react';
-import React, {
-  FC, useEffect, useCallback, memo,
-} from '../../lib/teact/teact';
+import type { MouseEvent as ReactMouseEvent } from 'react';
+import type { FC } from '../../lib/teact/teact';
+import React, { useEffect, useCallback, memo } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { ApiUser, ApiTypingStatus, ApiUserStatus } from '../../api/types';
-import { GlobalState } from '../../global/types';
+import type { ApiUser, ApiTypingStatus, ApiUserStatus } from '../../api/types';
+import type { GlobalState } from '../../global/types';
 import { MediaViewerOrigin } from '../../types';
 
 import { selectChatMessages, selectUser, selectUserStatus } from '../../global/selectors';
@@ -17,6 +16,7 @@ import Avatar from './Avatar';
 import VerifiedIcon from './VerifiedIcon';
 import TypingStatus from './TypingStatus';
 import DotAnimation from './DotAnimation';
+import FakeIcon from './FakeIcon';
 
 type OwnProps = {
   userId: string;
@@ -140,6 +140,7 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
           <div className="title">
             <h3 dir="auto">{fullName && renderText(fullName)}</h3>
             {user?.isVerified && <VerifiedIcon />}
+            {user.fakeType && <FakeIcon fakeType={user.fakeType} />}
           </div>
         )}
         {(status || (!isSavedMessages && !noStatusOrTyping)) && renderStatusOrTyping()}

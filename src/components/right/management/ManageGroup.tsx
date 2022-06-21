@@ -1,13 +1,13 @@
-import { ChangeEvent } from 'react';
+import type { ChangeEvent } from 'react';
+import type { FC } from '../../../lib/teact/teact';
 import React, {
-  FC, memo, useCallback, useEffect, useMemo, useState,
+  memo, useCallback, useEffect, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import { ManagementScreens, ManagementProgress } from '../../../types';
-import {
-  ApiChat, ApiChatBannedRights, ApiExportedInvite, ApiMediaFormat,
-} from '../../../api/types';
+import type { ApiChat, ApiChatBannedRights, ApiExportedInvite } from '../../../api/types';
+import { ApiMediaFormat } from '../../../api/types';
 
 import { getChatAvatarHash, getHasAdminRight, isChatBasicGroup } from '../../../global/helpers';
 import useMedia from '../../../hooks/useMedia';
@@ -96,7 +96,10 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
   const isPublicGroup = chat.username || hasLinkedChannel;
   const lang = useLang();
 
-  useHistoryBack(isActive, onClose);
+  useHistoryBack({
+    isActive,
+    onBack: onClose,
+  });
 
   useEffect(() => {
     if (lastSyncTime && canInvite) {
@@ -294,7 +297,7 @@ const ManageGroup: FC<OwnProps & StateProps> = ({
           </ListItem>
 
           <ListItem
-            icon="reactions"
+            icon="heart-outline"
             multiline
             onClick={handleClickReactions}
             disabled={!canChangeInfo}

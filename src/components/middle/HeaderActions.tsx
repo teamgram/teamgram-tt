@@ -1,21 +1,20 @@
+import type { FC } from '../../lib/teact/teact';
 import React, {
-  FC,
   memo,
   useRef,
   useCallback,
   useState,
-  useEffect,
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { MessageListType } from '../../global/types';
+import type { MessageListType } from '../../global/types';
 import { MAIN_THREAD_ID } from '../../api/types';
-import { IAnchorPosition, ManagementScreens } from '../../types';
+import type { IAnchorPosition } from '../../types';
+import { ManagementScreens } from '../../types';
 
 import {
-  ARE_CALLS_SUPPORTED, IS_MAC_OS, IS_PWA, IS_SINGLE_COLUMN_LAYOUT,
+  ARE_CALLS_SUPPORTED, IS_PWA, IS_SINGLE_COLUMN_LAYOUT,
 } from '../../util/environment';
-import getKeyFromEvent from '../../util/getKeyFromEvent';
 import {
   isChatBasicGroup, isChatChannel, isChatSuperGroup, isUserId,
 } from '../../global/helpers';
@@ -29,6 +28,7 @@ import {
   selectIsRightColumnShown,
 } from '../../global/selectors';
 import useLang from '../../hooks/useLang';
+import { useHotkeys } from '../../hooks/useHotkeys';
 
 import Button from '../ui/Button';
 import HeaderMenuContainer from './HeaderMenuContainer.async';
@@ -84,10 +84,9 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
     sendBotCommand,
     openLocalTextSearch,
     restartBot,
-    openCallFallbackConfirm,
+    requestCall,
     requestNextManagementScreen,
   } = getActions();
-
   // eslint-disable-next-line no-null/no-null
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -140,26 +139,22 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
     }
   }, [openLocalTextSearch]);
 
-  useEffect(() => {
-    if (!canSearch) {
-      return undefined;
+  function handleRequestCall() {
+    requestCall({ userId: chatId });
+  }
+
+  const handleHotkeySearchClick = useCallback((e: KeyboardEvent) => {
+    if (!canSearch || !IS_PWA || e.shiftKey) {
+      return;
     }
 
-    function handleKeyDown(e: KeyboardEvent) {
-      if (
-        IS_PWA && ((IS_MAC_OS && e.metaKey) || (!IS_MAC_OS && e.ctrlKey)) && !e.shiftKey && getKeyFromEvent(e) === 'f'
-      ) {
-        e.preventDefault();
-        handleSearchClick();
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown, false);
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, false);
-    };
+    e.preventDefault();
+    handleSearchClick();
   }, [canSearch, handleSearchClick]);
+
+  useHotkeys({
+    'Meta+F': handleHotkeySearchClick,
+  });
 
   const lang = useLang();
 
@@ -214,7 +209,8 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
               round
               color="translucent"
               size="smaller"
-              onClick={openCallFallbackConfirm}
+              // eslint-disable-next-line react/jsx-no-bind
+              onClick={handleRequestCall}
               ariaLabel="Call"
             >
               <i className="icon-phone" />
