@@ -4,6 +4,3 @@ src/lib/gramjs/tl/apiTl.js
 src/lib/gramjs/tl/schemaTl.js
 src/lib/gramjs/tl/apiTl.full.js
 src/lib/gramjs/tl/schemaTl.full.js
-src/lib/gramjs/Utils.js
-src/lib/gramjs/client/TelegramClient.js
-src/lib/gramjs/crypto/RSA.ts

@@ -26,8 +26,9 @@ const { updateTwoFaSettings } = require('./2fa');
 
 const DEFAULT_DC_ID = 1;
 const WEBDOCUMENT_DC_ID = 1;
-// const DEFAULT_IPV4_IP = '47.103.102.219';
-const DEFAULT_IPV4_IP = '127.0.0.1';
+// const DEFAULT_IPV4_IP = '127.0.0.1';
+const DEFAULT_IPV4_IP = '47.103.102.219';
+// const DEFAULT_IPV4_IP = 'zws2.web.telegram.org';
 // const DEFAULT_IPV6_IP = '[2001:67c:4e8:f002::a]';
 const EXPORTED_SENDER_RECONNECT_TIMEOUT = 1000; // 1 sec
 const EXPORTED_SENDER_RELEASE_TIMEOUT = 30000; // 30 sec

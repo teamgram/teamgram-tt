@@ -37,7 +37,7 @@ export default {
   },
   TelegramFeatures: {
     key: 'TelegramFeatures',
-    value: 'Telegram Features',
+    value: 'Teamgram Features',
   },
   AccDescrOpenMenu2: {
     key: 'AccDescrOpenMenu2',
@@ -510,7 +510,7 @@ export default {
   },
   UsernameHelp: {
     key: 'UsernameHelp',
-    value: 'You can choose a username on **Telegram**. If you do, people will be able to find you by this username and contact you without needing your phone number.\n\nYou can use **a–z**, **0–9** and underscores. Minimum length is **5** characters.',
+    value: 'You can choose a username on **Teamgram**. If you do, people will be able to find you by this username and contact you without needing your phone number.\n\nYou can use **a–z**, **0–9** and underscores. Minimum length is **5** characters.',
   },
   lng_username_link: {
     key: 'lng_username_link',
@@ -777,7 +777,7 @@ export default {
   },
   ContactJoined: {
     key: 'ContactJoined',
-    value: 'Contact joined Telegram',
+    value: 'Contact joined Teamgram',
   },
   'UserInfo.NotificationsDisabled': {
     key: 'UserInfo.NotificationsDisabled',
@@ -833,7 +833,7 @@ export default {
   },
   lng_settings_sensitive_about: {
     key: 'lng_settings_sensitive_about',
-    value: 'Display sensitive media in public channels on all your Telegram devices.',
+    value: 'Display sensitive media in public channels on all your Teamgram devices.',
   },
   P2PContacts: {
     key: 'P2PContacts',
@@ -860,7 +860,7 @@ export default {
   },
   EnabledPasswordText: {
     key: 'EnabledPasswordText',
-    value: 'You have enabled Two-Step verification.\nYou\'ll need the password you set up here to log in to your Telegram account.',
+    value: 'You have enabled Two-Step verification.\nYou\'ll need the password you set up here to log in to your Teamgram account.',
   },
   ChangePassword: {
     key: 'ChangePassword',
@@ -1276,7 +1276,7 @@ export default {
   },
   'Channel.Username.CreatePublicLinkHelp': {
     key: 'Channel.Username.CreatePublicLinkHelp',
-    value: 'People can share this link with others and find your channel using Telegram search.',
+    value: 'People can share this link with others and find your channel using Teamgram search.',
   },
   SetUrlPlaceholder: {
     key: 'SetUrlPlaceholder',
@@ -1463,7 +1463,7 @@ export default {
   },
   'Group.Username.CreatePublicLinkHelp': {
     key: 'Group.Username.CreatePublicLinkHelp',
-    value: 'People can share this link with others and find your group using Telegram search.',
+    value: 'People can share this link with others and find your group using Teamgram search.',
   },
   MegaPrivateLinkHelp: {
     key: 'MegaPrivateLinkHelp',
@@ -1731,7 +1731,7 @@ export default {
   },
   SentAppCode: {
     key: 'SentAppCode',
-    value: 'We\'ve sent the code to the **Telegram** app on your other device.',
+    value: 'We\'ve sent the code to the **Teamgram** app on your other device.',
   },
   'Login.JustSentSms': {
     key: 'Login.JustSentSms',
@@ -1767,7 +1767,7 @@ export default {
   },
   'Login.QR.Help1': {
     key: 'Login.QR.Help1',
-    value: 'Open Telegram on your phone',
+    value: 'Open Teamgram on your phone',
   },
   'Login.QR.Help2': {
     key: 'Login.QR.Help2',
@@ -1851,6 +1851,6 @@ export default {
   },
   'Settings.TipsUsername': {
     key: 'Settings.TipsUsername',
-    value: 'TelegramTips',
+    value: 'TeamgramTips',
   },
 } as ApiLangPack;

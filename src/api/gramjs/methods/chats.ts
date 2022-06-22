@@ -131,6 +131,7 @@ export async function fetchChats({
     if (!peerEntity) {
       return;
     }
+
     const chat = buildApiChatFromDialog(dialog, peerEntity, serverTimeOffset);
 
     if (
