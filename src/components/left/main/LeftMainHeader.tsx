@@ -1,8 +1,10 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useCallback, useMemo } from '../../../lib/teact/teact';
+import React, {
+  memo, useCallback, useEffect, useMemo,
+} from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import type { ISettings } from '../../../types';
+import type { AnimationLevel, ISettings } from '../../../types';
 import { LeftColumnContent, SettingsScreens } from '../../../types';
 import type { ApiChat } from '../../../api/types';
 import type { GlobalState } from '../../../global/types';
@@ -11,12 +13,11 @@ import {
   ANIMATION_LEVEL_MAX,
   APP_NAME, APP_VERSION,
   BETA_CHANGELOG_URL,
-  BETA_DISCUSSION_CHAT_EN,
-  BETA_DISCUSSION_CHAT_RU,
   DEBUG,
   FEEDBACK_URL,
   IS_BETA,
   IS_TEST,
+  PRODUCTION_HOSTNAME,
 } from '../../../config';
 import { IS_PWA, IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import buildClassName from '../../../util/buildClassName';
@@ -30,6 +31,7 @@ import useLang from '../../../hooks/useLang';
 import useConnectionStatus from '../../../hooks/useConnectionStatus';
 import { useHotkeys } from '../../../hooks/useHotkeys';
 import { getPromptInstall } from '../../../util/installPrompt';
+import captureEscKeyListener from '../../../util/captureEscKeyListener';
 
 import DropdownMenu from '../../ui/DropdownMenu';
 import MenuItem from '../../ui/MenuItem';
@@ -61,7 +63,7 @@ type StateProps =
     globalSearchChatId?: string;
     searchDate?: number;
     theme: ISettings['theme'];
-    animationLevel: 0 | 1 | 2;
+    animationLevel: AnimationLevel;
     chatsById?: Record<string, ApiChat>;
     isMessageListOpen: boolean;
     isConnectionStatusMinimized: ISettings['isConnectionStatusMinimized'];
@@ -70,7 +72,6 @@ type StateProps =
   }
   & Pick<GlobalState, 'connectionState' | 'isSyncing' | 'canInstall'>;
 
-const PRODUCTION_HOSTNAME = 'web.telegram.org';
 const LEGACY_VERSION_URL = 'https://web.telegram.org/?legacy=1';
 const WEBK_VERSION_URL = 'https://web.telegram.org/k/';
 
@@ -151,7 +152,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
     'Ctrl+Shift+L': handleLockScreenHotkey,
     'Alt+Shift+L': handleLockScreenHotkey,
     'Meta+Shift+L': handleLockScreenHotkey,
-    ...(IS_PWA && { 'Meta+L': handleLockScreenHotkey }),
+    ...(IS_PWA && { 'Mod+L': handleLockScreenHotkey }),
   });
 
   const withOtherVersions = window.location.hostname === PRODUCTION_HOSTNAME || IS_TEST;
@@ -192,12 +193,6 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
     openChat({ id: currentUserId, shouldReplaceHistory: true });
   }, [currentUserId, openChat]);
 
-  const handleSelectPasscode = useCallback(() => {
-    requestNextSettingsScreen(
-      hasPasscode ? SettingsScreens.PasscodeEnabled : SettingsScreens.PasscodeDisabled,
-    );
-  }, [hasPasscode, requestNextSettingsScreen]);
-
   const handleDarkModeToggle = useCallback((e: React.SyntheticEvent<HTMLElement>) => {
     e.stopPropagation();
     const newTheme = theme === 'light' ? 'dark' : 'light';
@@ -210,14 +205,6 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
   const handleChangelogClick = useCallback(() => {
     window.open(BETA_CHANGELOG_URL, '_blank', 'noopener');
   }, []);
-
-  const handleRuDiscussionClick = useCallback(() => {
-    openChatByUsername({ username: BETA_DISCUSSION_CHAT_RU });
-  }, [openChatByUsername]);
-
-  const handleEnDiscussionClick = useCallback(() => {
-    openChatByUsername({ username: BETA_DISCUSSION_CHAT_EN });
-  }, [openChatByUsername]);
 
   const handleSwitchToWebK = useCallback(() => {
     setPermanentWebVersion('K');
@@ -242,6 +229,8 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
     || content === LeftColumnContent.GlobalSearch
     || content === LeftColumnContent.Contacts
   );
+
+  useEffect(() => (isSearchFocused ? captureEscKeyListener(() => onReset()) : undefined), [isSearchFocused, onReset]);
 
   const searchInputPlaceholder = content === LeftColumnContent.Contacts
     ? lang('SearchFriends')
@@ -284,13 +273,6 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
             {lang('Settings')}
           </MenuItem>
           <MenuItem
-            icon="lock"
-            onClick={handleSelectPasscode}
-          >
-            {lang('Passcode')}
-            <span className="menu-item-badge">{lang('New')}</span>
-          </MenuItem>
-          <MenuItem
             icon="darkmode"
             onClick={handleDarkModeToggle}
           >
@@ -315,26 +297,12 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
             Report Bug
           </MenuItem>
           {IS_BETA && (
-            <>
-              <MenuItem
-                icon="permissions"
-                onClick={handleChangelogClick}
-              >
-                Beta Changelog
-              </MenuItem>
-              <MenuItem
-                icon="comments"
-                onClick={handleRuDiscussionClick}
-              >
-                Beta Discussion (ru)
-              </MenuItem>
-              <MenuItem
-                icon="comments"
-                onClick={handleEnDiscussionClick}
-              >
-                Beta Discussion (en)
-              </MenuItem>
-            </>
+            <MenuItem
+              icon="permissions"
+              onClick={handleChangelogClick}
+            >
+              Beta Changelog
+            </MenuItem>
           )}
           {withOtherVersions && (
             <>
@@ -360,7 +328,6 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
               onClick={getPromptInstall()}
             >
               Install App
-              <span className="menu-item-badge">{lang('New')}</span>
             </MenuItem>
           )}
         </DropdownMenu>

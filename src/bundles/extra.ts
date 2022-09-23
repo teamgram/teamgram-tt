@@ -11,7 +11,12 @@ export { default as NewContactModal } from '../components/main/NewContactModal';
 export { default as WebAppModal } from '../components/main/WebAppModal';
 export { default as BotTrustModal } from '../components/main/BotTrustModal';
 export { default as BotAttachModal } from '../components/main/BotAttachModal';
+export { default as DeleteFolderDialog } from '../components/main/DeleteFolderDialog';
+export { default as PremiumMainModal } from '../components/main/premium/PremiumMainModal';
+export { default as GiftPremiumModal } from '../components/main/premium/GiftPremiumModal';
+export { default as PremiumLimitReachedModal } from '../components/main/premium/common/PremiumLimitReachedModal';
 
+export { default as AboutAdsModal } from '../components/common/AboutAdsModal';
 export { default as CalendarModal } from '../components/common/CalendarModal';
 export { default as DeleteMessageModal } from '../components/common/DeleteMessageModal';
 export { default as PinMessageModal } from '../components/common/PinMessageModal';
@@ -34,8 +39,11 @@ export { default as ArchivedChats } from '../components/left/ArchivedChats';
 export { default as ChatFolderModal } from '../components/left/ChatFolderModal';
 
 export { default as ContextMenuContainer } from '../components/middle/message/ContextMenuContainer';
+export { default as SponsoredMessageContextMenuContainer }
+  from '../components/middle/message/SponsoredMessageContextMenuContainer';
 // eslint-disable-next-line import/no-cycle
 export { default as StickerSetModal } from '../components/common/StickerSetModal';
+export { default as CustomEmojiSetsModal } from '../components/common/CustomEmojiSetsModal';
 export { default as HeaderMenuContainer } from '../components/middle/HeaderMenuContainer';
 export { default as MobileSearch } from '../components/middle/MobileSearch';
 

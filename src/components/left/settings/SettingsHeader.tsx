@@ -8,6 +8,7 @@ import { SettingsScreens } from '../../../types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import useLang from '../../../hooks/useLang';
+import useMultiClick from '../../../hooks/useMultiClick';
 
 import DropdownMenu from '../../ui/DropdownMenu';
 import MenuItem from '../../ui/MenuItem';
@@ -31,11 +32,14 @@ const SettingsHeader: FC<OwnProps> = ({
 }) => {
   const {
     signOut,
-    deleteChatFolder,
+    openDeleteChatFolderModal,
   } = getActions();
 
   const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
-  const [isDeleteFolderDialogOpen, setIsDeleteFolderDialogOpen] = useState(false);
+
+  const handleMultiClick = useMultiClick(5, () => {
+    onScreenSelect(SettingsScreens.Experimental);
+  });
 
   const openSignOutConfirmation = useCallback(() => {
     setIsSignOutDialogOpen(true);
@@ -46,23 +50,15 @@ const SettingsHeader: FC<OwnProps> = ({
   }, []);
 
   const openDeleteFolderConfirmation = useCallback(() => {
-    setIsDeleteFolderDialogOpen(true);
-  }, []);
+    if (!editedFolderId) return;
 
-  const closeDeleteFolderConfirmation = useCallback(() => {
-    setIsDeleteFolderDialogOpen(false);
-  }, []);
+    openDeleteChatFolderModal({ folderId: editedFolderId });
+  }, [editedFolderId, openDeleteChatFolderModal]);
 
   const handleSignOutMessage = useCallback(() => {
     closeSignOutConfirmation();
     signOut();
   }, [closeSignOutConfirmation, signOut]);
-
-  const handleDeleteFolderMessage = useCallback(() => {
-    closeDeleteFolderConfirmation();
-    deleteChatFolder({ id: editedFolderId });
-    onReset();
-  }, [editedFolderId, closeDeleteFolderConfirmation, deleteChatFolder, onReset]);
 
   const SettingsMenuButton: FC<{ onTrigger: () => void; isOpen?: boolean }> = useMemo(() => {
     return ({ onTrigger, isOpen }) => (
@@ -90,6 +86,8 @@ const SettingsHeader: FC<OwnProps> = ({
         return <h3>{lang('General')}</h3>;
       case SettingsScreens.QuickReaction:
         return <h3>{lang('DoubleTapSetting')}</h3>;
+      case SettingsScreens.CustomEmoji:
+        return <h3>{lang('Emoji')}</h3>;
       case SettingsScreens.Notifications:
         return <h3>{lang('Notifications')}</h3>;
       case SettingsScreens.DataStorage:
@@ -98,6 +96,10 @@ const SettingsHeader: FC<OwnProps> = ({
         return <h3>{lang('PrivacySettings')}</h3>;
       case SettingsScreens.Language:
         return <h3>{lang('Language')}</h3>;
+      case SettingsScreens.Stickers:
+        return <h3>{lang('StickersName')}</h3>;
+      case SettingsScreens.Experimental:
+        return <h3>{lang('lng_settings_experimental')}</h3>;
 
       case SettingsScreens.GeneralChatBackground:
         return <h3>{lang('ChatBackground')}</h3>;
@@ -112,18 +114,22 @@ const SettingsHeader: FC<OwnProps> = ({
         return <h3>{lang('Privacy.ProfilePhoto')}</h3>;
       case SettingsScreens.PrivacyForwarding:
         return <h3>{lang('PrivacyForwards')}</h3>;
+      case SettingsScreens.PrivacyVoiceMessages:
+        return <h3>{lang('PrivacyVoiceMessages')}</h3>;
       case SettingsScreens.PrivacyGroupChats:
         return <h3>{lang('AutodownloadGroupChats')}</h3>;
       case SettingsScreens.PrivacyPhoneNumberAllowedContacts:
       case SettingsScreens.PrivacyLastSeenAllowedContacts:
       case SettingsScreens.PrivacyProfilePhotoAllowedContacts:
       case SettingsScreens.PrivacyForwardingAllowedContacts:
+      case SettingsScreens.PrivacyVoiceMessagesAllowedContacts:
       case SettingsScreens.PrivacyGroupChatsAllowedContacts:
         return <h3>{lang('AlwaysShareWith')}</h3>;
       case SettingsScreens.PrivacyPhoneNumberDeniedContacts:
       case SettingsScreens.PrivacyLastSeenDeniedContacts:
       case SettingsScreens.PrivacyProfilePhotoDeniedContacts:
       case SettingsScreens.PrivacyForwardingDeniedContacts:
+      case SettingsScreens.PrivacyVoiceMessagesDeniedContacts:
       case SettingsScreens.PrivacyGroupChatsDeniedContacts:
         return <h3>{lang('NeverShareWith')}</h3>;
 
@@ -228,7 +234,10 @@ const SettingsHeader: FC<OwnProps> = ({
       default:
         return (
           <div className="settings-main-header">
-            <h3>{lang('SETTINGS')}</h3>
+            {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
+            <h3 onClick={handleMultiClick}>
+              {lang('SETTINGS')}
+            </h3>
 
             <Button
               round
@@ -271,14 +280,6 @@ const SettingsHeader: FC<OwnProps> = ({
         text={lang('lng_sure_logout')}
         confirmLabel={lang('AccountSettings.Logout')}
         confirmHandler={handleSignOutMessage}
-        confirmIsDestructive
-      />
-      <ConfirmDialog
-        isOpen={isDeleteFolderDialogOpen}
-        onClose={closeDeleteFolderConfirmation}
-        text={lang('FilterDeleteAlert')}
-        confirmLabel={lang('Delete')}
-        confirmHandler={handleDeleteFolderMessage}
         confirmIsDestructive
       />
     </div>

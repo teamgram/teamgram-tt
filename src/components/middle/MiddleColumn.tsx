@@ -10,7 +10,7 @@ import type {
   MessageListType,
   ActiveEmojiInteraction,
 } from '../../global/types';
-import type { ThemeKey } from '../../types';
+import type { AnimationLevel, ThemeKey } from '../../types';
 
 import {
   MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN,
@@ -68,11 +68,10 @@ import Button from '../ui/Button';
 import MobileSearch from './MobileSearch.async';
 import MessageSelectToolbar from './MessageSelectToolbar.async';
 import UnpinAllMessagesModal from '../common/UnpinAllMessagesModal.async';
-import PaymentModal from '../payment/PaymentModal.async';
-import ReceiptModal from '../payment/ReceiptModal.async';
 import SeenByModal from '../common/SeenByModal.async';
 import EmojiInteractionAnimation from './EmojiInteractionAnimation.async';
 import ReactorListModal from './ReactorListModal.async';
+import GiftPremiumModal from '../main/premium/GiftPremiumModal.async';
 
 import './MiddleColumn.scss';
 import styles from './MiddleColumn.module.scss';
@@ -98,11 +97,10 @@ type StateProps = {
   isBackgroundBlurred?: boolean;
   isMobileSearchActive?: boolean;
   isSelectModeActive?: boolean;
-  isPaymentModalOpen?: boolean;
-  isReceiptModalOpen?: boolean;
   isSeenByModalOpen: boolean;
   isReactorListModalOpen: boolean;
-  animationLevel?: number;
+  isGiftPremiumModalOpen?: boolean;
+  animationLevel: AnimationLevel;
   shouldSkipHistoryAnimations?: boolean;
   currentTransitionKey: number;
   isChannel?: boolean;
@@ -111,6 +109,8 @@ type StateProps = {
   canStartBot?: boolean;
   canRestartBot?: boolean;
   activeEmojiInteractions?: ActiveEmojiInteraction[];
+  shouldJoinToSend?: boolean;
+  shouldSendJoinRequest?: boolean;
   lastSyncTime?: number;
 };
 
@@ -140,10 +140,9 @@ const MiddleColumn: FC<StateProps> = ({
   isBackgroundBlurred,
   isMobileSearchActive,
   isSelectModeActive,
-  isPaymentModalOpen,
-  isReceiptModalOpen,
   isSeenByModalOpen,
   isReactorListModalOpen,
+  isGiftPremiumModalOpen,
   animationLevel,
   shouldSkipHistoryAnimations,
   currentTransitionKey,
@@ -153,6 +152,8 @@ const MiddleColumn: FC<StateProps> = ({
   canStartBot,
   canRestartBot,
   activeEmojiInteractions,
+  shouldJoinToSend,
+  shouldSendJoinRequest,
   lastSyncTime,
 }) => {
   const {
@@ -163,11 +164,10 @@ const MiddleColumn: FC<StateProps> = ({
     loadChatSettings,
     closeLocalTextSearch,
     exitMessageSelectMode,
-    closePaymentModal,
-    clearReceipt,
     joinChannel,
     sendBotCommand,
     restartBot,
+    showNotification,
   } = getActions();
 
   const { width: windowWidth } = useWindowSize();
@@ -200,6 +200,8 @@ const MiddleColumn: FC<StateProps> = ({
   const renderingHasTools = usePrevDuringAnimation(hasTools, CLOSE_ANIMATION_DURATION);
   const renderingIsFabShown = usePrevDuringAnimation(isFabShown, CLOSE_ANIMATION_DURATION);
   const renderingIsChannel = usePrevDuringAnimation(isChannel, CLOSE_ANIMATION_DURATION);
+  const renderingShouldJoinToSend = usePrevDuringAnimation(shouldJoinToSend, CLOSE_ANIMATION_DURATION);
+  const renderingShouldSendJoinRequest = usePrevDuringAnimation(shouldSendJoinRequest, CLOSE_ANIMATION_DURATION);
 
   const prevTransitionKey = usePrevious(currentTransitionKey);
 
@@ -302,14 +304,19 @@ const MiddleColumn: FC<StateProps> = ({
 
   const handleSubscribeClick = useCallback(() => {
     joinChannel({ chatId });
-  }, [joinChannel, chatId]);
+    if (renderingShouldSendJoinRequest) {
+      showNotification({
+        message: isChannel ? lang('RequestToJoinChannelSentDescription') : lang('RequestToJoinGroupSentDescription'),
+      });
+    }
+  }, [joinChannel, chatId, renderingShouldSendJoinRequest, showNotification, isChannel, lang]);
 
   const handleStartBot = useCallback(() => {
     sendBotCommand({ command: '/start' });
   }, [sendBotCommand]);
 
   const handleRestartBot = useCallback(() => {
-    restartBot({ chatId });
+    restartBot({ chatId: chatId! });
   }, [chatId, restartBot]);
 
   const customBackgroundValue = useCustomBackground(theme, customBackground);
@@ -457,7 +464,8 @@ const MiddleColumn: FC<StateProps> = ({
                     </div>
                   </div>
                 )}
-                {IS_SINGLE_COLUMN_LAYOUT && renderingCanSubscribe && (
+                {IS_SINGLE_COLUMN_LAYOUT
+                  && (renderingCanSubscribe || (renderingShouldJoinToSend && !renderingShouldSendJoinRequest)) && (
                   <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
                     <Button
                       size="tiny"
@@ -467,6 +475,19 @@ const MiddleColumn: FC<StateProps> = ({
                       onClick={handleSubscribeClick}
                     >
                       {lang(renderingIsChannel ? 'ProfileJoinChannel' : 'ProfileJoinGroup')}
+                    </Button>
+                  </div>
+                )}
+                {IS_SINGLE_COLUMN_LAYOUT && renderingShouldSendJoinRequest && (
+                  <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
+                    <Button
+                      size="tiny"
+                      fluid
+                      ripple
+                      className="join-subscribe-button"
+                      onClick={handleSubscribeClick}
+                    >
+                      {lang('ChannelJoinRequest')}
                     </Button>
                   </div>
                 )}
@@ -501,14 +522,6 @@ const MiddleColumn: FC<StateProps> = ({
                   isActive={isSelectModeActive}
                   canPost={renderingCanPost}
                 />
-                <PaymentModal
-                  isOpen={Boolean(isPaymentModalOpen)}
-                  onClose={closePaymentModal}
-                />
-                <ReceiptModal
-                  isOpen={Boolean(isReceiptModalOpen)}
-                  onClose={clearReceipt}
-                />
                 <SeenByModal isOpen={isSeenByModalOpen} />
                 <ReactorListModal isOpen={isReactorListModalOpen} />
               </div>
@@ -541,6 +554,7 @@ const MiddleColumn: FC<StateProps> = ({
           />
         ))}
       </div>
+      <GiftPremiumModal isOpen={isGiftPremiumModalOpen} />
     </div>
   );
 };
@@ -568,10 +582,9 @@ export default memo(withGlobal(
       isBackgroundBlurred,
       isMobileSearchActive: Boolean(IS_SINGLE_COLUMN_LAYOUT && selectCurrentTextSearch(global)),
       isSelectModeActive: selectIsInSelectMode(global),
-      isPaymentModalOpen: global.payment.isPaymentModalOpen,
-      isReceiptModalOpen: Boolean(global.payment.receipt),
       isSeenByModalOpen: Boolean(global.seenByModal),
       isReactorListModalOpen: Boolean(global.reactorModal),
+      isGiftPremiumModalOpen: global.giftPremiumModal?.isOpen,
       animationLevel: global.settings.byKey.animationLevel,
       currentTransitionKey: Math.max(0, messageLists.length - 1),
       activeEmojiInteractions,
@@ -596,8 +609,10 @@ export default memo(withGlobal(
     const isMainThread = messageListType === 'thread' && threadId === MAIN_THREAD_ID;
     const isChannel = Boolean(chat && isChatChannel(chat));
     const canSubscribe = Boolean(
-      chat && isMainThread && (isChannel || isChatSuperGroup(chat)) && chat.isNotJoined,
+      chat && isMainThread && (isChannel || isChatSuperGroup(chat)) && chat.isNotJoined && !chat.joinRequests,
     );
+    const shouldJoinToSend = Boolean(chat?.isNotJoined && chat.isJoinToSend);
+    const shouldSendJoinRequest = Boolean(chat?.isNotJoined && chat.isJoinRequest);
     const canRestartBot = Boolean(bot && selectIsUserBlocked(global, bot.id));
     const canStartBot = !canRestartBot && isBotNotStarted;
 
@@ -608,7 +623,10 @@ export default memo(withGlobal(
       messageListType,
       isPrivate,
       areChatSettingsLoaded: Boolean(chat?.settings),
-      canPost: !isPinnedMessageList && (!chat || canPost) && !isBotNotStarted,
+      canPost: !isPinnedMessageList
+        && (!chat || canPost)
+        && !isBotNotStarted
+        && !(shouldJoinToSend && chat?.isNotJoined),
       isPinnedMessageList,
       isScheduledMessageList,
       currentUserBannedRights: chat?.currentUserBannedRights,
@@ -624,6 +642,8 @@ export default memo(withGlobal(
       canSubscribe,
       canStartBot,
       canRestartBot,
+      shouldJoinToSend,
+      shouldSendJoinRequest,
     };
   },
 )(MiddleColumn));

@@ -8,16 +8,18 @@ import {
   isActionMessage,
   getSenderTitle,
   getMessageRoundVideo,
+  getUserColorKey,
 } from '../../global/helpers';
 import renderText from './helpers/renderText';
 import { getPictogramDimensions } from './helpers/mediaDimensions';
 import buildClassName from '../../util/buildClassName';
+import { renderMessageSummary } from './helpers/renderMessageText';
+
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 import { useIsIntersecting } from '../../hooks/useIntersectionObserver';
 import useMedia from '../../hooks/useMedia';
-import useWebpThumbnail from '../../hooks/useWebpThumbnail';
+import useThumbnail from '../../hooks/useThumbnail';
 import useLang from '../../hooks/useLang';
-import { renderMessageSummary } from './helpers/renderMessageText';
 
 import ActionMessage from '../middle/ActionMessage';
 
@@ -30,7 +32,9 @@ type OwnProps = {
   sender?: ApiUser | ApiChat;
   title?: string;
   customText?: string;
+  noUserColors?: boolean;
   isProtected?: boolean;
+  hasContextMenu?: boolean;
   onClick: NoneToVoidFunction;
 };
 
@@ -43,6 +47,8 @@ const EmbeddedMessage: FC<OwnProps> = ({
   title,
   customText,
   isProtected,
+  noUserColors,
+  hasContextMenu,
   observeIntersection,
   onClick,
 }) => {
@@ -51,7 +57,7 @@ const EmbeddedMessage: FC<OwnProps> = ({
   const isIntersecting = useIsIntersecting(ref, observeIntersection);
 
   const mediaBlobUrl = useMedia(message && getMessageMediaHash(message, 'pictogram'), !isIntersecting);
-  const mediaThumbnail = useWebpThumbnail(message);
+  const mediaThumbnail = useThumbnail(message);
   const isRoundVideo = Boolean(message && getMessageRoundVideo(message));
 
   const lang = useLang();
@@ -61,7 +67,11 @@ const EmbeddedMessage: FC<OwnProps> = ({
   return (
     <div
       ref={ref}
-      className={buildClassName('EmbeddedMessage', className)}
+      className={buildClassName(
+        'EmbeddedMessage',
+        className,
+        sender && !noUserColors && `color-${getUserColorKey(sender)}`,
+      )}
       onClick={message ? onClick : undefined}
     >
       {mediaThumbnail && renderPictogram(mediaThumbnail, mediaBlobUrl, isRoundVideo, isProtected)}
@@ -77,6 +87,7 @@ const EmbeddedMessage: FC<OwnProps> = ({
         </p>
         <div className="message-title" dir="auto">{renderText(senderTitle || title || NBSP)}</div>
       </div>
+      {hasContextMenu && <i className="embedded-more icon-more" />}
     </div>
   );
 };

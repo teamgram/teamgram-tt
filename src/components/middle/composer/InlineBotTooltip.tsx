@@ -14,6 +14,7 @@ import useShowTransition from '../../../hooks/useShowTransition';
 import { throttle } from '../../../util/schedulers';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 import usePrevious from '../../../hooks/usePrevious';
+import useCurrentOrPrev from '../../../hooks/useCurrentOrPrev';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
 
 import MediaResult from './inlineResults/MediaResult';
@@ -41,6 +42,7 @@ export type OwnProps = {
   ) => void;
   loadMore: NoneToVoidFunction;
   onClose: NoneToVoidFunction;
+  isCurrentUserPremium?: boolean;
 };
 
 const InlineBotTooltip: FC<OwnProps> = ({
@@ -54,6 +56,7 @@ const InlineBotTooltip: FC<OwnProps> = ({
   loadMore,
   onClose,
   onSelectResult,
+  isCurrentUserPremium,
 }) => {
   const {
     openChat,
@@ -63,6 +66,7 @@ const InlineBotTooltip: FC<OwnProps> = ({
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
   const { shouldRender, transitionClassNames } = useShowTransition(isOpen, undefined, undefined, false);
+  const renderedIsGallery = useCurrentOrPrev(isGallery, shouldRender);
   const {
     observe: observeIntersection,
   } = useIntersectionObserver({
@@ -79,8 +83,8 @@ const InlineBotTooltip: FC<OwnProps> = ({
 
   const selectedIndex = useKeyboardNavigation({
     isActive: isOpen,
-    shouldRemoveSelectionOnReset: isGallery,
-    noArrowNavigation: isGallery,
+    shouldRemoveSelectionOnReset: renderedIsGallery,
+    noArrowNavigation: renderedIsGallery,
     items: inlineBotResults,
     onSelect: onSelectResult,
     onClose,
@@ -92,7 +96,7 @@ const InlineBotTooltip: FC<OwnProps> = ({
 
   const handleSendPm = useCallback(() => {
     openChat({ id: botId });
-    startBot({ botId, param: switchPm!.startParam });
+    startBot({ botId: botId!, param: switchPm!.startParam });
   }, [botId, openChat, startBot, switchPm]);
 
   const prevInlineBotResults = usePrevious(
@@ -101,9 +105,7 @@ const InlineBotTooltip: FC<OwnProps> = ({
       : undefined,
     shouldRender,
   );
-  const renderedInlineBotResults = inlineBotResults && !inlineBotResults.length
-    ? prevInlineBotResults
-    : inlineBotResults;
+  const renderedInlineBotResults = inlineBotResults?.length ? inlineBotResults : prevInlineBotResults;
 
   if (!shouldRender || !(renderedInlineBotResults?.length || switchPm)) {
     return undefined;
@@ -112,7 +114,7 @@ const InlineBotTooltip: FC<OwnProps> = ({
   const className = buildClassName(
     'InlineBotTooltip composer-tooltip',
     IS_TOUCH_ENV ? 'no-scrollbar' : 'custom-scroll',
-    isGallery && 'gallery',
+    renderedIsGallery && 'gallery',
     transitionClassNames,
   );
 
@@ -143,7 +145,7 @@ const InlineBotTooltip: FC<OwnProps> = ({
           return (
             <MediaResult
               key={inlineBotResult.id}
-              isForGallery={isGallery}
+              isForGallery={renderedIsGallery}
               inlineResult={inlineBotResult}
               onClick={onSelectResult}
             />
@@ -157,6 +159,7 @@ const InlineBotTooltip: FC<OwnProps> = ({
               observeIntersection={observeIntersection}
               onClick={onSelectResult}
               isSavedMessages={isSavedMessages}
+              isCurrentUserPremium={isCurrentUserPremium}
             />
           );
 

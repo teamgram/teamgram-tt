@@ -1,13 +1,13 @@
-import type { FC } from '../../lib/teact/teact';
 import React, { useEffect } from '../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../global';
 
 import { ApiMediaFormat } from '../../api/types';
 import type { GlobalState } from '../../global/types';
 import type { ThemeKey } from '../../types';
+import type { FC } from '../../lib/teact/teact';
 
 import { getChatAvatarHash } from '../../global/helpers/chats'; // Direct import for better module splitting
-import { selectIsRightColumnShown, selectTheme } from '../../global/selectors';
+import { selectIsRightColumnShown, selectTheme, selectIsCurrentUserPremium } from '../../global/selectors';
 import { DARK_THEME_BG_COLOR, LIGHT_THEME_BG_COLOR } from '../../config';
 import useFlag from '../../hooks/useFlag';
 import useShowTransition from '../../hooks/useShowTransition';
@@ -22,12 +22,14 @@ import styles from './UiLoader.module.scss';
 
 import telegramLogoPath from '../../assets/telegram-logo.svg';
 import reactionThumbsPath from '../../assets/reaction-thumbs.png';
+import premiumReactionThumbsPath from '../../assets/reaction-thumbs-premium.png';
 import lockPreviewPath from '../../assets/lock.png';
 import monkeyPath from '../../assets/monkey.svg';
 
 export type UiLoaderPage =
   'main'
   | 'lock'
+  | 'inactive'
   | 'authCode'
   | 'authPassword'
   | 'authPhoneNumber'
@@ -42,6 +44,7 @@ type StateProps = Pick<GlobalState, 'uiReadyState' | 'shouldSkipHistoryAnimation
   isRightColumnShown?: boolean;
   leftColumnWidth?: number;
   theme: ThemeKey;
+  isCurrentUserPremium?: boolean;
 };
 
 const MAX_PRELOAD_DELAY = 700;
@@ -70,11 +73,11 @@ function preloadAvatars() {
 }
 
 const preloadTasks = {
-  main: () => Promise.all([
+  main: (isCurrentUserPremium: boolean) => Promise.all([
     loadModule(Bundles.Main, 'Main')
       .then(preloadFonts),
     preloadAvatars(),
-    preloadImage(reactionThumbsPath),
+    preloadImage(isCurrentUserPremium ? premiumReactionThumbsPath : reactionThumbsPath),
   ]),
   authPhoneNumber: () => Promise.all([
     preloadFonts(),
@@ -87,6 +90,8 @@ const preloadTasks = {
     preloadFonts(),
     preloadImage(lockPreviewPath),
   ]),
+  inactive: () => {
+  },
 };
 
 const UiLoader: FC<OwnProps & StateProps> = ({
@@ -96,6 +101,7 @@ const UiLoader: FC<OwnProps & StateProps> = ({
   shouldSkipHistoryAnimations,
   leftColumnWidth,
   theme,
+  isCurrentUserPremium,
 }) => {
   const { setIsUiReady } = getActions();
 
@@ -109,7 +115,7 @@ const UiLoader: FC<OwnProps & StateProps> = ({
 
     const safePreload = async () => {
       try {
-        await preloadTasks[page!]();
+        await preloadTasks[page!](isCurrentUserPremium!);
       } catch (err) {
         // Do nothing
       }
@@ -141,21 +147,23 @@ const UiLoader: FC<OwnProps & StateProps> = ({
   return (
     <div
       id="UiLoader"
-      className={styles.root}
+      className={styles.bg}
       style={`--theme-background-color: ${theme === 'dark' ? DARK_THEME_BG_COLOR : LIGHT_THEME_BG_COLOR}`}
     >
       {children}
       {shouldRenderMask && !shouldSkipHistoryAnimations && Boolean(page) && (
         <div className={buildClassName(styles.mask, transitionClassNames)}>
           {page === 'main' ? (
-            <>
+            <div className={styles.main}>
               <div
                 className={styles.left}
                 style={leftColumnWidth ? `width: ${leftColumnWidth}px` : undefined}
               />
-              <div className={buildClassName(styles.middle, transitionClassNames)} />
+              <div className={buildClassName(styles.middle, styles.bg)} />
               {isRightColumnShown && <div className={styles.right} />}
-            </>
+            </div>
+          ) : (page === 'inactive' || page === 'lock') ? (
+            <div className={buildClassName(styles.blank, styles.bg)} />
           ) : (
             <div className={styles.blank} />
           )}
@@ -175,6 +183,7 @@ export default withGlobal<OwnProps>(
       isRightColumnShown: selectIsRightColumnShown(global),
       leftColumnWidth: global.leftColumnWidth,
       theme,
+      isCurrentUserPremium: selectIsCurrentUserPremium(global),
     };
   },
 )(UiLoader);

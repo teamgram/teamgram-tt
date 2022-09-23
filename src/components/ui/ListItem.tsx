@@ -1,5 +1,5 @@
 import type { RefObject } from 'react';
-import type { FC } from '../../lib/teact/teact';
+import type { FC, TeactNode } from '../../lib/teact/teact';
 import React, { useRef, useCallback } from '../../lib/teact/teact';
 
 import { IS_TOUCH_ENV } from '../../util/environment';
@@ -28,11 +28,15 @@ interface OwnProps {
   ref?: RefObject<HTMLDivElement>;
   buttonRef?: RefObject<HTMLDivElement>;
   icon?: string;
+  leftElement?: TeactNode;
   secondaryIcon?: string;
+  rightElement?: TeactNode;
+  buttonClassName?: string;
   className?: string;
   style?: string;
   children: React.ReactNode;
   disabled?: boolean;
+  allowDisabledClick?: boolean;
   ripple?: boolean;
   narrow?: boolean;
   inactive?: boolean;
@@ -44,17 +48,22 @@ interface OwnProps {
   onMouseDown?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onClick?: (e: React.MouseEvent<HTMLDivElement>) => void;
   onSecondaryIconClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+  onDragEnter?: (e: React.DragEvent<HTMLDivElement>) => void;
 }
 
 const ListItem: FC<OwnProps> = ({
   ref,
   buttonRef,
   icon,
+  leftElement,
+  buttonClassName,
   secondaryIcon,
+  rightElement,
   className,
   style,
   children,
   disabled,
+  allowDisabledClick,
   ripple,
   narrow,
   inactive,
@@ -66,6 +75,7 @@ const ListItem: FC<OwnProps> = ({
   onMouseDown,
   onClick,
   onSecondaryIconClick,
+  onDragEnter,
 }) => {
   // eslint-disable-next-line no-null/no-null
   let containerRef = useRef<HTMLDivElement>(null);
@@ -102,7 +112,7 @@ const ListItem: FC<OwnProps> = ({
   );
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-    if (disabled || !onClick) {
+    if ((disabled && !allowDisabledClick) || !onClick) {
       return;
     }
     onClick(e);
@@ -111,10 +121,10 @@ const ListItem: FC<OwnProps> = ({
       markIsTouched();
       fastRaf(unmarkIsTouched);
     }
-  }, [disabled, markIsTouched, onClick, ripple, unmarkIsTouched]);
+  }, [allowDisabledClick, disabled, markIsTouched, onClick, ripple, unmarkIsTouched]);
 
   const handleSecondaryIconClick = (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
-    if (disabled || e.button !== 0 || (!onSecondaryIconClick && !contextActions)) return;
+    if ((disabled && !allowDisabledClick) || e.button !== 0 || (!onSecondaryIconClick && !contextActions)) return;
     e.stopPropagation();
     if (onSecondaryIconClick) {
       onSecondaryIconClick(e);
@@ -148,6 +158,7 @@ const ListItem: FC<OwnProps> = ({
     ripple && 'has-ripple',
     narrow && 'narrow',
     disabled && 'disabled',
+    allowDisabledClick && 'click-allowed',
     inactive && 'inactive',
     contextMenuPosition && 'has-menu-open',
     focus && 'focus',
@@ -163,9 +174,10 @@ const ListItem: FC<OwnProps> = ({
       dir={lang.isRtl ? 'rtl' : undefined}
       style={style}
       onMouseDown={onMouseDown}
+      onDragEnter={onDragEnter}
     >
       <div
-        className={buildClassName('ListItem-button', isTouched && 'active')}
+        className={buildClassName('ListItem-button', isTouched && 'active', buttonClassName)}
         role={!isStatic ? 'button' : undefined}
         ref={buttonRef}
         tabIndex={!isStatic ? 0 : undefined}
@@ -173,6 +185,7 @@ const ListItem: FC<OwnProps> = ({
         onMouseDown={handleMouseDown}
         onContextMenu={(!inactive && contextActions) ? handleContextMenu : undefined}
       >
+        {leftElement}
         {icon && (
           <i className={`icon-${icon}`} />
         )}
@@ -193,6 +206,7 @@ const ListItem: FC<OwnProps> = ({
             <i className={`icon-${secondaryIcon}`} />
           </Button>
         )}
+        {rightElement}
       </div>
       {contextActions && contextMenuPosition !== undefined && (
         <Menu

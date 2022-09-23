@@ -28,6 +28,7 @@ type OwnProps = {
   hasCloseButton?: boolean;
   noBackdrop?: boolean;
   children: React.ReactNode;
+  style?: string;
   onClose: () => void;
   onCloseAnimationEnd?: () => void;
   onEnter?: () => void;
@@ -47,6 +48,7 @@ const Modal: FC<OwnProps & StateProps> = ({
   hasCloseButton,
   noBackdrop,
   children,
+  style,
   onClose,
   onCloseAnimationEnd,
   onEnter,
@@ -72,7 +74,8 @@ const Modal: FC<OwnProps & StateProps> = ({
   });
 
   useEffectWithPrevDeps(([prevIsOpen]) => {
-    document.body.classList.toggle('has-open-dialog', isOpen);
+    document.body.classList.toggle('has-open-dialog', Boolean(isOpen));
+
     if (isOpen || (!isOpen && prevIsOpen !== undefined)) {
       dispatchHeavyAnimationEvent(ANIMATION_DURATION);
     }
@@ -134,7 +137,7 @@ const Modal: FC<OwnProps & StateProps> = ({
           <div className="modal-backdrop" onClick={onClose} />
           <div className="modal-dialog" ref={dialogRef}>
             {renderHeader()}
-            <div className="modal-content custom-scroll">
+            <div className="modal-content custom-scroll" style={style}>
               {children}
             </div>
           </div>

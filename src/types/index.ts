@@ -3,7 +3,7 @@ import type {
   ApiBotInlineMediaResult, ApiBotInlineResult, ApiBotInlineSwitchPm,
   ApiChatInviteImporter,
   ApiExportedInvite,
-  ApiLanguage, ApiMessage, ApiShippingAddress, ApiStickerSet,
+  ApiLanguage, ApiMessage, ApiShippingAddress, ApiStickerSet, ApiWebDocument,
 } from '../api/types';
 
 export type TextPart = TeactNode;
@@ -27,6 +27,7 @@ export interface IAlbum {
 }
 
 export type ThemeKey = 'light' | 'dark';
+export type AnimationLevel = 0 | 1 | 2;
 
 export interface IThemeSettings {
   background?: string;
@@ -59,7 +60,7 @@ export interface ISettings extends NotifySettings, Record<string, any> {
   theme: ThemeKey;
   shouldUseSystemTheme: boolean;
   messageTextSize: number;
-  animationLevel: 0 | 1 | 2;
+  animationLevel: AnimationLevel;
   messageSendKeyCombo: 'enter' | 'ctrl-enter';
   canAutoLoadPhotoFromContacts: boolean;
   canAutoLoadPhotoInPrivateChats: boolean;
@@ -86,6 +87,7 @@ export interface ISettings extends NotifySettings, Record<string, any> {
   timeFormat: TimeFormat;
   wasTimeFormatSetManually: boolean;
   isConnectionStatusMinimized: boolean;
+  shouldArchiveAndMuteNewNonContact?: boolean;
 }
 
 export interface ApiPrivacySettings {
@@ -151,7 +153,7 @@ export interface Receipt {
   credentialsTitle: string;
   shippingPrices?: Price[];
   shippingMethod?: string;
-  photoUrl?: string;
+  photo?: ApiWebDocument;
   text?: string;
   title?: string;
 }
@@ -173,6 +175,7 @@ export enum SettingsScreens {
   PrivacyPhoneCall,
   PrivacyPhoneP2P,
   PrivacyForwarding,
+  PrivacyVoiceMessages,
   PrivacyGroupChats,
   PrivacyPhoneNumberAllowedContacts,
   PrivacyPhoneNumberDeniedContacts,
@@ -186,6 +189,8 @@ export enum SettingsScreens {
   PrivacyPhoneP2PDeniedContacts,
   PrivacyForwardingAllowedContacts,
   PrivacyForwardingDeniedContacts,
+  PrivacyVoiceMessagesAllowedContacts,
+  PrivacyVoiceMessagesDeniedContacts,
   PrivacyGroupChatsAllowedContacts,
   PrivacyGroupChatsDeniedContacts,
   PrivacyBlockedUsers,
@@ -213,7 +218,6 @@ export enum SettingsScreens {
   TwoFaRecoveryEmail,
   TwoFaRecoveryEmailCode,
   TwoFaCongratulations,
-  QuickReaction,
   ActiveWebsites,
   PasscodeDisabled,
   PasscodeNewPasscode,
@@ -224,10 +228,14 @@ export enum SettingsScreens {
   PasscodeChangePasscodeConfirm,
   PasscodeTurnOff,
   PasscodeCongratulations,
+  Experimental,
+  Stickers,
+  QuickReaction,
+  CustomEmoji,
 }
 
 export type StickerSetOrRecent = Pick<ApiStickerSet, (
-  'id' | 'title' | 'count' | 'stickers' | 'hasThumbnail' | 'isLottie' | 'isVideos'
+  'id' | 'title' | 'count' | 'stickers' | 'hasThumbnail' | 'isLottie' | 'isVideos' | 'isEmoji' | 'installedDate'
 )>;
 
 export enum LeftColumnContent {
@@ -325,7 +333,7 @@ export enum NewChatMembersProgress {
 
 export type ProfileTabType = 'members' | 'commonChats' | 'media' | 'documents' | 'links' | 'audio' | 'voice';
 export type SharedMediaType = 'media' | 'documents' | 'links' | 'audio' | 'voice';
-export type ApiPrivacyKey = 'phoneNumber' | 'lastSeen' | 'profilePhoto' |
+export type ApiPrivacyKey = 'phoneNumber' | 'lastSeen' | 'profilePhoto' | 'voiceMessages' |
 'forwards' | 'chatInvite' | 'phoneCall' | 'phoneP2P';
 export type PrivacyVisibility = 'everybody' | 'contacts' | 'nonContacts' | 'nobody';
 

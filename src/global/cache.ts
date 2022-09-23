@@ -13,11 +13,14 @@ import {
   GLOBAL_STATE_CACHE_USER_LIST_LIMIT,
   GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT,
   GLOBAL_STATE_CACHE_CHATS_WITH_MESSAGES_LIMIT,
+  GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT,
+  ALL_FOLDER_ID,
+  ARCHIVED_FOLDER_ID,
   MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN,
   DEFAULT_VOLUME,
   DEFAULT_PLAYBACK_RATE,
-  ALL_FOLDER_ID,
-  ARCHIVED_FOLDER_ID,
+  DEFAULT_PATTERN_COLOR,
+  DEFAULT_LIMITS,
 } from '../config';
 import { IS_SINGLE_COLUMN_LAYOUT } from '../util/environment';
 import { isHeavyAnimating } from '../hooks/useHeavyAnimationCheck';
@@ -136,7 +139,7 @@ function readCache(initialState: GlobalState): GlobalState {
   };
 }
 
-function migrateCache(cached: GlobalState, initialState: GlobalState) {
+export function migrateCache(cached: GlobalState, initialState: GlobalState) {
   // Migrate from legacy setting names
   if ('shouldAutoDownloadMediaFromContacts' in cached.settings.byKey) {
     const {
@@ -182,6 +185,10 @@ function migrateCache(cached: GlobalState, initialState: GlobalState) {
 
   if (!cached.stickers.greeting) {
     cached.stickers.greeting = initialState.stickers.greeting;
+  }
+
+  if (!cached.stickers.premium) {
+    cached.stickers.premium = initialState.stickers.premium;
   }
 
   if (!cached.activeDownloads) {
@@ -259,6 +266,44 @@ function migrateCache(cached: GlobalState, initialState: GlobalState) {
       orderedHashes: [],
     };
   }
+
+  if (!cached.transcriptions) {
+    cached.transcriptions = {};
+  }
+
+  if (cached.appConfig && !cached.appConfig.limits) {
+    cached.appConfig.limits = DEFAULT_LIMITS;
+  }
+
+  if (!cached.customEmojis) {
+    cached.customEmojis = {
+      added: {},
+      byId: {},
+      lastRendered: [],
+    };
+  }
+
+  if (!cached.stickers.premiumSet) {
+    cached.stickers.premiumSet = {
+      stickers: [],
+    };
+  }
+
+  // TODO Remove in Jan 2023 (this was re-designed but can be hardcoded in cache)
+  const { light: lightTheme } = cached.settings.themes;
+  if (lightTheme?.patternColor === 'rgba(90, 110, 70, 0.6)' || !lightTheme?.patternColor) {
+    cached.settings.themes.light = {
+      ...lightTheme,
+      patternColor: DEFAULT_PATTERN_COLOR,
+    };
+  }
+
+  cached.serviceNotifications.forEach((notification) => {
+    const { isHidden } = notification as any;
+    if (isHidden) {
+      notification.isDeleted = isHidden;
+    }
+  });
 }
 
 function updateCache() {
@@ -293,6 +338,7 @@ export function serializeGlobal(global: GlobalState) {
   const reducedGlobal: GlobalState = {
     ...INITIAL_STATE,
     ...pick(global, [
+      'appConfig',
       'authState',
       'authPhoneNumber',
       'authRememberMe',
@@ -302,6 +348,7 @@ export function serializeGlobal(global: GlobalState) {
       'topPeers',
       'topInlineBots',
       'recentEmojis',
+      'recentCustomEmojis',
       'push',
       'shouldShowContextMenuHint',
       'leftColumnWidth',
@@ -312,6 +359,7 @@ export function serializeGlobal(global: GlobalState) {
       playbackRate: global.audioPlayer.playbackRate,
       isMuted: global.audioPlayer.isMuted,
     },
+    customEmojis: reduceCustomEmojis(global),
     mediaViewer: {
       volume: global.mediaViewer.volume,
       playbackRate: global.mediaViewer.playbackRate,
@@ -338,6 +386,18 @@ export function serializeGlobal(global: GlobalState) {
   };
 
   return JSON.stringify(reducedGlobal);
+}
+
+function reduceCustomEmojis(global: GlobalState): GlobalState['customEmojis'] {
+  const { lastRendered, byId } = global.customEmojis;
+  const idsToSave = lastRendered.slice(0, GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT);
+  const byIdToSave = pick(byId, idsToSave);
+
+  return {
+    byId: byIdToSave,
+    lastRendered: idsToSave,
+    added: {},
+  };
 }
 
 function reduceShowChatInfo(global: GlobalState): boolean {

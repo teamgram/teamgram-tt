@@ -31,38 +31,40 @@ function buildApiChatFieldsFromPeerEntity(
 ): PeerEntityApiChatFields {
   const isMin = Boolean('min' in peerEntity && peerEntity.min);
   const accessHash = ('accessHash' in peerEntity) && String(peerEntity.accessHash);
+  const hasVideoAvatar = 'photo' in peerEntity && peerEntity.photo && 'hasVideo' in peerEntity.photo
+    && peerEntity.photo.hasVideo;
   const avatarHash = ('photo' in peerEntity) && peerEntity.photo && buildAvatarHash(peerEntity.photo);
   const isSignaturesShown = Boolean('signatures' in peerEntity && peerEntity.signatures);
   const hasPrivateLink = Boolean('hasLink' in peerEntity && peerEntity.hasLink);
   const isScam = Boolean('scam' in peerEntity && peerEntity.scam);
   const isFake = Boolean('fake' in peerEntity && peerEntity.fake);
+  const isJoinToSend = Boolean('joinToSend' in peerEntity && peerEntity.joinToSend);
+  const isJoinRequest = Boolean('joinRequest' in peerEntity && peerEntity.joinRequest);
 
   return {
     isMin,
     hasPrivateLink,
     isSignaturesShown,
     ...(accessHash && { accessHash }),
+    hasVideoAvatar,
     ...(avatarHash && { avatarHash }),
-    ...(
-      (peerEntity instanceof GramJs.Channel || peerEntity instanceof GramJs.User)
-      && { username: peerEntity.username }
-    ),
-    ...(('verified' in peerEntity) && { isVerified: peerEntity.verified }),
-    ...(('callActive' in peerEntity) && { isCallActive: peerEntity.callActive }),
-    ...(('callNotEmpty' in peerEntity) && { isCallNotEmpty: peerEntity.callNotEmpty }),
-    ...((peerEntity instanceof GramJs.Chat || peerEntity instanceof GramJs.Channel) && {
-      ...(peerEntity.participantsCount && { membersCount: peerEntity.participantsCount }),
-      joinDate: peerEntity.date,
+    ...('username' in peerEntity && { username: peerEntity.username }),
+    ...('verified' in peerEntity && { isVerified: peerEntity.verified }),
+    ...('callActive' in peerEntity && { isCallActive: peerEntity.callActive }),
+    ...('callNotEmpty' in peerEntity && { isCallNotEmpty: peerEntity.callNotEmpty }),
+    ...('date' in peerEntity && { joinDate: peerEntity.date }),
+    ...('participantsCount' in peerEntity && peerEntity.participantsCount !== undefined && {
+      membersCount: peerEntity.participantsCount,
     }),
-    ...((peerEntity instanceof GramJs.Chat || peerEntity instanceof GramJs.Channel) && {
-      isProtected: Boolean('noforwards' in peerEntity && peerEntity.noforwards),
-    }),
+    ...('noforwards' in peerEntity && { isProtected: Boolean(peerEntity.noforwards) }),
     ...(isSupport && { isSupport: true }),
     ...buildApiChatPermissions(peerEntity),
-    ...(('creator' in peerEntity) && { isCreator: peerEntity.creator }),
+    ...('creator' in peerEntity && { isCreator: peerEntity.creator }),
     ...buildApiChatRestrictions(peerEntity),
     ...buildApiChatMigrationInfo(peerEntity),
     fakeType: isScam ? 'scam' : (isFake ? 'fake' : undefined),
+    isJoinToSend,
+    isJoinRequest,
   };
 }
 
@@ -106,7 +108,7 @@ function buildApiChatPermissions(peerEntity: GramJs.TypeUser | GramJs.TypeChat):
 
   return {
     adminRights: peerEntity.adminRights ? omitVirtualClassFields(peerEntity.adminRights) : undefined,
-    currentUserBannedRights: peerEntity instanceof GramJs.Channel && peerEntity.bannedRights
+    currentUserBannedRights: 'bannedRights' in peerEntity && peerEntity.bannedRights
       ? omitVirtualClassFields(peerEntity.bannedRights)
       : undefined,
     defaultBannedRights: peerEntity.defaultBannedRights
@@ -171,7 +173,7 @@ function buildApiChatMigrationInfo(peerEntity: GramJs.TypeChat): {
   };
 } {
   if (
-    peerEntity instanceof GramJs.Chat
+    'migratedTo' in peerEntity
     && peerEntity.migratedTo
     && !(peerEntity.migratedTo instanceof GramJs.InputChannelEmpty)
   ) {
@@ -202,20 +204,8 @@ function buildApiChatRestrictionReason(
 export function buildApiChatFromPreview(
   preview: GramJs.TypeChat | GramJs.TypeUser,
   isSupport = false,
-  withForbidden = false,
 ): ApiChat | undefined {
-  if (!(
-    preview instanceof GramJs.Chat
-    || preview instanceof GramJs.Channel
-    || preview instanceof GramJs.User
-    || (
-      withForbidden
-      && (
-        preview instanceof GramJs.ChatForbidden
-        || preview instanceof GramJs.ChannelForbidden
-      )
-    )
-  )) {
+  if (preview instanceof GramJs.ChatEmpty || preview instanceof GramJs.UserEmpty) {
     return undefined;
   }
 
@@ -379,9 +369,10 @@ export function buildApiChatFolder(filter: GramJs.DialogFilter): ApiChatFolder {
 export function buildApiChatFolderFromSuggested({
   filter, description,
 }: {
-  filter: GramJs.DialogFilter;
+  filter: GramJs.TypeDialogFilter;
   description: string;
-}): ApiChatFolder {
+}): ApiChatFolder | undefined {
+  if (!(filter instanceof GramJs.DialogFilter)) return undefined;
   return {
     ...buildApiChatFolder(filter),
     description,
@@ -390,12 +381,14 @@ export function buildApiChatFolderFromSuggested({
 
 export function buildApiChatBotCommands(botInfos: GramJs.BotInfo[]) {
   return botInfos.reduce((botCommands, botInfo) => {
-    const botId = buildApiPeerId(botInfo.userId, 'user');
+    const botId = buildApiPeerId(botInfo.userId!, 'user');
 
-    botCommands = botCommands.concat(botInfo.commands.map((mtpCommand) => ({
-      botId,
-      ...omitVirtualClassFields(mtpCommand),
-    })));
+    if (botInfo.commands) {
+      botCommands = botCommands.concat(botInfo.commands.map((mtpCommand) => ({
+        botId,
+        ...omitVirtualClassFields(mtpCommand),
+      })));
+    }
 
     return botCommands;
   }, [] as ApiBotCommand[]);

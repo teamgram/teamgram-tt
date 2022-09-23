@@ -1,7 +1,8 @@
+import BigInt from 'big-integer';
 import Api from '../tl/api';
-import TelegramClient from './TelegramClient';
-import { getAppropriatedPartSize } from '../Utils';
+import type TelegramClient from './TelegramClient';
 import { sleep, createDeferred } from '../Helpers';
+import { getDownloadPartSize } from '../Utils';
 import errors from '../errors';
 
 interface OnProgress {
@@ -41,29 +42,84 @@ const SENDER_TIMEOUT = 60 * 1000;
 const SENDER_RETRIES = 5;
 
 class Foreman {
-    private deferred: Deferred | undefined;
+    private deferreds: Deferred[] = [];
 
-    private activeWorkers = 0;
+    activeWorkers = 0;
 
     constructor(private maxWorkers: number) {
     }
 
     requestWorker() {
-        this.activeWorkers++;
-
-        if (this.activeWorkers > this.maxWorkers) {
-            this.deferred = createDeferred();
-            return this.deferred!.promise;
+        if (this.activeWorkers === this.maxWorkers) {
+            const deferred = createDeferred();
+            this.deferreds.push(deferred);
+            return deferred.promise;
+        } else {
+            this.activeWorkers++;
         }
 
         return Promise.resolve();
     }
 
     releaseWorker() {
-        this.activeWorkers--;
+        if (this.deferreds.length && (this.activeWorkers === this.maxWorkers)) {
+            const deferred = this.deferreds.shift()!;
+            deferred.resolve();
+        } else {
+            this.activeWorkers--;
+        }
+    }
+}
 
-        if (this.deferred && (this.activeWorkers <= this.maxWorkers)) {
-            this.deferred.resolve();
+class FileView {
+    private type: 'memory' | 'opfs';
+
+    private size?: number;
+
+    private buffer?: Buffer;
+
+    private largeFile?: FileSystemFileHandle;
+
+    private largeFileAccessHandle?: FileSystemSyncAccessHandle;
+
+    constructor(size?: number) {
+        this.size = size;
+        // eslint-disable-next-line no-restricted-globals
+        this.type = (size && size > (self as any).maxBufferSize) ? 'opfs' : 'memory';
+    }
+
+    async init() {
+        if (this.type === 'opfs') {
+            if (!FileSystemFileHandle?.prototype.createSyncAccessHandle) {
+                throw new Error('`createSyncAccessHandle` is not available. Cannot download files larger than 2GB.');
+            }
+            const directory = await navigator.storage.getDirectory();
+            const downloadsFolder = await directory.getDirectoryHandle('downloads', { create: true });
+            this.largeFile = await downloadsFolder.getFileHandle(Math.random().toString(), { create: true });
+            this.largeFileAccessHandle = await this.largeFile.createSyncAccessHandle();
+        } else {
+            this.buffer = this.size ? Buffer.alloc(this.size) : Buffer.alloc(0);
+        }
+    }
+
+    write(data: Uint8Array, offset: number) {
+        if (this.type === 'opfs') {
+            this.largeFileAccessHandle!.write(data, { at: offset });
+        } else if (this.size) {
+            for (let i = 0; i < data.length; i++) {
+                if (offset + i >= this.buffer!.length) return;
+                this.buffer!.writeUInt8(data[i], offset + i);
+            }
+        } else {
+            this.buffer = Buffer.concat([this.buffer!, data]);
+        }
+    }
+
+    getData(): Promise<Buffer | File> {
+        if (this.type === 'opfs') {
+            return this.largeFile!.getFile();
+        } else {
+            return Promise.resolve(this.buffer!);
         }
     }
 }
@@ -88,6 +144,14 @@ export async function downloadFile(
     return undefined;
 }
 
+const MAX_CONCURRENT_CONNECTIONS = 3;
+const MAX_CONCURRENT_CONNECTIONS_PREMIUM = 6;
+const MAX_WORKERS_PER_CONNECTION = 10;
+const MULTIPLE_CONNECTIONS_MIN_FILE_SIZE = 10485760; // 10MB
+
+const foremans = Array(MAX_CONCURRENT_CONNECTIONS_PREMIUM).fill(undefined)
+    .map(() => new Foreman(MAX_WORKERS_PER_CONNECTION));
+
 async function downloadFile2(
     client: TelegramClient,
     inputLocation: Api.InputFileLocation,
@@ -97,18 +161,24 @@ async function downloadFile2(
         partSizeKb, end,
     } = fileParams;
     const {
-        fileSize, workers = 1,
+        fileSize,
     } = fileParams;
+    const isPremium = Boolean(client.isPremium);
     const { dcId, progressCallback, start = 0 } = fileParams;
 
     end = end && end < fileSize ? end : fileSize - 1;
 
     if (!partSizeKb) {
-        partSizeKb = fileSize ? getAppropriatedPartSize(fileSize) : DEFAULT_CHUNK_SIZE;
+        partSizeKb = fileSize ? getDownloadPartSize(fileSize) : DEFAULT_CHUNK_SIZE;
     }
 
     const partSize = partSizeKb * 1024;
     const partsCount = end ? Math.ceil((end - start) / partSize) : 1;
+    const noParallel = !end;
+    const shouldUseMultipleConnections = fileSize
+        && fileSize >= MULTIPLE_CONNECTIONS_MIN_FILE_SIZE
+        && !noParallel;
+    let deferred: Deferred | undefined;
 
     if (partSize % MIN_CHUNK_SIZE !== 0) {
         throw new Error(`The part size must be evenly divisible by ${MIN_CHUNK_SIZE}`);
@@ -116,9 +186,14 @@ async function downloadFile2(
 
     client._log.info(`Downloading file in chunks of ${partSize} bytes`);
 
-    const foreman = new Foreman(workers);
+    const fileView = new FileView(end - start + 1);
     const promises: Promise<any>[] = [];
     let offset = start;
+    // Pick the least busy foreman
+    // For some reason, fresh connections give out a higher speed for the first couple of seconds
+    // I have no idea why, but this may speed up the download of small files
+    const activeCounts = foremans.map((l) => l.activeWorkers);
+    let currentForemanIndex = activeCounts.indexOf(Math.min(...activeCounts));
     // Used for files with unknown size and for manual cancellations
     let hasEnded = false;
 
@@ -127,8 +202,8 @@ async function downloadFile2(
         progressCallback(progress);
     }
 
-    // Preload sender
-    await client.getSender(dcId);
+    // Allocate memory
+    await fileView.init();
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -140,10 +215,20 @@ async function downloadFile2(
             isPrecise = true;
         }
 
-        await foreman.requestWorker();
+        // Use only first connection for avatars, because no size is known and we don't want to
+        // download empty parts using all connections at once
+        const senderIndex = !shouldUseMultipleConnections ? 0 : currentForemanIndex % (
+            isPremium ? MAX_CONCURRENT_CONNECTIONS_PREMIUM : MAX_CONCURRENT_CONNECTIONS
+        );
+
+        await foremans[senderIndex].requestWorker();
+
+        if (deferred) await deferred.promise;
+
+        if (noParallel) deferred = createDeferred();
 
         if (hasEnded) {
-            foreman.releaseWorker();
+            foremans[senderIndex].releaseWorker();
             break;
         }
 
@@ -153,12 +238,12 @@ async function downloadFile2(
             while (true) {
                 let sender;
                 try {
-                    sender = await client.getSender(dcId);
+                    sender = await client.getSender(dcId, senderIndex, isPremium);
                     // sometimes a session is revoked and will cause this to hang.
                     const result = await Promise.race([
                         sender.send(new Api.upload.GetFile({
                             location: inputLocation,
-                            offset: offsetMemo,
+                            offset: BigInt(offsetMemo),
                             limit,
                             precise: isPrecise || undefined,
                         })),
@@ -185,9 +270,12 @@ async function downloadFile2(
                         hasEnded = true;
                     }
 
-                    foreman.releaseWorker();
+                    foremans[senderIndex].releaseWorker();
+                    if (deferred) deferred.resolve();
 
-                    return result.bytes;
+                    fileView.write(result.bytes, offsetMemo - start);
+
+                    return;
                 } catch (err) {
                     if (sender && !sender.isConnected()) {
                         await sleep(DISCONNECT_SLEEP);
@@ -197,7 +285,8 @@ async function downloadFile2(
                         continue;
                     }
 
-                    foreman.releaseWorker();
+                    foremans[senderIndex].releaseWorker();
+                    if (deferred) deferred.resolve();
 
                     hasEnded = true;
                     throw err;
@@ -206,13 +295,12 @@ async function downloadFile2(
         })(offset));
 
         offset += limit;
+        currentForemanIndex++;
 
         if (end && (offset > end)) {
             break;
         }
     }
-    const results = await Promise.all(promises);
-    const buffers = results.filter(Boolean);
-    const totalLength = end ? (end + 1) - start : undefined;
-    return Buffer.concat(buffers, totalLength);
+    await Promise.all(promises);
+    return fileView.getData();
 }

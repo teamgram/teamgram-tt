@@ -1,8 +1,8 @@
-import type { FC } from '../../../lib/teact/teact';
 import React, {
   memo, useCallback, useEffect, useRef,
 } from '../../../lib/teact/teact';
 
+import type { FC } from '../../../lib/teact/teact';
 import type { ApiAttachment, ApiChatMember } from '../../../api/types';
 
 import {
@@ -48,6 +48,7 @@ export type OwnProps = {
   baseEmojiKeywords?: Record<string, string[]>;
   emojiKeywords?: Record<string, string[]>;
   shouldSchedule?: boolean;
+  captionLimit: number;
   addRecentEmoji: AnyToVoidFunction;
   onCaptionUpdate: (html: string) => void;
   onSend: () => void;
@@ -65,6 +66,7 @@ const AttachmentModal: FC<OwnProps> = ({
   attachments,
   caption,
   canShowCustomSendMenu,
+  captionLimit,
   isReady,
   isChatWithSelf,
   currentUserId,
@@ -103,6 +105,7 @@ const AttachmentModal: FC<OwnProps> = ({
     undefined,
     currentUserId,
   );
+
   const {
     isEmojiTooltipOpen, closeEmojiTooltip, filteredEmojis, insertEmoji,
   } = useEmojiTooltip(
@@ -175,7 +178,6 @@ const AttachmentModal: FC<OwnProps> = ({
 
   function handleDragOver(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     e.preventDefault();
-    e.stopPropagation();
 
     if (hideTimeoutRef.current) {
       window.clearTimeout(hideTimeoutRef.current);
@@ -240,6 +242,8 @@ const AttachmentModal: FC<OwnProps> = ({
     );
   }
 
+  const leftChars = (captionLimit - caption.length) <= 100 ? captionLimit - caption.length : undefined;
+
   return (
     <Modal
       isOpen={isOpen}
@@ -254,13 +258,14 @@ const AttachmentModal: FC<OwnProps> = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         data-attach-description={lang('Preview.Dragging.AddItems', 10)}
+        data-dropzone
       >
         {isQuick ? (
           <div className="media-wrapper custom-scroll">
             {renderingAttachments.map((attachment) => (
               attachment.mimeType.startsWith('image/')
                 ? <img src={attachment.blobUrl} alt="" />
-                : <video src={attachment.blobUrl} autoPlay muted loop />
+                : <video src={attachment.blobUrl} autoPlay muted loop disablePictureInPicture />
             ))}
           </div>
         ) : (
@@ -302,6 +307,7 @@ const AttachmentModal: FC<OwnProps> = ({
             onUpdate={onCaptionUpdate}
             onSend={sendAttachments}
             canAutoFocus={Boolean(isReady && attachments.length)}
+            captionLimit={leftChars}
           />
         </div>
       </div>

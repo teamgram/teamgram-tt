@@ -2,13 +2,13 @@ import type { FC } from '../../lib/teact/teact';
 import React, {
   useEffect, memo, useCallback, useState, useRef,
 } from '../../lib/teact/teact';
-import { getActions, withGlobal } from '../../global';
+import { getActions, getGlobal, withGlobal } from '../../global';
 
-import type { LangCode } from '../../types';
+import type { AnimationLevel, LangCode } from '../../types';
 import type {
   ApiChat, ApiMessage, ApiUpdateAuthorizationStateType, ApiUpdateConnectionStateType, ApiUser,
 } from '../../api/types';
-import type { GlobalState } from '../../global/types';
+import type { ApiLimitTypeWithModal, GlobalState } from '../../global/types';
 
 import '../../global/actions/all';
 import {
@@ -23,13 +23,14 @@ import {
   selectIsServiceChatReady,
   selectUser,
 } from '../../global/selectors';
-import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import buildClassName from '../../util/buildClassName';
 import { waitForTransitionEnd } from '../../util/cssAnimationEndListeners';
 import { processDeepLink } from '../../util/deeplink';
-import stopEvent from '../../util/stopEvent';
 import windowSize from '../../util/windowSize';
 import { getAllNotificationsCount } from '../../util/folderManager';
+import { fastRaf } from '../../util/schedulers';
+
+import useEffectWithPrevDeps from '../../hooks/useEffectWithPrevDeps';
 import useBackgroundMode from '../../hooks/useBackgroundMode';
 import useBeforeUnload from '../../hooks/useBeforeUnload';
 import useOnChange from '../../hooks/useOnChange';
@@ -37,7 +38,8 @@ import usePreventPinchZoomGesture from '../../hooks/usePreventPinchZoomGesture';
 import useForceUpdate from '../../hooks/useForceUpdate';
 import { LOCATION_HASH } from '../../hooks/useHistoryBack';
 import useShowTransition from '../../hooks/useShowTransition';
-import { fastRaf } from '../../util/schedulers';
+import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
+import useInterval from '../../hooks/useInterval';
 
 import StickerSetModal from '../common/StickerSetModal.async';
 import UnreadCount from '../common/UnreadCounter';
@@ -62,7 +64,14 @@ import RatePhoneCallModal from '../calls/phone/RatePhoneCallModal.async';
 import WebAppModal from './WebAppModal.async';
 import BotTrustModal from './BotTrustModal.async';
 import BotAttachModal from './BotAttachModal.async';
+import ConfettiContainer from './ConfettiContainer';
 import UrlAuthModal from './UrlAuthModal.async';
+import PremiumMainModal from './premium/PremiumMainModal.async';
+import PaymentModal from '../payment/PaymentModal.async';
+import ReceiptModal from '../payment/ReceiptModal.async';
+import PremiumLimitReachedModal from './premium/common/PremiumLimitReachedModal.async';
+import DeleteFolderDialog from './DeleteFolderDialog.async';
+import CustomEmojiSetsModal from '../common/CustomEmojiSetsModal.async';
 
 import './Main.scss';
 
@@ -82,26 +91,35 @@ type StateProps = {
   isHistoryCalendarOpen: boolean;
   shouldSkipHistoryAnimations?: boolean;
   openedStickerSetShortName?: string;
+  openedCustomEmojiSetIds?: string[];
   activeGroupCallId?: string;
   isServiceChatReady?: boolean;
-  animationLevel: number;
+  animationLevel: AnimationLevel;
   language?: LangCode;
   wasTimeFormatSetManually?: boolean;
   isPhoneCallActive?: boolean;
   addedSetIds?: string[];
+  addedCustomEmojiIds?: string[];
   newContactUserId?: string;
   newContactByPhoneNumber?: boolean;
   openedGame?: GlobalState['openedGame'];
   gameTitle?: string;
   isRatePhoneCallModalOpen?: boolean;
   webApp?: GlobalState['webApp'];
+  isPremiumModalOpen?: boolean;
   botTrustRequest?: GlobalState['botTrustRequest'];
-  botAttachRequest?: GlobalState['botAttachRequest'];
+  botTrustRequestBot?: ApiUser;
+  botAttachRequestBot?: ApiUser;
   currentUser?: ApiUser;
   urlAuth?: GlobalState['urlAuth'];
+  limitReached?: ApiLimitTypeWithModal;
+  deleteFolderDialogId?: number;
+  isPaymentModalOpen?: boolean;
+  isReceiptModalOpen?: boolean;
 };
 
 const NOTIFICATION_INTERVAL = 1000;
+const APP_OUTDATED_TIMEOUT_MS = 5 * 60 * 1000; // 5 min
 
 let notificationInterval: number | undefined;
 
@@ -123,12 +141,15 @@ const Main: FC<StateProps> = ({
   safeLinkModalUrl,
   isHistoryCalendarOpen,
   shouldSkipHistoryAnimations,
+  limitReached,
   openedStickerSetShortName,
+  openedCustomEmojiSetIds,
   isServiceChatReady,
   animationLevel,
   language,
   wasTimeFormatSetManually,
   addedSetIds,
+  addedCustomEmojiIds,
   isPhoneCallActive,
   newContactUserId,
   newContactByPhoneNumber,
@@ -136,10 +157,15 @@ const Main: FC<StateProps> = ({
   gameTitle,
   isRatePhoneCallModalOpen,
   botTrustRequest,
-  botAttachRequest,
+  botTrustRequestBot,
+  botAttachRequestBot,
   webApp,
   currentUser,
   urlAuth,
+  isPremiumModalOpen,
+  isPaymentModalOpen,
+  isReceiptModalOpen,
+  deleteFolderDialogId,
 }) => {
   const {
     sync,
@@ -152,14 +178,20 @@ const Main: FC<StateProps> = ({
     loadCountryList,
     loadAvailableReactions,
     loadStickerSets,
+    loadPremiumGifts,
     loadAddedStickers,
     loadFavoriteStickers,
     ensureTimeFormat,
-    openStickerSetShortName,
+    closeStickerSetModal,
+    closeCustomEmojiSets,
     checkVersionNotification,
     loadAppConfig,
     loadAttachMenuBots,
     loadContactList,
+    loadCustomEmojis,
+    closePaymentModal,
+    clearReceipt,
+    checkAppVersion,
   } = getActions();
 
   if (DEBUG && !DEBUG_isLogged) {
@@ -174,6 +206,8 @@ const Main: FC<StateProps> = ({
     }
   }, [connectionState, authState, sync]);
 
+  useInterval(checkAppVersion, APP_OUTDATED_TIMEOUT_MS, true);
+
   // Initial API calls
   useEffect(() => {
     if (lastSyncTime) {
@@ -187,10 +221,13 @@ const Main: FC<StateProps> = ({
       loadEmojiKeywords({ language: BASE_EMOJI_KEYWORD_LANG });
       loadAttachMenuBots();
       loadContactList();
+      loadPremiumGifts();
+      checkAppVersion();
     }
   }, [
     lastSyncTime, loadAnimatedEmojis, loadEmojiKeywords, loadNotificationExceptions, loadNotificationSettings,
     loadTopInlineBots, updateIsOnline, loadAvailableReactions, loadAppConfig, loadAttachMenuBots, loadContactList,
+    loadPremiumGifts, checkAppVersion,
   ]);
 
   // Language-based API calls
@@ -204,17 +241,29 @@ const Main: FC<StateProps> = ({
     }
   }, [language, lastSyncTime, loadCountryList, loadEmojiKeywords]);
 
+  // Re-fetch cached saved emoji for `localDb`
+  useEffectWithPrevDeps(([prevLastSyncTime]) => {
+    if (!prevLastSyncTime && lastSyncTime) {
+      loadCustomEmojis({
+        ids: Object.keys(getGlobal().customEmojis.byId),
+        ignoreCache: true,
+      });
+    }
+  }, [lastSyncTime] as const);
+
   // Sticker sets
   useEffect(() => {
     if (lastSyncTime) {
-      if (!addedSetIds) {
+      if (!addedSetIds || !addedCustomEmojiIds) {
         loadStickerSets();
         loadFavoriteStickers();
-      } else {
+      }
+
+      if (addedSetIds && addedCustomEmojiIds) {
         loadAddedStickers();
       }
     }
-  }, [lastSyncTime, addedSetIds, loadStickerSets, loadFavoriteStickers, loadAddedStickers]);
+  }, [lastSyncTime, addedSetIds, loadStickerSets, loadFavoriteStickers, loadAddedStickers, addedCustomEmojiIds]);
 
   // Check version when service chat is ready
   useEffect(() => {
@@ -239,7 +288,7 @@ const Main: FC<StateProps> = ({
 
   // Prevent refresh by accidentally rotating device when listening to a voice chat
   useEffect(() => {
-    if (!activeGroupCallId) {
+    if (!activeGroupCallId && !isPhoneCallActive) {
       return undefined;
     }
 
@@ -248,7 +297,7 @@ const Main: FC<StateProps> = ({
     return () => {
       windowSize.enableRefresh();
     };
-  }, [activeGroupCallId]);
+  }, [activeGroupCallId, isPhoneCallActive]);
 
   const leftColumnTransition = useShowTransition(
     isLeftColumnOpen, undefined, true, undefined, shouldSkipHistoryAnimations,
@@ -356,8 +405,12 @@ const Main: FC<StateProps> = ({
   }, [updateIsOnline]);
 
   const handleStickerSetModalClose = useCallback(() => {
-    openStickerSetShortName({ stickerSetShortName: undefined });
-  }, [openStickerSetShortName]);
+    closeStickerSetModal();
+  }, [closeStickerSetModal]);
+
+  const handleCustomEmojiSetsModalClose = useCallback(() => {
+    closeCustomEmojiSets();
+  }, [closeCustomEmojiSets]);
 
   // Online status and browser tab indicators
   useBackgroundMode(handleBlur, handleFocus);
@@ -365,7 +418,7 @@ const Main: FC<StateProps> = ({
   usePreventPinchZoomGesture(isMediaViewerOpen);
 
   return (
-    <div id="Main" className={className} onDrop={stopEvent} onDragOver={stopEvent}>
+    <div id="Main" className={className}>
       <LeftColumn />
       <MiddleColumn />
       <RightColumn />
@@ -382,6 +435,10 @@ const Main: FC<StateProps> = ({
         onClose={handleStickerSetModalClose}
         stickerSetShortName={openedStickerSetShortName}
       />
+      <CustomEmojiSetsModal
+        customEmojiSetIds={openedCustomEmojiSetIds}
+        onClose={handleCustomEmojiSetsModalClose}
+      />
       {activeGroupCallId && <GroupCall groupCallId={activeGroupCallId} />}
       <ActiveCallHeader isActive={Boolean(activeGroupCallId || isPhoneCallActive)} />
       <NewContactModal
@@ -392,12 +449,18 @@ const Main: FC<StateProps> = ({
       <GameModal openedGame={openedGame} gameTitle={gameTitle} />
       <WebAppModal webApp={webApp} />
       <DownloadManager />
+      <ConfettiContainer />
       <PhoneCall isActive={isPhoneCallActive} />
       <UnreadCount isForAppBadge />
       <RatePhoneCallModal isOpen={isRatePhoneCallModalOpen} />
-      <BotTrustModal bot={botTrustRequest?.bot} type={botTrustRequest?.type} />
-      <BotAttachModal bot={botAttachRequest?.bot} />
+      <BotTrustModal bot={botTrustRequestBot} type={botTrustRequest?.type} />
+      <BotAttachModal bot={botAttachRequestBot} />
       <MessageListHistoryHandler />
+      {isPremiumModalOpen && <PremiumMainModal isOpen={isPremiumModalOpen} />}
+      <PremiumLimitReachedModal limit={limitReached} />
+      <PaymentModal isOpen={isPaymentModalOpen} onClose={closePaymentModal} />
+      <ReceiptModal isOpen={isReceiptModalOpen} onClose={clearReceipt} />
+      <DeleteFolderDialog deleteFolderDialogId={deleteFolderDialogId} />
     </div>
   );
 };
@@ -431,6 +494,8 @@ export default memo(withGlobal(
           animationLevel, language, wasTimeFormatSetManually,
         },
       },
+      botTrustRequest,
+      botAttachRequest,
     } = global;
     const { chatId: audioChatId, messageId: audioMessageId } = global.audioPlayer;
     const audioMessage = audioChatId && audioMessageId
@@ -456,6 +521,7 @@ export default memo(withGlobal(
       isHistoryCalendarOpen: Boolean(global.historyCalendarSelectedAt),
       shouldSkipHistoryAnimations: global.shouldSkipHistoryAnimations,
       openedStickerSetShortName: global.openedStickerSetShortName,
+      openedCustomEmojiSetIds: global.openedCustomEmojiSetIds,
       isServiceChatReady: selectIsServiceChatReady(global),
       activeGroupCallId: global.groupCalls.activeGroupCallId,
       animationLevel,
@@ -463,16 +529,23 @@ export default memo(withGlobal(
       wasTimeFormatSetManually,
       isPhoneCallActive: Boolean(global.phoneCall),
       addedSetIds: global.stickers.added.setIds,
+      addedCustomEmojiIds: global.customEmojis.added.setIds,
       newContactUserId: global.newContact?.userId,
       newContactByPhoneNumber: global.newContact?.isByPhoneNumber,
       openedGame,
       gameTitle,
       isRatePhoneCallModalOpen: Boolean(global.ratingPhoneCall),
-      botTrustRequest: global.botTrustRequest,
-      botAttachRequest: global.botAttachRequest,
+      botTrustRequest,
+      botTrustRequestBot: botTrustRequest && selectUser(global, botTrustRequest.botId),
+      botAttachRequestBot: botAttachRequest && selectUser(global, botAttachRequest.botId),
       webApp: global.webApp,
       currentUser,
       urlAuth: global.urlAuth,
+      isPremiumModalOpen: global.premiumModal?.isOpen,
+      limitReached: global.limitReachedModal?.limit,
+      isPaymentModalOpen: global.payment.isPaymentModalOpen,
+      isReceiptModalOpen: Boolean(global.payment.receipt),
+      deleteFolderDialogId: global.deleteFolderDialogModal,
     };
   },
 )(Main));

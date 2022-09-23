@@ -1,15 +1,16 @@
-import { addActionHandler, setGlobal } from '../../index';
+import { addActionHandler, getGlobal, setGlobal } from '../../index';
 
 import type { ApiError } from '../../../api/types';
 
+import { APP_VERSION, GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT } from '../../../config';
 import { IS_SINGLE_COLUMN_LAYOUT, IS_TABLET_COLUMN_LAYOUT } from '../../../util/environment';
 import getReadableErrorText from '../../../util/getReadableErrorText';
-import {
-  selectBot, selectChatMessage, selectCurrentMessageList, selectIsTrustedBot,
-} from '../../selectors';
+import { selectChatMessage, selectCurrentMessageList, selectIsTrustedBot } from '../../selectors';
 import generateIdFor from '../../../util/generateIdFor';
+import { unique } from '../../../util/iteratees';
 
-const MAX_STORED_EMOJIS = 18; // Represents two rows of recent emojis
+export const APP_VERSION_URL = 'version.txt';
+const MAX_STORED_EMOJIS = 8 * 4; // Represents four rows of recent emojis
 
 addActionHandler('toggleChatInfo', (global, action, payload) => {
   return {
@@ -139,7 +140,7 @@ addActionHandler('toggleLeftColumn', (global) => {
 });
 
 addActionHandler('addRecentEmoji', (global, action, payload) => {
-  const { emoji } = payload!;
+  const { emoji } = payload;
   const { recentEmojis } = global;
   if (!recentEmojis) {
     return {
@@ -192,12 +193,12 @@ addActionHandler('addRecentSticker', (global, action, payload) => {
 });
 
 addActionHandler('reorderStickerSets', (global, action, payload) => {
-  const { order } = payload;
+  const { order, isCustomEmoji } = payload;
   return {
     ...global,
     stickers: {
       ...global.stickers,
-      added: {
+      [isCustomEmoji ? 'customEmoji' : 'added']: {
         setIds: order,
       },
     },
@@ -298,14 +299,13 @@ addActionHandler('openGame', (global, actions, payload) => {
   if (!message) return;
 
   const botId = message.viaBotId || message.senderId;
-  const bot = botId && selectBot(global, botId);
-  if (!bot) return;
+  if (!botId) return;
 
-  if (!selectIsTrustedBot(global, bot)) {
+  if (!selectIsTrustedBot(global, botId)) {
     setGlobal({
       ...global,
       botTrustRequest: {
-        bot,
+        botId,
         type: 'game',
         onConfirm: {
           action: 'openGame',
@@ -331,4 +331,94 @@ addActionHandler('closeGame', (global) => {
     ...global,
     openedGame: undefined,
   };
+});
+
+addActionHandler('requestConfetti', (global, actions, payload) => {
+  const {
+    top, left, width, height,
+  } = payload || {};
+  const { animationLevel } = global.settings.byKey;
+  if (animationLevel === 0) return undefined;
+
+  return {
+    ...global,
+    confetti: {
+      lastConfettiTime: Date.now(),
+      top,
+      left,
+      width,
+      height,
+    },
+  };
+});
+
+addActionHandler('openLimitReachedModal', (global, actions, payload) => {
+  const { limit } = payload;
+
+  return {
+    ...global,
+    limitReachedModal: {
+      limit,
+    },
+  };
+});
+
+addActionHandler('closeLimitReachedModal', (global) => {
+  return {
+    ...global,
+    limitReachedModal: undefined,
+  };
+});
+
+addActionHandler('closeStickerSetModal', (global) => {
+  return {
+    ...global,
+    openedStickerSetShortName: undefined,
+  };
+});
+
+addActionHandler('openCustomEmojiSets', (global, actions, payload) => {
+  const { setIds } = payload;
+  return {
+    ...global,
+    openedCustomEmojiSetIds: setIds,
+  };
+});
+
+addActionHandler('closeCustomEmojiSets', (global) => {
+  return {
+    ...global,
+    openedCustomEmojiSetIds: undefined,
+  };
+});
+
+addActionHandler('updateLastRenderedCustomEmojis', (global, actions, payload) => {
+  const { ids } = payload;
+  const { lastRendered } = global.customEmojis;
+
+  return {
+    ...global,
+    customEmojis: {
+      ...global.customEmojis,
+      lastRendered: unique([...lastRendered, ...ids]).slice(0, GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT),
+    },
+  };
+});
+
+addActionHandler('checkAppVersion', () => {
+  const APP_VERSION_REGEX = /^\d+\.\d+(\.\d+)?$/;
+
+  fetch(`${APP_VERSION_URL}?${Date.now()}`)
+    .then((response) => {
+      return response.text();
+    }).then((version) => {
+      version = version.trim();
+
+      if (APP_VERSION_REGEX.test(version) && version !== APP_VERSION) {
+        setGlobal({
+          ...getGlobal(),
+          isUpdateAvailable: true,
+        });
+      }
+    });
 });

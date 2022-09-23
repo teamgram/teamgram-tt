@@ -55,13 +55,22 @@ export function renderActionMessageText(
   if (translationKey.includes('ScoredInGame')) { // Translation hack for games
     unprocessed = unprocessed.replace('un1', '%action_origin%').replace('un2', '%message%');
   }
+  if (translationKey === 'ActionGiftOutbound') { // Translation hack for Premium Gift
+    unprocessed = unprocessed.replace('un2', '%gift_payment_amount%').replace(/\*\*/g, '');
+  }
+  if (translationKey === 'ActionGiftInbound') { // Translation hack for Premium Gift
+    unprocessed = unprocessed
+      .replace('un1', '%action_origin%')
+      .replace('un2', '%gift_payment_amount%')
+      .replace(/\*\*/g, '');
+  }
   let processed: TextPart[];
 
   if (unprocessed.includes('%payment_amount%')) {
     processed = processPlaceholder(
       unprocessed,
       '%payment_amount%',
-      formatCurrency(amount!, currency, lang.code),
+      formatCurrency(amount!, currency!, lang.code),
     );
     unprocessed = processed.pop() as string;
     content.push(...processed);
@@ -79,6 +88,16 @@ export function renderActionMessageText(
 
   unprocessed = processed.pop() as string;
   content.push(...processed);
+
+  if (unprocessed.includes('%gift_payment_amount%')) {
+    processed = processPlaceholder(
+      unprocessed,
+      '%gift_payment_amount%',
+      formatCurrency(amount!, currency!, lang.code),
+    );
+    unprocessed = processed.pop() as string;
+    content.push(...processed);
+  }
 
   if (unprocessed.includes('%score%')) {
     processed = processPlaceholder(
@@ -128,7 +147,9 @@ export function renderActionMessageText(
       ? renderMigratedContent(targetChatId, noLinks)
       : 'another chat',
   );
-  content.push(...processed);
+  processed.forEach((part) => {
+    content.push(...renderText(part));
+  });
 
   if (options.asPlainText) {
     return content.join('').trim();
@@ -202,7 +223,7 @@ function renderMigratedContent(chatId: string, noLinks?: boolean): string | Text
     return text;
   }
 
-  return <ChatLink className="action-link" chatId={chatId}>{text}</ChatLink>;
+  return <ChatLink className="action-link underlined-link" chatId={chatId}>{text}</ChatLink>;
 }
 
 function processPlaceholder(text: string, placeholder: string, replaceValue?: TextPart | TextPart[]): TextPart[] {

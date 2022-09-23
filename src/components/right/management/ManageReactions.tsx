@@ -1,6 +1,6 @@
 import type { FC } from '../../../lib/teact/teact';
 import React, {
-  memo, useCallback, useEffect, useState,
+  memo, useCallback, useEffect, useState, useMemo,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
@@ -57,25 +57,28 @@ const ManageReactions: FC<OwnProps & StateProps> = ({
   }, [chat, localEnabledReactions, setChatEnabledReactions]);
 
   useEffect(() => {
-    if (enabledReactions) {
-      setIsLoading(false);
-      setIsTouched(false);
-      setLocalEnabledReactions(enabledReactions);
-    }
+    setIsLoading(false);
+    setIsTouched(false);
+    setLocalEnabledReactions(enabledReactions || []);
   }, [enabledReactions]);
 
+  const availableActiveReactions = useMemo<ApiAvailableReaction[] | undefined>(
+    () => availableReactions?.filter((l) => !l.isInactive),
+    [availableReactions],
+  );
+
   const handleReactionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!chat || !availableReactions) return;
+    if (!chat || !availableActiveReactions) return;
 
     const { name, checked } = e.currentTarget;
-    const newEnabledReactions = name === 'all' ? (checked ? availableReactions.map((l) => l.reaction) : [])
+    const newEnabledReactions = name === 'all' ? (checked ? availableActiveReactions.map((l) => l.reaction) : [])
       : (!checked
         ? localEnabledReactions.filter((l) => l !== name)
         : [...localEnabledReactions, name]);
 
     setLocalEnabledReactions(newEnabledReactions);
     setIsTouched(true);
-  }, [availableReactions, chat, localEnabledReactions]);
+  }, [availableActiveReactions, chat, localEnabledReactions]);
 
   return (
     <div className="Management">
@@ -89,7 +92,7 @@ const ManageReactions: FC<OwnProps & StateProps> = ({
               onChange={handleReactionChange}
             />
           </div>
-          {availableReactions?.filter((l) => !l.isInactive).map(({ reaction, title }) => (
+          {availableActiveReactions?.map(({ reaction, title }) => (
             <div className="ListItem no-selection">
               <Checkbox
                 name={reaction}

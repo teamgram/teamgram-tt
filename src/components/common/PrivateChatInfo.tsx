@@ -5,6 +5,7 @@ import { getActions, withGlobal } from '../../global';
 
 import type { ApiUser, ApiTypingStatus, ApiUserStatus } from '../../api/types';
 import type { GlobalState } from '../../global/types';
+import type { AnimationLevel } from '../../types';
 import { MediaViewerOrigin } from '../../types';
 
 import { selectChatMessages, selectUser, selectUserStatus } from '../../global/selectors';
@@ -17,6 +18,7 @@ import VerifiedIcon from './VerifiedIcon';
 import TypingStatus from './TypingStatus';
 import DotAnimation from './DotAnimation';
 import FakeIcon from './FakeIcon';
+import PremiumIcon from './PremiumIcon';
 
 type OwnProps = {
   userId: string;
@@ -29,6 +31,7 @@ type OwnProps = {
   withUsername?: boolean;
   withFullInfo?: boolean;
   withUpdatingStatus?: boolean;
+  withVideoAvatar?: boolean;
   noStatusOrTyping?: boolean;
   noRtl?: boolean;
 };
@@ -38,6 +41,7 @@ type StateProps =
     user?: ApiUser;
     userStatus?: ApiUserStatus;
     isSavedMessages?: boolean;
+    animationLevel: AnimationLevel;
     areMessagesLoaded: boolean;
     serverTimeOffset: number;
   }
@@ -52,34 +56,39 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
   withUsername,
   withFullInfo,
   withUpdatingStatus,
+  withVideoAvatar,
   noStatusOrTyping,
   noRtl,
   user,
   userStatus,
   isSavedMessages,
   areMessagesLoaded,
+  animationLevel,
   lastSyncTime,
   serverTimeOffset,
 }) => {
   const {
     loadFullUser,
     openMediaViewer,
+    loadProfilePhotos,
   } = getActions();
 
   const { id: userId } = user || {};
   const fullName = getUserFullName(user);
 
   useEffect(() => {
-    if (withFullInfo && lastSyncTime && userId) {
-      loadFullUser({ userId });
+    if (userId && lastSyncTime) {
+      if (withFullInfo) loadFullUser({ userId });
+      if (withMediaViewer) loadProfilePhotos({ profileId: userId });
     }
-  }, [userId, loadFullUser, lastSyncTime, withFullInfo]);
+  }, [userId, loadFullUser, loadProfilePhotos, lastSyncTime, withFullInfo, withMediaViewer]);
 
-  const handleAvatarViewerOpen = useCallback((e: ReactMouseEvent<HTMLDivElement, MouseEvent>, hasPhoto: boolean) => {
-    if (user && hasPhoto) {
+  const handleAvatarViewerOpen = useCallback((e: ReactMouseEvent<HTMLDivElement, MouseEvent>, hasMedia: boolean) => {
+    if (user && hasMedia) {
       e.stopPropagation();
       openMediaViewer({
         avatarOwnerId: user.id,
+        mediaId: 0,
         origin: avatarSize === 'jumbo' ? MediaViewerOrigin.ProfileAvatar : MediaViewerOrigin.MiddleHeaderAvatar,
       });
     }
@@ -130,6 +139,8 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
         user={user}
         isSavedMessages={isSavedMessages}
         onClick={withMediaViewer ? handleAvatarViewerOpen : undefined}
+        withVideo={withVideoAvatar}
+        animationLevel={animationLevel}
       />
       <div className="info">
         {isSavedMessages ? (
@@ -140,6 +151,7 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
           <div className="title">
             <h3 dir="auto">{fullName && renderText(fullName)}</h3>
             {user?.isVerified && <VerifiedIcon />}
+            {user.isPremium && <PremiumIcon />}
             {user.fakeType && <FakeIcon fakeType={user.fakeType} />}
           </div>
         )}
@@ -158,7 +170,13 @@ export default memo(withGlobal<OwnProps>(
     const areMessagesLoaded = Boolean(selectChatMessages(global, userId));
 
     return {
-      lastSyncTime, user, userStatus, isSavedMessages, areMessagesLoaded, serverTimeOffset,
+      lastSyncTime,
+      user,
+      userStatus,
+      isSavedMessages,
+      areMessagesLoaded,
+      serverTimeOffset,
+      animationLevel: global.settings.byKey.animationLevel,
     };
   },
 )(PrivateChatInfo));

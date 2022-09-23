@@ -95,6 +95,9 @@ $color-message-reaction-own-hover: #b5e0a4;
   --color-interactive-element-hover: rgba(var(--color-text-secondary-rgb), 0.08);
   --color-composer-button: #{$color-text-secondary}CC;
 
+  --color-voice-transcribe-button: #e8f3ff;
+  --color-voice-transcribe-button-own: #cceebf;
+
   --color-primary: #{$color-primary};
   --color-primary-shade: #{color.mix($color-primary, $color-black, 92%)};
   --color-primary-shade-darker: #{color.mix($color-primary, $color-black, 84%)};
@@ -201,12 +204,14 @@ $color-message-reaction-own-hover: #b5e0a4;
 
   --z-lock-screen: 3000;
   --z-ui-loader-mask: 2000;
-  --z-notification: 1520;
+  --z-notification: 1700;
+  --z-confetti: 1600;
   --z-right-column: 900;
   --z-header-menu: 990;
   --z-header-menu-backdrop: 980;
   --z-modal: 1510;
   --z-media-viewer: 1500;
+  --z-video-player-controls: 3;
   --z-drop-area: 55;
   --z-animation-fade: 50;
   --z-menu-bubble: 21;

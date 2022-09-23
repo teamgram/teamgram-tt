@@ -17,6 +17,7 @@ import type {
   ApiSponsoredMessage,
   ApiSendMessageAction,
   ApiContact,
+  ApiPoll,
 } from '../../types';
 import {
   MAIN_THREAD_ID,
@@ -51,6 +52,7 @@ import {
   isMessageWithMedia,
   isServiceMessageWithMedia,
   buildSendMessageAction,
+  buildInputPollFromExisting,
 } from '../gramjsBuilders';
 import localDb from '../localDb';
 import { buildApiChatFromPreview } from '../apiBuilders/chats';
@@ -200,6 +202,7 @@ export function sendMessage(
     text,
     entities,
     replyingTo,
+    replyingToTopId,
     attachment,
     sticker,
     gif,
@@ -216,6 +219,7 @@ export function sendMessage(
     text?: string;
     entities?: ApiMessageEntity[];
     replyingTo?: number;
+    replyingToTopId?: number;
     attachment?: ApiAttachment;
     sticker?: ApiSticker;
     gif?: ApiVideo;
@@ -235,6 +239,7 @@ export function sendMessage(
     text,
     entities,
     replyingTo,
+    replyingToTopId,
     attachment,
     sticker,
     gif,
@@ -671,7 +676,7 @@ export async function deleteScheduledMessages({
 }
 
 export async function deleteHistory({
-  chat, shouldDeleteForAll, maxId,
+  chat, shouldDeleteForAll,
 }: {
   chat: ApiChat; shouldDeleteForAll?: boolean; maxId?: number;
 }) {
@@ -680,17 +685,20 @@ export async function deleteHistory({
     isChannel
       ? new GramJs.channels.DeleteHistory({
         channel: buildInputEntity(chat.id, chat.accessHash) as GramJs.InputChannel,
-        maxId,
       })
       : new GramJs.messages.DeleteHistory({
         peer: buildInputPeer(chat.id, chat.accessHash),
         ...(shouldDeleteForAll && { revoke: true }),
         ...(!shouldDeleteForAll && { just_clear: true }),
-        maxId,
       }),
   );
 
   if (!result) {
+    return;
+  }
+
+  if ('offset' in result && result.offset) {
+    await deleteHistory({ chat, shouldDeleteForAll });
     return;
   }
 
@@ -729,12 +737,17 @@ export async function sendMessageAction({
     return undefined;
   }
 
-  const result = await invokeRequest(new GramJs.messages.SetTyping({
-    peer: buildInputPeer(peer.id, peer.accessHash),
-    topMsgId: threadId,
-    action: gramAction,
-  }));
-  return result;
+  try {
+    const result = await invokeRequest(new GramJs.messages.SetTyping({
+      peer: buildInputPeer(peer.id, peer.accessHash),
+      topMsgId: threadId,
+      action: gramAction,
+    }), undefined, true);
+    return result;
+  } catch (error) {
+    // Prevent error from being displayed in UI
+  }
+  return undefined;
 }
 
 export async function markMessageListRead({
@@ -1051,6 +1064,22 @@ export async function sendPollVote({
   }), true);
 }
 
+export async function closePoll({
+  chat, messageId, poll,
+}: {
+  chat: ApiChat;
+  messageId: number;
+  poll: ApiPoll;
+}) {
+  const { id, accessHash } = chat;
+
+  await invokeRequest(new GramJs.messages.EditMessage({
+    peer: buildInputPeer(id, accessHash),
+    id: messageId,
+    media: buildInputPollFromExisting(poll, true),
+  }));
+}
+
 export async function loadPollOptionResults({
   chat, messageId, option, offset, limit, shouldResetVoters,
 }: {
@@ -1105,6 +1134,9 @@ export async function forwardMessages({
   scheduledAt,
   sendAs,
   withMyScore,
+  noAuthors,
+  noCaptions,
+  isCurrentUserPremium,
 }: {
   fromChat: ApiChat;
   toChat: ApiChat;
@@ -1114,12 +1146,17 @@ export async function forwardMessages({
   scheduledAt?: number;
   sendAs?: ApiUser | ApiChat;
   withMyScore?: boolean;
+  noAuthors?: boolean;
+  noCaptions?: boolean;
+  isCurrentUserPremium?: boolean;
 }) {
   const messageIds = messages.map(({ id }) => id);
   const randomIds = messages.map(generateRandomBigInt);
 
   messages.forEach((message, index) => {
-    const localMessage = buildLocalForwardedMessage(toChat, message, serverTimeOffset, scheduledAt);
+    const localMessage = buildLocalForwardedMessage(
+      toChat, message, serverTimeOffset, scheduledAt, noAuthors, noCaptions, isCurrentUserPremium,
+    );
     localDb.localMessages[String(randomIds[index])] = localMessage;
 
     onUpdate({
@@ -1137,6 +1174,8 @@ export async function forwardMessages({
     id: messageIds,
     withMyScore: withMyScore || undefined,
     silent: isSilent || undefined,
+    dropAuthor: noAuthors || undefined,
+    dropMediaCaptions: noCaptions || undefined,
     ...(scheduledAt && { scheduleDate: scheduledAt }),
     ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
   }), true);
@@ -1412,4 +1451,26 @@ export async function fetchUnreadReactions({
     users,
     chats,
   };
+}
+
+export async function transcribeAudio({
+  chat, messageId,
+}: {
+  chat: ApiChat; messageId: number;
+}) {
+  const result = await invokeRequest(new GramJs.messages.TranscribeAudio({
+    msgId: messageId,
+    peer: buildInputPeer(chat.id, chat.accessHash),
+  }));
+
+  if (!result) return undefined;
+
+  onUpdate({
+    '@type': 'updateTranscribedAudio',
+    isPending: result.pending,
+    transcriptionId: result.transcriptionId.toString(),
+    text: result.text,
+  });
+
+  return result.transcriptionId.toString();
 }

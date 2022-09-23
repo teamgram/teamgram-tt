@@ -5,13 +5,14 @@ import { getActions, withGlobal } from '../../../global';
 import { SettingsScreens } from '../../../types';
 import type { ApiUser } from '../../../api/types';
 
-import { selectUser } from '../../../global/selectors';
+import { selectIsPremiumPurchaseBlocked, selectUser } from '../../../global/selectors';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 
 import ListItem from '../../ui/ListItem';
 import ProfileInfo from '../../common/ProfileInfo';
 import ChatExtra from '../../common/ChatExtra';
+import PremiumIcon from '../../common/PremiumIcon';
 
 type OwnProps = {
   isActive?: boolean;
@@ -23,6 +24,7 @@ type StateProps = {
   sessionCount: number;
   currentUser?: ApiUser;
   lastSyncTime?: number;
+  canBuyPremium?: boolean;
 };
 
 const SettingsMain: FC<OwnProps & StateProps> = ({
@@ -32,8 +34,13 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
   currentUser,
   sessionCount,
   lastSyncTime,
+  canBuyPremium,
 }) => {
-  const { loadProfilePhotos, loadAuthorizations, loadWebAuthorizations } = getActions();
+  const {
+    loadProfilePhotos,
+    loadAuthorizations,
+    openPremiumModal,
+  } = getActions();
 
   const lang = useLang();
   const profileId = currentUser?.id;
@@ -52,9 +59,8 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
   useEffect(() => {
     if (lastSyncTime) {
       loadAuthorizations();
-      loadWebAuthorizations();
     }
-  }, [lastSyncTime, loadAuthorizations, loadWebAuthorizations]);
+  }, [lastSyncTime, loadAuthorizations]);
 
   return (
     <div className="settings-content custom-scroll">
@@ -122,6 +128,23 @@ const SettingsMain: FC<OwnProps & StateProps> = ({
           {lang('Language')}
           <span className="settings-item__current-value">{lang.langName}</span>
         </ListItem>
+        <ListItem
+          icon="stickers"
+          // eslint-disable-next-line react/jsx-no-bind
+          onClick={() => onScreenSelect(SettingsScreens.Stickers)}
+        >
+          {lang('StickersName')}
+        </ListItem>
+        {canBuyPremium && (
+          <ListItem
+            leftElement={<PremiumIcon withGradient big />}
+            className="settings-main-menu-premium"
+            // eslint-disable-next-line react/jsx-no-bind
+            onClick={() => openPremiumModal()}
+          >
+            {lang('TelegramPremium')}
+          </ListItem>
+        )}
       </div>
     </div>
   );
@@ -135,6 +158,7 @@ export default memo(withGlobal<OwnProps>(
       sessionCount: global.activeSessions.orderedHashes.length,
       currentUser: currentUserId ? selectUser(global, currentUserId) : undefined,
       lastSyncTime,
+      canBuyPremium: !selectIsPremiumPurchaseBlocked(global),
     };
   },
 )(SettingsMain));

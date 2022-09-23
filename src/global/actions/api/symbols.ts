@@ -2,7 +2,7 @@ import {
   addActionHandler, getActions, getGlobal, setGlobal,
 } from '../../index';
 
-import type { ApiSticker } from '../../../api/types';
+import type { ApiStickerSetInfo, ApiSticker } from '../../../api/types';
 import type { LangCode } from '../../../types';
 import { callApi } from '../../../api/gramjs';
 import { onTickEnd, pause, throttle } from '../../../util/schedulers';
@@ -15,32 +15,49 @@ import {
   rebuildStickersForEmoji,
 } from '../../reducers';
 import searchWords from '../../../util/searchWords';
-import { selectStickerSet } from '../../selectors';
+import { selectIsCurrentUserPremium, selectStickerSet } from '../../selectors';
 import { getTranslation } from '../../../util/langProvider';
+import { selectCurrentLimit, selectPremiumLimit } from '../../selectors/limits';
+import * as langProvider from '../../../util/langProvider';
 
 const ADDED_SETS_THROTTLE = 200;
 const ADDED_SETS_THROTTLE_CHUNK = 10;
 
 const searchThrottled = throttle((cb) => cb(), 500, false);
 
-addActionHandler('loadStickerSets', (global) => {
-  const { hash } = global.stickers.added || {};
-  void loadStickerSets(hash);
+addActionHandler('loadStickerSets', (global, actions) => {
+  void loadStickerSets(global.stickers.added.hash);
+  void loadCustomEmojiSets(global.customEmojis.added.hash);
+  actions.loadCustomEmojis({
+    ids: global.recentCustomEmojis,
+  });
 });
 
 addActionHandler('loadAddedStickers', async (global, actions) => {
-  const { setIds: addedSetIds } = global.stickers.added;
-  const cached = global.stickers.setsById;
-  if (!addedSetIds || !addedSetIds.length) {
+  const {
+    added: {
+      setIds: addedSetIds = [],
+    },
+    setsById: cached,
+  } = global.stickers;
+  const {
+    added: {
+      setIds: customEmojiSetIds = [],
+    },
+  } = global.customEmojis;
+  const setIdsToLoad = [...addedSetIds, ...customEmojiSetIds];
+  if (!setIdsToLoad.length) {
     return;
   }
 
-  for (let i = 0; i < addedSetIds.length; i++) {
-    const id = addedSetIds[i];
+  for (let i = 0; i < setIdsToLoad.length; i++) {
+    const id = setIdsToLoad[i];
     if (cached[id]?.stickers) {
       continue; // Already loaded
     }
-    actions.loadStickers({ stickerSetId: id });
+    actions.loadStickers({
+      stickerSetInfo: { id, accessHash: cached[id].accessHash },
+    });
 
     if (i % ADDED_SETS_THROTTLE_CHUNK === 0 && i > 0) {
       await pause(ADDED_SETS_THROTTLE);
@@ -56,6 +73,50 @@ addActionHandler('loadRecentStickers', (global) => {
 addActionHandler('loadFavoriteStickers', (global) => {
   const { hash } = global.stickers.favorite || {};
   void loadFavoriteStickers(hash);
+});
+
+addActionHandler('loadPremiumStickers', async (global) => {
+  const { hash } = global.stickers.premium || {};
+
+  const result = await callApi('fetchStickersForEmoji', { emoji: '⭐️⭐️', hash });
+  if (!result) {
+    return;
+  }
+
+  global = getGlobal();
+
+  setGlobal({
+    ...global,
+    stickers: {
+      ...global.stickers,
+      premium: {
+        hash: result.hash,
+        stickers: result.stickers,
+      },
+    },
+  });
+});
+
+addActionHandler('loadPremiumSetStickers', async (global) => {
+  const { hash } = global.stickers.premium || {};
+
+  const result = await callApi('fetchStickersForEmoji', { emoji: '📂⭐️', hash });
+  if (!result) {
+    return;
+  }
+
+  global = getGlobal();
+
+  setGlobal({
+    ...global,
+    stickers: {
+      ...global.stickers,
+      premiumSet: {
+        hash: result.hash,
+        stickers: result.stickers,
+      },
+    },
+  });
 });
 
 addActionHandler('loadGreetingStickers', async (global) => {
@@ -85,26 +146,25 @@ addActionHandler('loadFeaturedStickers', (global) => {
   void loadFeaturedStickers(hash);
 });
 
-addActionHandler('loadStickers', (global, actions, payload) => {
-  const { stickerSetId, stickerSetShortName } = payload!;
-  let { stickerSetAccessHash } = payload!;
-
-  if (!stickerSetAccessHash && !stickerSetShortName) {
-    const stickerSet = selectStickerSet(global, stickerSetId);
-    if (!stickerSet) {
-      if (global.openedStickerSetShortName === stickerSetShortName) {
-        setGlobal({
-          ...global,
-          openedStickerSetShortName: undefined,
-        });
-      }
-      return;
-    }
-
-    stickerSetAccessHash = stickerSet.accessHash;
+addActionHandler('loadPremiumGifts', async () => {
+  const stickerSet = await callApi('fetchPremiumGifts');
+  if (!stickerSet) {
+    return;
   }
 
-  void loadStickers(stickerSetId, stickerSetAccessHash!, stickerSetShortName);
+  const { set, stickers } = stickerSet;
+
+  setGlobal({
+    ...getGlobal(),
+    premiumGifts: { ...set, stickers },
+  });
+});
+
+addActionHandler('loadStickers', (global, actions, payload) => {
+  const { stickerSetInfo } = payload;
+  const cachedSet = selectStickerSet(global, stickerSetInfo);
+  if (cachedSet && cachedSet.count === cachedSet?.stickers?.length) return; // Already fully loaded
+  void loadStickers(stickerSetInfo);
 });
 
 addActionHandler('loadAnimatedEmojis', () => {
@@ -119,6 +179,23 @@ addActionHandler('loadSavedGifs', (global) => {
 
 addActionHandler('saveGif', async (global, actions, payload) => {
   const { gif, shouldUnsave } = payload!;
+  const length = global.gifs.saved.gifs?.length;
+
+  const limit = selectCurrentLimit(global, 'savedGifs');
+  const premiumLimit = selectPremiumLimit(global, 'savedGifs');
+  const isPremium = selectIsCurrentUserPremium(global);
+
+  if (!shouldUnsave && length && length >= limit) {
+    actions.showNotification({
+      title: langProvider.getTranslation('LimitReachedFavoriteGifs', limit.toString()),
+      message: isPremium ? langProvider.getTranslation('LimitReachedFavoriteGifsSubtitlePremium')
+        : langProvider.getTranslation('LimitReachedFavoriteGifsSubtitle',
+          premiumLimit.toString()),
+      ...(!isPremium && { action: actions.openPremiumModal }),
+      className: 'bold-link',
+    });
+  }
+
   const result = await callApi('saveGif', { gif, shouldUnsave });
   if (!result) {
     return;
@@ -142,6 +219,21 @@ addActionHandler('saveGif', async (global, actions, payload) => {
 
 addActionHandler('faveSticker', (global, actions, payload) => {
   const { sticker } = payload!;
+  const current = global.stickers.favorite.stickers.length;
+  const limit = selectCurrentLimit(global, 'stickersFaved');
+  const premiumLimit = selectPremiumLimit(global, 'stickersFaved');
+  const isPremium = selectIsCurrentUserPremium(global);
+
+  if (current >= limit) {
+    actions.showNotification({
+      title: langProvider.getTranslation('LimitReachedFavoriteStickers', limit.toString()),
+      message: isPremium ? langProvider.getTranslation('LimitReachedFavoriteStickersSubtitlePremium')
+        : langProvider.getTranslation('LimitReachedFavoriteStickersSubtitle',
+          premiumLimit.toString()),
+      ...(!isPremium && { action: actions.openPremiumModal }),
+      className: 'bold-link',
+    });
+  }
 
   if (sticker) {
     void callApi('faveSticker', { sticker });
@@ -253,6 +345,20 @@ addActionHandler('loadEmojiKeywords', async (global, actions, payload: { languag
   });
 });
 
+async function loadCustomEmojiSets(hash?: string) {
+  const addedCustomEmojis = await callApi('fetchCustomEmojiSets', { hash });
+  if (!addedCustomEmojis) {
+    return;
+  }
+
+  setGlobal(updateStickerSets(
+    getGlobal(),
+    'added',
+    addedCustomEmojis.hash,
+    addedCustomEmojis.sets,
+  ));
+}
+
 async function loadStickerSets(hash?: string) {
   const addedStickers = await callApi('fetchStickerSets', { hash });
   if (!addedStickers) {
@@ -315,10 +421,10 @@ async function loadFeaturedStickers(hash?: string) {
   ));
 }
 
-async function loadStickers(stickerSetId: string, accessHash: string, stickerSetShortName?: string) {
+async function loadStickers(stickerSetInfo: ApiStickerSetInfo) {
   const stickerSet = await callApi(
     'fetchStickers',
-    { stickerSetShortName, stickerSetId, accessHash },
+    { stickerSetInfo },
   );
   let global = getGlobal();
 
@@ -328,7 +434,7 @@ async function loadStickers(stickerSetId: string, accessHash: string, stickerSet
         message: getTranslation('StickerPack.ErrorNotFound'),
       });
     });
-    if (global.openedStickerSetShortName === stickerSetShortName) {
+    if ('shortName' in stickerSetInfo && global.openedStickerSetShortName === stickerSetInfo.shortName) {
       setGlobal({
         ...global,
         openedStickerSetShortName: undefined,
@@ -424,7 +530,7 @@ addActionHandler('searchMoreGifs', (global) => {
 });
 
 addActionHandler('loadStickersForEmoji', (global, actions, payload) => {
-  const { emoji } = payload!;
+  const { emoji } = payload;
   const { hash } = global.stickers.forEmoji;
 
   void searchThrottled(() => {
@@ -442,31 +548,18 @@ addActionHandler('clearStickersForEmoji', (global) => {
   };
 });
 
-addActionHandler('openStickerSetShortName', (global, actions, payload) => {
-  const { stickerSetShortName } = payload;
-  return {
-    ...global,
-    openedStickerSetShortName: stickerSetShortName,
-  };
-});
-
 addActionHandler('openStickerSet', async (global, actions, payload) => {
-  const { sticker } = payload;
-
-  if (!selectStickerSet(global, sticker.stickerSetId)) {
-    if (!sticker.stickerSetAccessHash) {
-      actions.showNotification({
-        message: getTranslation('StickerPack.ErrorNotFound'),
-      });
-      return;
-    }
-
-    await loadStickers(sticker.stickerSetId, sticker.stickerSetAccessHash);
+  const { stickerSetInfo } = payload;
+  if (!selectStickerSet(global, stickerSetInfo)) {
+    await loadStickers(stickerSetInfo);
   }
 
   global = getGlobal();
-  const set = selectStickerSet(global, sticker.stickerSetId);
+  const set = selectStickerSet(global, stickerSetInfo);
   if (!set?.shortName) {
+    actions.showNotification({
+      message: getTranslation('StickerPack.ErrorNotFound'),
+    });
     return;
   }
 

@@ -138,7 +138,7 @@ export async function fetchBlockedContacts() {
 
   return {
     users: result.users.map(buildApiUser).filter<ApiUser>(Boolean as any),
-    chats: result.chats.map((chat) => buildApiChatFromPreview(chat, undefined, true)).filter<ApiChat>(Boolean as any),
+    chats: result.chats.map((chat) => buildApiChatFromPreview(chat)).filter<ApiChat>(Boolean as any),
     blockedIds: result.blocked.map((blocked) => getApiChatIdFromMtpPeer(blocked.peerId)),
     totalCount: result instanceof GramJs.contacts.BlockedSlice ? result.count : result.blocked.length,
   };
@@ -491,4 +491,34 @@ export async function fetchCountryList({ langCode = 'en' }: { langCode?: LangCod
     return undefined;
   }
   return buildApiCountryList(countryList.countries);
+}
+
+export async function fetchGlobalPrivacySettings() {
+  const result = await invokeRequest(new GramJs.account.GetGlobalPrivacySettings());
+
+  if (!result) {
+    return undefined;
+  }
+
+  return {
+    shouldArchiveAndMuteNewNonContact: Boolean(result.archiveAndMuteNewNoncontactPeers),
+  };
+}
+
+export async function updateGlobalPrivacySettings({ shouldArchiveAndMuteNewNonContact } : {
+  shouldArchiveAndMuteNewNonContact: boolean;
+}) {
+  const result = await invokeRequest(new GramJs.account.SetGlobalPrivacySettings({
+    settings: new GramJs.GlobalPrivacySettings({
+      archiveAndMuteNewNoncontactPeers: shouldArchiveAndMuteNewNonContact,
+    }),
+  }));
+
+  if (!result) {
+    return undefined;
+  }
+
+  return {
+    shouldArchiveAndMuteNewNonContact: Boolean(result.archiveAndMuteNewNoncontactPeers),
+  };
 }

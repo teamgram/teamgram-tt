@@ -52,7 +52,7 @@ const Poll: FC<OwnProps & StateProps> = ({
   onSendVote,
   serverTimeOffset,
 }) => {
-  const { loadMessage, openPollResults } = getActions();
+  const { loadMessage, openPollResults, requestConfetti } = getActions();
 
   const { id: messageId, chatId } = message;
   const { summary, results } = poll;
@@ -87,14 +87,14 @@ const Poll: FC<OwnProps & StateProps> = ({
   }));
 
   useEffect(() => {
-    if (
-      isSubmitting
-      && poll.results.results
-      && poll.results.results.some((result) => result.isChosen)
-    ) {
+    const chosen = poll.results.results?.find((result) => result.isChosen);
+    if (isSubmitting && chosen) {
+      if (chosen.isCorrect) {
+        requestConfetti();
+      }
       setIsSubmitting(false);
     }
-  }, [isSubmitting, poll.results.results]);
+  }, [isSubmitting, poll.results.results, requestConfetti]);
 
   useEffect(() => {
     if (closePeriod > 0) {
@@ -216,7 +216,7 @@ const Poll: FC<OwnProps & StateProps> = ({
     return (
       <PollOption
         key={answer.option}
-        shouldAnimate={wasSubmitted}
+        shouldAnimate={wasSubmitted || !canVote}
         answer={answer}
         voteResults={voteResults}
         totalVoters={totalVoters}
@@ -277,7 +277,7 @@ const Poll: FC<OwnProps & StateProps> = ({
         )}
       </div>
       {canVote && (
-        <div className="poll-answers">
+        <div className="poll-answers" onClick={stopPropagation}>
           {isMultiple
             ? (
               <CheckboxGroup
@@ -336,12 +336,12 @@ function getPollTypeString(summary: ApiPoll['summary']) {
     return NBSP;
   }
 
-  if (summary.quiz) {
-    return summary.isPublic ? 'QuizPoll' : 'AnonymousQuizPoll';
-  }
-
   if (summary.closed) {
     return 'FinalResults';
+  }
+
+  if (summary.quiz) {
+    return summary.isPublic ? 'QuizPoll' : 'AnonymousQuizPoll';
   }
 
   return summary.isPublic ? 'PublicPoll' : 'AnonymousPoll';
@@ -353,6 +353,10 @@ function getReadableVotersCount(lang: LangFn, isQuiz: true | undefined, count?: 
   }
 
   return lang(isQuiz ? 'Answer' : 'Vote', count, 'i');
+}
+
+function stopPropagation(e: React.MouseEvent<HTMLDivElement>) {
+  e.stopPropagation();
 }
 
 export default memo(withGlobal<OwnProps>(

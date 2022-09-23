@@ -1,9 +1,11 @@
 import type { FC } from '../../../lib/teact/teact';
-import React, { memo, useEffect } from '../../../lib/teact/teact';
+import React, { memo, useCallback, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiPrivacySettings } from '../../../types';
 import { SettingsScreens } from '../../../types';
+
+import { selectIsCurrentUserPremium } from '../../../global/selectors';
 
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -18,16 +20,19 @@ type OwnProps = {
 };
 
 type StateProps = {
+  isCurrentUserPremium?: boolean;
   hasPassword?: boolean;
   hasPasscode?: boolean;
   blockedCount: number;
   webAuthCount: number;
   isSensitiveEnabled?: boolean;
   canChangeSensitive?: boolean;
+  shouldArchiveAndMuteNewNonContact?: boolean;
   privacyPhoneNumber?: ApiPrivacySettings;
   privacyLastSeen?: ApiPrivacySettings;
   privacyProfilePhoto?: ApiPrivacySettings;
   privacyForwarding?: ApiPrivacySettings;
+  privacyVoiceMessages?: ApiPrivacySettings;
   privacyGroupChats?: ApiPrivacySettings;
   privacyPhoneCall?: ApiPrivacySettings;
   privacyPhoneP2P?: ApiPrivacySettings;
@@ -35,16 +40,19 @@ type StateProps = {
 
 const SettingsPrivacy: FC<OwnProps & StateProps> = ({
   isActive,
+  isCurrentUserPremium,
   hasPassword,
   hasPasscode,
   blockedCount,
   webAuthCount,
   isSensitiveEnabled,
   canChangeSensitive,
+  shouldArchiveAndMuteNewNonContact,
   privacyPhoneNumber,
   privacyLastSeen,
   privacyProfilePhoto,
   privacyForwarding,
+  privacyVoiceMessages,
   privacyGroupChats,
   privacyPhoneCall,
   privacyPhoneP2P,
@@ -57,6 +65,10 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
     loadAuthorizations,
     loadContentSettings,
     updateContentSettings,
+    loadGlobalPrivacySettings,
+    updateGlobalPrivacySettings,
+    loadWebAuthorizations,
+    showNotification,
   } = getActions();
 
   useEffect(() => {
@@ -64,7 +76,14 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
     loadAuthorizations();
     loadPrivacySettings();
     loadContentSettings();
-  }, [loadBlockedContacts, loadAuthorizations, loadPrivacySettings, loadContentSettings]);
+    loadWebAuthorizations();
+  }, [loadBlockedContacts, loadAuthorizations, loadPrivacySettings, loadContentSettings, loadWebAuthorizations]);
+
+  useEffect(() => {
+    if (isActive) {
+      loadGlobalPrivacySettings();
+    }
+  }, [isActive, loadGlobalPrivacySettings]);
 
   const lang = useLang();
 
@@ -72,6 +91,22 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
     isActive,
     onBack: onReset,
   });
+
+  const handleArchiveAndMuteChange = useCallback((isEnabled: boolean) => {
+    updateGlobalPrivacySettings({
+      shouldArchiveAndMuteNewNonContact: isEnabled,
+    });
+  }, [updateGlobalPrivacySettings]);
+
+  const handleVoiceMessagesClick = useCallback(() => {
+    if (isCurrentUserPremium) {
+      onScreenSelect(SettingsScreens.PrivacyVoiceMessages);
+    } else {
+      showNotification({
+        message: lang('PrivacyVoiceMessagesPremiumOnly'),
+      });
+    }
+  }, [isCurrentUserPremium, lang, onScreenSelect, showNotification]);
 
   function getVisibilityValue(setting?: ApiPrivacySettings) {
     const { visibility } = setting || {};
@@ -102,29 +137,20 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
       <div className="settings-item pt-3">
         <ListItem
           icon="delete-user"
-          narrow
           // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(SettingsScreens.PrivacyBlockedUsers)}
         >
-          <div className="multiline-menu-item">
-            <span className="title">{lang('BlockedUsers')}</span>
-            {blockedCount > 0 && (
-              <span className="subtitle" dir="auto">
-                {lang('Users', blockedCount)}
-              </span>
-            )}
-          </div>
+          {lang('BlockedUsers')}
+          <span className="settings-item__current-value">{blockedCount || ''}</span>
         </ListItem>
-        {webAuthCount > 0 && (
-          <ListItem
-            icon="web"
-            // eslint-disable-next-line react/jsx-no-bind
-            onClick={() => onScreenSelect(SettingsScreens.ActiveWebsites)}
-          >
-            {lang('PrivacySettings.WebSessions')}
-            <span className="settings-item__current-value">{webAuthCount}</span>
-          </ListItem>
-        )}
+        <ListItem
+          icon="web"
+          // eslint-disable-next-line react/jsx-no-bind
+          onClick={() => onScreenSelect(SettingsScreens.ActiveWebsites)}
+        >
+          {lang('PrivacySettings.WebSessions')}
+          <span className="settings-item__current-value">{webAuthCount || ''}</span>
+        </ListItem>
         <ListItem
           icon="key"
           narrow
@@ -240,6 +266,21 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         </ListItem>
         <ListItem
           narrow
+          disabled={!isCurrentUserPremium}
+          allowDisabledClick
+          rightElement={!isCurrentUserPremium && <i className="icon-lock-badge settings-icon-locked" />}
+          className="no-icon"
+          onClick={handleVoiceMessagesClick}
+        >
+          <div className="multiline-menu-item">
+            <span className="title">{lang('PrivacyVoiceMessages')}</span>
+            <span className="subtitle" dir="auto">
+              {getVisibilityValue(privacyVoiceMessages)}
+            </span>
+          </div>
+        </ListItem>
+        <ListItem
+          narrow
           className="no-icon"
           // eslint-disable-next-line react/jsx-no-bind
           onClick={() => onScreenSelect(SettingsScreens.PrivacyGroupChats)}
@@ -251,6 +292,18 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
             </span>
           </div>
         </ListItem>
+      </div>
+
+      <div className="settings-item">
+        <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>
+          {lang('NewChatsFromNonContacts')}
+        </h4>
+        <Checkbox
+          label={lang('ArchiveAndMute')}
+          subLabel={lang('ArchiveAndMuteInfo')}
+          checked={Boolean(shouldArchiveAndMuteNewNonContact)}
+          onCheck={handleArchiveAndMuteChange}
+        />
       </div>
 
       {canChangeSensitive && (
@@ -276,7 +329,7 @@ export default memo(withGlobal<OwnProps>(
     const {
       settings: {
         byKey: {
-          hasPassword, isSensitiveEnabled, canChangeSensitive,
+          hasPassword, isSensitiveEnabled, canChangeSensitive, shouldArchiveAndMuteNewNonContact,
         },
         privacy,
       },
@@ -287,16 +340,19 @@ export default memo(withGlobal<OwnProps>(
     } = global;
 
     return {
+      isCurrentUserPremium: selectIsCurrentUserPremium(global),
       hasPassword,
       hasPasscode: Boolean(hasPasscode),
       blockedCount: blocked.totalCount,
       webAuthCount: global.activeWebSessions.orderedHashes.length,
       isSensitiveEnabled,
+      shouldArchiveAndMuteNewNonContact,
       canChangeSensitive,
       privacyPhoneNumber: privacy.phoneNumber,
       privacyLastSeen: privacy.lastSeen,
       privacyProfilePhoto: privacy.profilePhoto,
       privacyForwarding: privacy.forwards,
+      privacyVoiceMessages: privacy.voiceMessages,
       privacyGroupChats: privacy.chatInvite,
       privacyPhoneCall: privacy.phoneCall,
       privacyPhoneP2P: privacy.phoneP2P,

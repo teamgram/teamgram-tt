@@ -1,4 +1,13 @@
+$modalHeaderAndFooterHeight: 8.375rem;
+
 .PaymentModal {
+  &.recurring {
+    .Transition {
+      height: 33rem;
+      max-height: calc(90vh - $modalHeaderAndFooterHeight);
+    }
+  }
+
   .modal-backdrop {
     pointer-events: none;
   }
@@ -24,7 +33,7 @@
   }
 
   .Transition {
-    height: 25rem;
+    height: min(25rem, 60vh);
   }
 
   .empty-content {
@@ -49,6 +58,7 @@
 
   .footer {
     position: relative;
+    bottom: 0;
     border-bottom-left-radius: var(--border-radius-default-small);
     border-bottom-right-radius: var(--border-radius-default-small);
     width: 100%;
@@ -73,7 +83,8 @@
 }
 
 @media screen and (max-device-width: 640px) and (max-height: 640px) and (orientation: landscape) {
-  .PaymentModal {
+  .PaymentModal,
+  .PaymentModal.recurring {
     .modal-dialog {
       max-height: 100%;
     }

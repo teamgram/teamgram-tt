@@ -13,14 +13,15 @@ import { IS_TOUCH_ENV } from '../../../util/environment';
 import { captureEvents, SwipeDirection } from '../../../util/captureEvents';
 import buildClassName from '../../../util/buildClassName';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
+import { selectCurrentLimit } from '../../../global/selectors/limits';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
+import { useFolderManagerForUnreadCounters } from '../../../hooks/useFolderManager';
 
 import Transition from '../../ui/Transition';
 import TabList from '../../ui/TabList';
 import ChatList from './ChatList';
-import { useFolderManagerForUnreadCounters } from '../../../hooks/useFolderManager';
 
 type OwnProps = {
   onScreenSelect: (screen: SettingsScreens) => void;
@@ -34,9 +35,11 @@ type StateProps = {
   currentUserId?: string;
   lastSyncTime?: number;
   shouldSkipHistoryAnimations?: boolean;
+  maxFolders: number;
 };
 
 const SAVED_MESSAGES_HOTKEY = '0';
+const FIRST_FOLDER_INDEX = 0;
 
 const ChatFolders: FC<OwnProps & StateProps> = ({
   foldersDispatch,
@@ -47,6 +50,7 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
   currentUserId,
   lastSyncTime,
   shouldSkipHistoryAnimations,
+  maxFolders,
 }) => {
   const {
     loadChatFolders,
@@ -65,11 +69,28 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
     }
   }, [lastSyncTime, loadChatFolders]);
 
+  const allChatsFolder = useMemo(() => {
+    return {
+      id: ALL_FOLDER_ID,
+      title: orderedFolderIds?.[0] === ALL_FOLDER_ID ? lang('FilterAllChatsShort') : lang('FilterAllChats'),
+    };
+  }, [orderedFolderIds, lang]);
+
   const displayedFolders = useMemo(() => {
     return orderedFolderIds
-      ? orderedFolderIds.map((id) => chatFoldersById[id] || {}).filter(Boolean)
+      ? orderedFolderIds.map((id) => {
+        if (id === ALL_FOLDER_ID) {
+          return allChatsFolder;
+        }
+
+        return chatFoldersById[id] || {};
+      }).filter(Boolean)
       : undefined;
-  }, [chatFoldersById, orderedFolderIds]);
+  }, [chatFoldersById, allChatsFolder, orderedFolderIds]);
+
+  const allChatsFolderIndex = displayedFolders?.findIndex((folder) => folder.id === ALL_FOLDER_ID);
+  const isInAllChatsFolder = allChatsFolderIndex === activeChatFolder;
+  const isInFirstFolder = FIRST_FOLDER_INDEX === activeChatFolder;
 
   const folderCountersById = useFolderManagerForUnreadCounters();
   const folderTabs = useMemo(() => {
@@ -77,19 +98,18 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
       return undefined;
     }
 
-    return [
-      {
-        id: ALL_FOLDER_ID,
-        title: lang.code === 'en' ? 'All' : lang('FilterAllChats'),
-      },
-      ...displayedFolders.map(({ id, title }) => ({
+    return displayedFolders.map(({ id, title }, i) => {
+      const isBlocked = id !== ALL_FOLDER_ID && i > maxFolders - 1;
+
+      return ({
         id,
         title,
         badgeCount: folderCountersById[id]?.chatsCount,
         isBadgeActive: Boolean(folderCountersById[id]?.notificationsCount),
-      })),
-    ];
-  }, [displayedFolders, folderCountersById, lang]);
+        isBlocked,
+      });
+    });
+  }, [displayedFolders, folderCountersById, maxFolders]);
 
   const handleSwitchTab = useCallback((index: number) => {
     setActiveChatFolder(index, { forceOnHeavyAnimation: true });
@@ -102,7 +122,7 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
     }
 
     if (activeChatFolder >= folderTabs.length) {
-      setActiveChatFolder(0);
+      setActiveChatFolder(FIRST_FOLDER_INDEX);
     }
   }, [activeChatFolder, folderTabs, setActiveChatFolder]);
 
@@ -127,17 +147,17 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
     });
   }, [activeChatFolder, folderTabs, setActiveChatFolder]);
 
-  const isNotInAllTabRef = useRef();
-  isNotInAllTabRef.current = activeChatFolder !== 0;
-  useEffect(() => (isNotInAllTabRef.current ? captureEscKeyListener(() => {
-    if (isNotInAllTabRef.current) {
-      setActiveChatFolder(0);
+  const isNotInFirstFolderRef = useRef();
+  isNotInFirstFolderRef.current = !isInFirstFolder;
+  useEffect(() => (isNotInFirstFolderRef.current ? captureEscKeyListener(() => {
+    if (isNotInFirstFolderRef.current) {
+      setActiveChatFolder(FIRST_FOLDER_INDEX);
     }
   }) : undefined), [activeChatFolder, setActiveChatFolder]);
 
   useHistoryBack({
-    isActive: activeChatFolder !== 0,
-    onBack: () => setActiveChatFolder(0, { forceOnHeavyAnimation: true }),
+    isActive: !isInFirstFolder,
+    onBack: () => setActiveChatFolder(FIRST_FOLDER_INDEX, { forceOnHeavyAnimation: true }),
   });
 
   useEffect(() => {
@@ -174,7 +194,7 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
     const activeFolder = Object.values(chatFoldersById)
       .find(({ id }) => id === folderTabs![activeChatFolder].id);
 
-    if (!activeFolder || activeChatFolder === 0) {
+    if (!activeFolder || isInAllChatsFolder) {
       return (
         <ChatList
           folderType="all"
@@ -198,10 +218,12 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
     );
   }
 
+  const shouldRenderFolders = folderTabs && folderTabs.length > 1;
+
   return (
     <div className="ChatFolders">
-      {folderTabs?.length ? (
-        <TabList tabs={folderTabs} activeTab={activeChatFolder} onSwitchTab={handleSwitchTab} />
+      {shouldRenderFolders ? (
+        <TabList tabs={folderTabs} activeTab={activeChatFolder} onSwitchTab={handleSwitchTab} areFolders />
       ) : shouldRenderPlaceholder ? (
         <div className={buildClassName('tabs-placeholder', transitionClassNames)} />
       ) : undefined}
@@ -209,7 +231,7 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
         ref={transitionRef}
         name={shouldSkipHistoryAnimations ? 'none' : lang.isRtl ? 'slide-optimized-rtl' : 'slide-optimized'}
         activeKey={activeChatFolder}
-        renderCount={folderTabs ? folderTabs.length : undefined}
+        renderCount={shouldRenderFolders ? folderTabs.length : undefined}
       >
         {renderCurrentTab}
       </Transition>
@@ -230,6 +252,8 @@ export default memo(withGlobal<OwnProps>(
       shouldSkipHistoryAnimations,
     } = global;
 
+    const maxFolders = selectCurrentLimit(global, 'dialogFilters');
+
     return {
       chatFoldersById,
       orderedFolderIds,
@@ -237,6 +261,7 @@ export default memo(withGlobal<OwnProps>(
       currentUserId,
       lastSyncTime,
       shouldSkipHistoryAnimations,
+      maxFolders,
     };
   },
 )(ChatFolders));

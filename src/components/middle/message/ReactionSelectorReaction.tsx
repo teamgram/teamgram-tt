@@ -3,11 +3,10 @@ import React, { memo, useRef } from '../../../lib/teact/teact';
 
 import type { ApiAvailableReaction } from '../../../api/types';
 
+import { IS_COMPACT_MENU } from '../../../util/environment';
+import { createClassNameBuilder } from '../../../util/buildClassName';
 import useMedia from '../../../hooks/useMedia';
 import useFlag from '../../../hooks/useFlag';
-import useShowTransition from '../../../hooks/useShowTransition';
-import { createClassNameBuilder } from '../../../util/buildClassName';
-import { IS_COMPACT_MENU } from '../../../util/environment';
 
 import AnimatedSticker from '../../common/AnimatedSticker';
 
@@ -20,12 +19,13 @@ type OwnProps = {
   previewIndex: number;
   isReady?: boolean;
   onSendReaction: (reaction: string, x: number, y: number) => void;
+  isCurrentUserPremium?: boolean;
 };
 
 const cn = createClassNameBuilder('ReactionSelectorReaction');
 
 const ReactionSelectorReaction: FC<OwnProps> = ({
-  reaction, previewIndex, onSendReaction, isReady,
+  reaction, previewIndex, onSendReaction, isReady, isCurrentUserPremium,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,11 +35,8 @@ const ReactionSelectorReaction: FC<OwnProps> = ({
   const [isActivated, activate, deactivate] = useFlag();
   const [isAnimationLoaded, markAnimationLoaded] = useFlag();
 
+  const shouldRenderStatic = !isReady || !isAnimationLoaded;
   const shouldRenderAnimated = Boolean(isReady && mediaData);
-  const { transitionClassNames: animatedClassNames } = useShowTransition(shouldRenderAnimated);
-  const { shouldRender: shouldRenderStatic, transitionClassNames: staticClassNames } = useShowTransition(
-    !isReady || !isAnimationLoaded, undefined, true,
-  );
 
   function handleClick() {
     if (!containerRef.current) return;
@@ -59,14 +56,13 @@ const ReactionSelectorReaction: FC<OwnProps> = ({
         <div
           className={cn(
             'static',
-            isReady ? [staticClassNames] : undefined,
+            isCurrentUserPremium && 'premium',
           )}
           style={`background-position-x: ${previewIndex * -REACTION_SIZE}px;`}
         />
       )}
       {shouldRenderAnimated && (
         <AnimatedSticker
-          className={cn('animated', [animatedClassNames])}
           tgsUrl={mediaData}
           play={isActivated}
           noLoop

@@ -87,7 +87,10 @@ function dispatchUserAndChatUpdates(entities: (GramJs.TypeUser | GramJs.TypeChat
     });
 
   entities
-    .filter((e) => e instanceof GramJs.Chat || e instanceof GramJs.Channel)
+    .filter((e) => (
+      e instanceof GramJs.Chat || e instanceof GramJs.ChatForbidden
+      || e instanceof GramJs.Channel || e instanceof GramJs.ChannelForbidden
+    ))
     .map((e) => buildApiChatFromPreview(e))
     .forEach((chat) => {
       if (!chat) {
@@ -194,6 +197,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       if (action instanceof GramJs.MessageActionPaymentSent) {
         onUpdate({
           '@type': 'updatePaymentStateCompleted',
+          slug: action.invoiceSlug,
         });
       } else if (action instanceof GramJs.MessageActionChatEditTitle) {
         onUpdate({
@@ -559,7 +563,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
     });
   } else if (update instanceof GramJs.UpdateDialogFilter) {
     const { id, filter } = update;
-    const folder = filter ? buildApiChatFolder(filter) : undefined;
+    const folder = filter instanceof GramJs.DialogFilter ? buildApiChatFolder(filter) : undefined;
 
     onUpdate({
       '@type': 'updateChatFolder',
@@ -865,7 +869,11 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
   } else if (update instanceof GramJs.UpdateStickerSets) {
     onUpdate({ '@type': 'updateStickerSets' });
   } else if (update instanceof GramJs.UpdateStickerSetsOrder) {
-    onUpdate({ '@type': 'updateStickerSetsOrder', order: update.order.map((n) => n.toString()) });
+    onUpdate({
+      '@type': 'updateStickerSetsOrder',
+      order: update.order.map((n) => n.toString()),
+      isCustomEmoji: update.emojis,
+    });
   } else if (update instanceof GramJs.UpdateNewStickerSet) {
     if (update.stickerset instanceof GramJs.messages.StickerSet) {
       const stickerSet = buildStickerSet(update.stickerset.set);
@@ -941,7 +949,10 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       queryId: queryId.toString(),
     });
   } else if (update instanceof GramJs.UpdateBotMenuButton) {
-    const { botId, button } = update;
+    const {
+      botId,
+      button,
+    } = update;
 
     const id = buildApiPeerId(botId, 'user');
 
@@ -950,6 +961,27 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       botId: id,
       button: buildApiBotMenuButton(button),
     });
+  } else if (update instanceof GramJs.UpdateTranscribedAudio) {
+    // eslint-disable-next-line no-underscore-dangle
+    const entities = update._entities;
+    if (entities) {
+      addEntitiesWithPhotosToLocalDb(entities);
+      dispatchUserAndChatUpdates(entities);
+    }
+
+    onUpdate({
+      '@type': 'updateTranscribedAudio',
+      transcriptionId: update.transcriptionId.toString(),
+      text: update.text,
+      isPending: update.pending,
+    });
+  } else if (update instanceof GramJs.UpdateConfig) {
+    // eslint-disable-next-line no-underscore-dangle
+    const entities = update._entities;
+    if (entities) {
+      addEntitiesWithPhotosToLocalDb(entities);
+      dispatchUserAndChatUpdates(entities);
+    }
   } else if (DEBUG) {
     const params = typeof update === 'object' && 'className' in update ? update.className : update;
     // eslint-disable-next-line no-console

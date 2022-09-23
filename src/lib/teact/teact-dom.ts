@@ -5,6 +5,7 @@ import type {
   VirtualElementParent,
   VirtualElementChildren,
   VirtualElementReal,
+  VirtualElementFragment,
 } from './teact';
 import {
   hasElementChanged,
@@ -16,6 +17,7 @@ import {
   mountComponent,
   renderComponent,
   unmountComponent,
+  isFragmentElement,
 } from './teact';
 import generateIdFor from '../../util/generateIdFor';
 import { DEBUG } from '../../config';
@@ -27,7 +29,8 @@ type VirtualDomHead = {
 };
 
 const FILTERED_ATTRIBUTES = new Set(['key', 'ref', 'teactFastList', 'teactOrderKey']);
-const HTML_ATTRIBUTES = new Set(['dir', 'role']);
+const HTML_ATTRIBUTES = new Set(['dir', 'role', 'form']);
+const CONTROLLABLE_TAGS = ['INPUT', 'TEXTAREA', 'SELECT'];
 const MAPPED_ATTRIBUTES: { [k: string]: string } = {
   autoPlay: 'autoplay',
   autoComplete: 'autocomplete',
@@ -79,6 +82,9 @@ function renderWithVirtual<T extends VirtualElement | undefined>(
   const isNewComponent = $new && isComponentElement($new);
   const $newAsReal = $new as VirtualElementReal;
 
+  const isCurrentFragment = $current && !isCurrentComponent && isFragmentElement($current);
+  const isNewFragment = $new && !isNewComponent && isFragmentElement($new);
+
   if (
     !skipComponentUpdate
     && isCurrentComponent && isNewComponent
@@ -104,9 +110,12 @@ function renderWithVirtual<T extends VirtualElement | undefined>(
   }
 
   if (!$current && $new) {
-    if (isNewComponent) {
-      $new = initComponent(parentEl, $new as VirtualElementComponent, $parent, index) as typeof $new;
-      mountComponentChildren(parentEl, $new as VirtualElementComponent, { nextSibling, fragment });
+    if (isNewComponent || isNewFragment) {
+      if (isNewComponent) {
+        $new = initComponent(parentEl, $new as VirtualElementComponent, $parent, index) as typeof $new;
+      }
+
+      mountChildren(parentEl, $new as VirtualElementComponent | VirtualElementFragment, { nextSibling, fragment });
     } else {
       const node = createNode($newAsReal);
       $newAsReal.target = node;
@@ -120,10 +129,13 @@ function renderWithVirtual<T extends VirtualElement | undefined>(
         nextSibling = getNextSibling($current);
       }
 
-      if (isNewComponent) {
-        $new = initComponent(parentEl, $new as VirtualElementComponent, $parent, index) as typeof $new;
+      if (isNewComponent || isNewFragment) {
+        if (isNewComponent) {
+          $new = initComponent(parentEl, $new as VirtualElementComponent, $parent, index) as typeof $new;
+        }
+
         remount(parentEl, $current, undefined);
-        mountComponentChildren(parentEl, $new as VirtualElementComponent, { nextSibling, fragment });
+        mountChildren(parentEl, $new as VirtualElementComponent | VirtualElementFragment, { nextSibling, fragment });
       } else {
         const node = createNode($newAsReal);
         $newAsReal.target = node;
@@ -131,10 +143,12 @@ function renderWithVirtual<T extends VirtualElement | undefined>(
       }
     } else {
       const isComponent = isCurrentComponent && isNewComponent;
-      if (isComponent) {
-        ($new as VirtualElementComponent).children = renderChildren(
+      const isFragment = isCurrentFragment && isNewFragment;
+
+      if (isComponent || isFragment) {
+        ($new as VirtualElementComponent | VirtualElementFragment).children = renderChildren(
           $current,
-          $new as VirtualElementComponent,
+          $new as VirtualElementComponent | VirtualElementFragment,
           parentEl,
           nextSibling,
         );
@@ -219,16 +233,20 @@ function setupComponentUpdateListener(
   };
 }
 
-function mountComponentChildren(parentEl: HTMLElement, $element: VirtualElementComponent, options: {
-  nextSibling?: ChildNode;
-  fragment?: DocumentFragment;
-}) {
+function mountChildren(
+  parentEl: HTMLElement,
+  $element: VirtualElementComponent | VirtualElementFragment,
+  options: {
+    nextSibling?: ChildNode;
+    fragment?: DocumentFragment;
+  },
+) {
   $element.children = $element.children.map(($child, i) => {
     return renderWithVirtual(parentEl, undefined, $child, $element, i, options);
   });
 }
 
-function unmountComponentChildren(parentEl: HTMLElement, $element: VirtualElementComponent) {
+function unmountChildren(parentEl: HTMLElement, $element: VirtualElementComponent | VirtualElementFragment) {
   $element.children.forEach(($child) => {
     renderWithVirtual(parentEl, $child, undefined, $element, -1);
   });
@@ -250,11 +268,15 @@ function createNode($element: VirtualElementReal): Node {
     props.ref.current = element;
   }
 
+  processControlled(tag, props);
+
   Object.entries(props).forEach(([key, value]) => {
     if (props[key] !== undefined) {
       setAttribute(element, key, value);
     }
   });
+
+  processUncontrolledOnMount(element, props);
 
   $element.children = children.map(($child, i) => (
     renderWithVirtual(element, undefined, $child, $element, i)
@@ -269,9 +291,15 @@ function remount(
   node: Node | undefined,
   componentNextSibling?: ChildNode,
 ) {
-  if (isComponentElement($current)) {
-    unmountComponent($current.componentInstance);
-    unmountComponentChildren(parentEl, $current);
+  const isComponent = isComponentElement($current);
+  const isFragment = !isComponent && isFragmentElement($current);
+
+  if (isComponent || isFragment) {
+    if (isComponent) {
+      unmountComponent($current.componentInstance);
+    }
+
+    unmountChildren(parentEl, $current);
 
     if (node) {
       insertBefore(parentEl, node, componentNextSibling);
@@ -294,10 +322,10 @@ export function unmountRealTree($element: VirtualElement) {
     if (isTagElement($element)) {
       if ($element.target) {
         removeAllDelegatedListeners($element.target as HTMLElement);
-      }
 
-      if ($element.props.ref) {
-        $element.props.ref.current = undefined; // Help GC
+        if ($element.props.ref?.current === $element.target) {
+          $element.props.ref.current = undefined;
+        }
       }
     }
 
@@ -322,7 +350,7 @@ function insertBefore(parentEl: HTMLElement | DocumentFragment, node: Node, next
 }
 
 function getNextSibling($current: VirtualElement): ChildNode | undefined {
-  if (isComponentElement($current)) {
+  if (isComponentElement($current) || isFragmentElement($current)) {
     const lastChild = $current.children[$current.children.length - 1];
     return getNextSibling(lastChild);
   }
@@ -339,7 +367,7 @@ function renderChildren(
     DEBUG_checkKeyUniqueness($new.children);
   }
 
-  if ($new.props.teactFastList) {
+  if (('props' in $new) && $new.props.teactFastList) {
     return renderFastListChildren($current, $new, currentEl);
   }
 
@@ -381,12 +409,18 @@ function renderChildren(
 function renderFastListChildren($current: VirtualElementParent, $new: VirtualElementParent, currentEl: HTMLElement) {
   const newKeys = new Set(
     $new.children.map(($newChild) => {
-      const key = 'props' in $newChild && $newChild.props.key;
+      const key = 'props' in $newChild ? $newChild.props.key : undefined;
 
-      // eslint-disable-next-line no-null/no-null
-      if (DEBUG && isParentElement($newChild) && (key === undefined || key === null)) {
-        // eslint-disable-next-line no-console
-        console.warn('Missing `key` in `teactFastList`');
+      if (DEBUG && isParentElement($newChild)) {
+        // eslint-disable-next-line no-null/no-null
+        if (key === undefined || key === null) {
+          // eslint-disable-next-line no-console
+          console.warn('Missing `key` in `teactFastList`');
+        }
+
+        if (isFragmentElement($newChild)) {
+          throw new Error('[Teact] Fragment can not be child of container with `teactFastList`');
+        }
       }
 
       return key;
@@ -504,7 +538,55 @@ function renderFragment(
   return newChildren;
 }
 
-function updateAttributes($current: VirtualElementParent, $new: VirtualElementParent, element: HTMLElement) {
+function processControlled(tag: string, props: AnyLiteral) {
+  // TODO Remove after tests
+  if (!props.teactExperimentControlled) {
+    return;
+  }
+
+  const isValueControlled = props.value !== undefined;
+  const isCheckedControlled = props.checked !== undefined;
+  const isControlled = (isValueControlled || isCheckedControlled) && CONTROLLABLE_TAGS.includes(tag.toUpperCase());
+  if (!isControlled) {
+    return;
+  }
+
+  const {
+    value, checked, onInput, onChange,
+  } = props;
+
+  props.onChange = undefined;
+  props.onInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onInput?.(e);
+    onChange?.(e);
+
+    if (value !== undefined) {
+      e.currentTarget.value = value;
+    }
+
+    if (checked !== undefined) {
+      e.currentTarget.checked = checked;
+    }
+  };
+}
+
+function processUncontrolledOnMount(element: HTMLElement, props: AnyLiteral) {
+  if (!CONTROLLABLE_TAGS.includes(element.tagName)) {
+    return;
+  }
+
+  if (props.defaultValue) {
+    setAttribute(element, 'value', props.defaultValue);
+  }
+
+  if (props.defaultChecked) {
+    setAttribute(element, 'checked', props.defaultChecked);
+  }
+}
+
+function updateAttributes($current: VirtualElementTag, $new: VirtualElementTag, element: HTMLElement) {
+  processControlled(element.tagName, $new.props);
+
   const currentEntries = Object.entries($current.props);
   const newEntries = Object.entries($new.props);
 

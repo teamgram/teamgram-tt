@@ -1,4 +1,6 @@
+import type { ApiWebDocument } from './bots';
 import type { ApiGroupCall, PhoneCallAction } from './calls';
+import type { ApiChat } from './chats';
 
 export interface ApiDimensions {
   width: number;
@@ -9,6 +11,12 @@ export interface ApiPhotoSize extends ApiDimensions {
   type: 's' | 'm' | 'x' | 'y' | 'z';
 }
 
+export interface ApiVideoSize extends ApiDimensions {
+  type: 'u' | 'v';
+  videoStartTs: number;
+  size: number;
+}
+
 export interface ApiThumbnail extends ApiDimensions {
   dataUri: string;
 }
@@ -16,27 +24,32 @@ export interface ApiThumbnail extends ApiDimensions {
 export interface ApiPhoto {
   id: string;
   thumbnail?: ApiThumbnail;
+  isVideo?: boolean;
   sizes: ApiPhotoSize[];
+  videoSizes?: ApiVideoSize[];
   blobUrl?: string;
 }
 
 export interface ApiSticker {
   id: string;
-  stickerSetId: string;
-  stickerSetAccessHash?: string;
+  stickerSetInfo: ApiStickerSetInfo;
   emoji?: string;
+  isCustomEmoji?: boolean;
   isLottie: boolean;
   isVideo: boolean;
   width?: number;
   height?: number;
   thumbnail?: ApiThumbnail;
   isPreloadedGlobally?: boolean;
+  hasEffect?: boolean;
+  isFree?: boolean;
 }
 
 export interface ApiStickerSet {
   archived?: true;
   isLottie?: true;
   isVideos?: true;
+  isEmoji?: true;
   installedDate?: number;
   id: string;
   accessHash: string;
@@ -48,6 +61,21 @@ export interface ApiStickerSet {
   covers?: ApiSticker[];
   shortName: string;
 }
+
+type ApiStickerSetInfoShortName = {
+  shortName: string;
+};
+
+type ApiStickerSetInfoId = {
+  id: string;
+  accessHash: string;
+};
+
+type ApiStickerSetInfoMissing = {
+  isMissing: true;
+};
+
+export type ApiStickerSetInfo = ApiStickerSetInfoShortName | ApiStickerSetInfoId | ApiStickerSetInfoMissing;
 
 export interface ApiVideo {
   id: string;
@@ -125,6 +153,7 @@ export interface ApiPoll {
     closeDate?: number;
   };
   results: {
+    isMin?: true;
     results?: ApiPollResult[];
     totalVoters?: number;
     recentVoterIds?: string[];
@@ -133,16 +162,31 @@ export interface ApiPoll {
   };
 }
 
+// First type used for state, second - for API requests
+export type ApiInputInvoice = {
+  chatId: string;
+  messageId: number;
+} | {
+  slug: string;
+};
+
+export type ApiRequestInputInvoice = {
+  chat: ApiChat;
+  messageId: number;
+} | {
+  slug: string;
+};
+
 export interface ApiInvoice {
   text: string;
   title: string;
-  photoUrl?: string;
-  photoWidth?: number;
-  photoHeight?: number;
+  photo?: ApiWebDocument;
   amount: number;
   currency: string;
   receiptMsgId?: number;
   isTest?: boolean;
+  isRecurring?: boolean;
+  recurringTermsUrl?: string;
 }
 
 interface ApiGeoPoint {
@@ -207,6 +251,7 @@ export interface ApiAction {
   call?: Partial<ApiGroupCall>;
   phoneCall?: PhoneCallAction;
   score?: number;
+  months?: number;
 }
 
 export interface ApiWebPage {
@@ -235,14 +280,46 @@ export interface ApiMessageForwardInfo {
   adminTitle?: string;
 }
 
-export interface ApiMessageEntity {
-  type: string;
+export type ApiMessageEntityDefault = {
+  type: Exclude<
+  `${ApiMessageEntityTypes}`,
+  `${ApiMessageEntityTypes.Pre}` | `${ApiMessageEntityTypes.TextUrl}` | `${ApiMessageEntityTypes.MentionName}` |
+  `${ApiMessageEntityTypes.CustomEmoji}`
+  >;
   offset: number;
   length: number;
-  userId?: string;
-  url?: string;
+};
+
+export type ApiMessageEntityPre = {
+  type: ApiMessageEntityTypes.Pre;
+  offset: number;
+  length: number;
   language?: string;
-}
+};
+
+export type ApiMessageEntityTextUrl = {
+  type: ApiMessageEntityTypes.TextUrl;
+  offset: number;
+  length: number;
+  url: string;
+};
+
+export type ApiMessageEntityMentionName = {
+  type: ApiMessageEntityTypes.MentionName;
+  offset: number;
+  length: number;
+  userId: string;
+};
+
+export type ApiMessageEntityCustomEmoji = {
+  type: ApiMessageEntityTypes.CustomEmoji;
+  offset: number;
+  length: number;
+  documentId: string;
+};
+
+export type ApiMessageEntity = ApiMessageEntityDefault | ApiMessageEntityPre | ApiMessageEntityTextUrl |
+ApiMessageEntityMentionName | ApiMessageEntityCustomEmoji;
 
 export enum ApiMessageEntityTypes {
   Bold = 'MessageEntityBold',
@@ -262,6 +339,7 @@ export enum ApiMessageEntityTypes {
   Url = 'MessageEntityUrl',
   Underline = 'MessageEntityUnderline',
   Spoiler = 'MessageEntitySpoiler',
+  CustomEmoji = 'MessageEntityCustomEmoji',
   Unknown = 'MessageEntityUnknown',
 }
 
@@ -320,6 +398,8 @@ export interface ApiMessage {
   isFromScheduled?: boolean;
   seenByUserIds?: string[];
   isProtected?: boolean;
+  transcriptionId?: string;
+  isTranscriptionError?: boolean;
   reactors?: {
     nextOffset?: string;
     count: number;
@@ -349,12 +429,15 @@ export interface ApiReactionCount {
 
 export interface ApiAvailableReaction {
   selectAnimation?: ApiDocument;
+  activateAnimation?: ApiDocument;
+  effectAnimation?: ApiDocument;
   staticIcon?: ApiDocument;
   centerIcon?: ApiDocument;
   aroundAnimation?: ApiDocument;
   reaction: string;
   title: string;
   isInactive?: boolean;
+  isPremium?: boolean;
 }
 
 export interface ApiThreadInfo {
@@ -373,6 +456,7 @@ export type ApiMessageOutgoingStatus = 'read' | 'succeeded' | 'pending' | 'faile
 export type ApiSponsoredMessage = {
   chatId?: string;
   randomId: string;
+  isRecommended?: boolean;
   isBot?: boolean;
   channelPostId?: number;
   startParam?: string;
@@ -445,6 +529,12 @@ interface ApiKeyboardButtonUrlAuth {
   buttonId: number;
 }
 
+export type ApiTranscription = {
+  text: string;
+  isPending?: boolean;
+  transcriptionId: string;
+};
+
 export type ApiKeyboardButton = (
   ApiKeyboardButtonSimple
   | ApiKeyboardButtonReceipt
@@ -483,6 +573,7 @@ export type ApiThemeParameters = {
   link_color: string;
   button_color: string;
   button_text_color: string;
+  secondary_bg_color: string;
 };
 
 export const MAIN_THREAD_ID = -1;

@@ -30,7 +30,7 @@ import {
 } from '../../selectors';
 import { init as initFolderManager } from '../../../util/folderManager';
 
-const RELEASE_STATUS_TIMEOUT = 15000; // 10 sec;
+const RELEASE_STATUS_TIMEOUT = 15000; // 15 sec;
 
 let releaseStatusTimeout: number | undefined;
 
@@ -106,7 +106,7 @@ async function loadAndReplaceMessages() {
     if (result && newCurrentChatId === currentChatId) {
       const currentMessageListInfo = global.messages.byChatId[currentChatId];
       const localMessages = currentChatId === SERVICE_NOTIFICATIONS_USER_ID
-        ? global.serviceNotifications.map(({ message }) => message)
+        ? global.serviceNotifications.filter(({ isDeleted }) => !isDeleted).map(({ message }) => message)
         : [];
       const allMessages = ([] as ApiMessage[]).concat(result.messages, localMessages);
       const byId = buildCollectionByKey(allMessages, 'id');

@@ -4,8 +4,10 @@ import type {
   ApiChat,
   ApiMessage, ApiPollResult, ApiReactions, ApiThreadInfo,
 } from '../../../api/types';
+import type { ActiveEmojiInteraction, GlobalActions, GlobalState } from '../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 
+import { SERVICE_NOTIFICATIONS_USER_ID } from '../../../config';
 import { unique } from '../../../util/iteratees';
 import { areDeepEqual } from '../../../util/areDeepEqual';
 import { notifyAboutMessage } from '../../../util/notifications';
@@ -21,7 +23,6 @@ import {
   deleteChatScheduledMessages,
   updateThreadUnreadFromForwardedMessage,
 } from '../../reducers';
-import type { ActiveEmojiInteraction, GlobalActions, GlobalState } from '../../types';
 import {
   selectChatMessage,
   selectChatMessages,
@@ -74,8 +75,9 @@ addActionHandler('apiUpdate', (global, actions, update) => {
 
       const newMessage = selectChatMessage(global, chatId, id)!;
 
+      const isLocal = isMessageLocal(message as ApiMessage);
       if (selectIsMessageInCurrentMessageList(global, chatId, message as ApiMessage)) {
-        if (message.isOutgoing && !(message.content?.action)) {
+        if (isLocal && message.isOutgoing && !(message.content?.action)) {
           const currentMessageList = selectCurrentMessageList(global);
           if (currentMessageList) {
             // We do not use `actions.focusLastMessage` as it may be set with a delay (see below)
@@ -95,7 +97,7 @@ addActionHandler('apiUpdate', (global, actions, update) => {
         }
 
         // @perf Wait until scroll animation finishes or simply rely on delivery status update (which is itself delayed)
-        if (!isMessageLocal(message as ApiMessage)) {
+        if (!isLocal) {
           setTimeout(() => {
             let delayedGlobal = getGlobal();
             if (shouldForceReply) {
@@ -346,9 +348,19 @@ addActionHandler('apiUpdate', (global, actions, update) => {
     case 'deleteHistory': {
       const { chatId } = update;
       const chatMessages = global.messages.byChatId[chatId];
+      if (chatId === SERVICE_NOTIFICATIONS_USER_ID) {
+        setGlobal({
+          ...global,
+          serviceNotifications: global.serviceNotifications.map((notification) => ({
+            ...notification,
+            isDeleted: true,
+          })),
+        });
+      }
+
       if (chatMessages) {
         const ids = Object.keys(chatMessages.byId).map(Number);
-        deleteMessages(chatId, ids, actions, global);
+        deleteMessages(chatId, ids, actions, getGlobal());
       } else {
         actions.requestChatUpdate({ chatId });
       }
@@ -389,22 +401,23 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       const message = selectChatMessageByPollId(global, pollId);
 
       if (message?.content.poll) {
-        const updatedPoll = { ...message.content.poll, ...pollUpdate };
-
-        // Workaround for poll update bug: `chosen` option gets reset when someone votes after current user
-        const { results: updatedResults } = updatedPoll.results || {};
-        if (updatedResults && !updatedResults.some(((result) => result.isChosen))) {
-          const { results } = message.content.poll.results;
-          const chosenAnswers = results && results.filter((result) => result.isChosen);
-          if (chosenAnswers) {
-            chosenAnswers.forEach((chosenAnswer) => {
-              const chosenAnswerIndex = updatedResults.findIndex((result) => result.option === chosenAnswer.option);
-              if (chosenAnswerIndex >= 0) {
-                updatedPoll.results.results![chosenAnswerIndex].isChosen = true;
-              }
-            });
+        const oldResults = message.content.poll.results;
+        let newResults = oldResults;
+        if (pollUpdate.results?.results) {
+          if (!oldResults.results || !pollUpdate.results.isMin) {
+            newResults = pollUpdate.results;
+          } else if (oldResults.results) {
+            newResults = {
+              ...pollUpdate.results,
+              results: pollUpdate.results.results.map((result) => ({
+                ...result,
+                isChosen: oldResults.results!.find((r) => r.option === result.option)?.isChosen,
+              })),
+              isMin: undefined,
+            };
           }
         }
+        const updatedPoll = { ...message.content.poll, ...pollUpdate, results: newResults };
 
         setGlobal(updateChatMessage(
           global,
@@ -438,8 +451,8 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       newRecentVoterIds.push(userId);
 
       options.forEach((option) => {
-        const targetOption = newResults.find((result) => result.option === option);
         const targetOptionIndex = newResults.findIndex((result) => result.option === option);
+        const targetOption = newResults[targetOptionIndex];
         const updatedOption: ApiPollResult = targetOption ? { ...targetOption } : { option, votersCount: 0 };
 
         updatedOption.votersCount += 1;
@@ -495,6 +508,24 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       if (!chat || !message) return;
 
       setGlobal(updateReactions(global, chatId, id, reactions, chat, message.isOutgoing, message));
+      break;
+    }
+
+    case 'updateTranscribedAudio': {
+      const { transcriptionId, text, isPending } = update;
+
+      setGlobal({
+        ...global,
+        transcriptions: {
+          ...global.transcriptions,
+          [transcriptionId]: {
+            ...(global.transcriptions[transcriptionId] || {}),
+            transcriptionId,
+            text,
+            isPending,
+          },
+        },
+      });
       break;
     }
   }

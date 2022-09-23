@@ -2,6 +2,16 @@ import useWindowSize from '../../../hooks/useWindowSize';
 import { useCallback, useEffect, useRef } from '../../../lib/teact/teact';
 import { extractCurrentThemeParams } from '../../../util/themeStyle';
 
+export type PopupOptions = {
+  title: string;
+  message: string;
+  buttons: {
+    id: string;
+    type: 'default' | 'ok' | 'close' | 'cancel' | 'destructive';
+    text: string;
+  }[];
+};
+
 export type WebAppInboundEvent = {
   eventType: 'web_app_data_send';
   eventData: {
@@ -18,13 +28,54 @@ export type WebAppInboundEvent = {
     is_progress_visible: boolean;
   };
 } | {
+  eventType: 'web_app_setup_back_button';
+  eventData: {
+    is_visible: boolean;
+  };
+} | {
+  eventType: 'web_app_open_link';
+  eventData: {
+    url: string;
+  };
+} | {
   eventType: 'web_app_open_tg_link';
   eventData: {
     path_full: string;
   };
 } | {
+  eventType: 'web_app_open_invoice';
+  eventData: {
+    slug: string;
+  };
+} | {
+  eventType: 'web_app_trigger_haptic_feedback';
+  eventData: {
+    type: 'impact' | 'notification' | 'selection_change';
+    impact_style?: 'light' | 'medium' | 'heavy';
+    notification_type?: 'error' | 'success' | 'warning';
+  };
+} | {
+  eventType: 'web_app_set_background_color';
+  eventData: {
+    color: string;
+  };
+} | {
+  eventType: 'web_app_set_header_color';
+  eventData: {
+    color_key: 'bg_color' | 'secondary_bg_color';
+  };
+} | {
+  eventType: 'web_app_open_popup';
+  eventData: PopupOptions;
+} | {
+  eventType: 'web_app_setup_closing_behavior';
+  eventData: {
+    need_confirmation: boolean;
+  };
+} | {
   eventType: 'web_app_request_viewport' | 'web_app_request_theme' | 'web_app_ready' | 'web_app_expand'
-  | 'web_app_close' | 'iframe_ready';
+  | 'web_app_request_phone' | 'web_app_close' | 'iframe_ready';
+  eventData: null;
 };
 
 type WebAppOutboundEvent = {
@@ -44,13 +95,30 @@ type WebAppOutboundEvent = {
       link_color: string;
       button_color: string;
       button_text_color: string;
+      secondary_bg_color: string;
     };
   };
 } | {
   eventType: 'set_custom_style';
   eventData: string;
 } | {
-  eventType: 'main_button_pressed';
+  eventType: 'invoice_closed';
+  eventData: {
+    slug: string;
+    status: 'paid' | 'cancelled' | 'pending' | 'failed';
+  };
+} | {
+  eventType: 'phone_requested';
+  eventData: {
+    phone_number: string;
+  };
+} | {
+  eventType: 'popup_closed';
+  eventData: {
+    button_id?: string;
+  };
+} | {
+  eventType: 'main_button_pressed' | 'back_button_pressed' | 'settings_button_pressed';
 };
 
 const SCROLLBAR_STYLE = `* {

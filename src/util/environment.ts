@@ -7,6 +7,7 @@ import {
   SUPPORTED_VIDEO_CONTENT_TYPES,
   VIDEO_MOV_TYPE,
   CONTENT_TYPES_WITH_PREVIEW,
+  PRODUCTION_HOSTNAME,
 } from '../config';
 
 export * from './environmentWebp';
@@ -35,6 +36,7 @@ export function getPlatform() {
   return os;
 }
 
+export const IS_PRODUCTION_HOST = window.location.host === PRODUCTION_HOSTNAME;
 export const PLATFORM_ENV = getPlatform();
 export const IS_MAC_OS = PLATFORM_ENV === 'macOS';
 export const IS_IOS = PLATFORM_ENV === 'iOS';
@@ -91,6 +93,18 @@ export const IS_WEBM_SUPPORTED = Boolean(TEST_VIDEO.canPlayType('video/webm; cod
 export const DPR = window.devicePixelRatio || 1;
 
 export const MASK_IMAGE_DISABLED = true;
+export const IS_OPFS_SUPPORTED = Boolean(navigator.storage?.getDirectory);
+if (IS_OPFS_SUPPORTED) {
+  // Clear old contents
+  (async () => {
+    try {
+      const directory = await navigator.storage.getDirectory();
+      await directory.removeEntry('downloads', { recursive: true });
+    } catch {
+      // Ignore
+    }
+  })();
+}
 
 export const IS_BACKDROP_BLUR_SUPPORTED = !IS_TEST && (
   CSS.supports('backdrop-filter: blur()') || CSS.supports('-webkit-backdrop-filter: blur()')
@@ -101,6 +115,11 @@ export const IS_INSTALL_PROMPT_SUPPORTED = 'onbeforeinstallprompt' in window;
 
 // Smaller area reduces scroll jumps caused by `patchChromiumScroll`
 export const MESSAGE_LIST_SENSITIVE_AREA = IS_SCROLL_PATCH_NEEDED ? 300 : 750;
+
+export const MAX_BUFFER_SIZE = (IS_ANDROID || IS_IOS ? 512 : 2000) * 1024 ** 2; // 512 OR 2000 MB
+
+// TODO Turn on later as `!IS_IOS && !IS_ANDROID`
+export const VIDEO_AVATARS_DISABLED = true;
 
 function isLastEmojiVersionSupported() {
   const ALLOWABLE_CALCULATION_ERROR_SIZE = 5;

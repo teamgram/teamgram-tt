@@ -2,7 +2,9 @@ import {
   addActionHandler, getActions, getGlobal, setGlobal,
 } from '../../index';
 
-import type { ApiChat, ApiUser, ApiChatFolder } from '../../../api/types';
+import type {
+  ApiChat, ApiUser, ApiChatFolder, ApiError,
+} from '../../../api/types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 import { NewChatMembersProgress, ChatCreationProgress, ManagementProgress } from '../../../types';
 import type { GlobalActions } from '../../types';
@@ -13,7 +15,9 @@ import {
   CHAT_LIST_LOAD_SLICE,
   RE_TG_LINK,
   SERVICE_NOTIFICATIONS_USER_ID,
-  TMP_CHAT_ID, ALL_FOLDER_ID, DEBUG,
+  TMP_CHAT_ID,
+  ALL_FOLDER_ID,
+  DEBUG,
 } from '../../../config';
 import { callApi } from '../../../api/gramjs';
 import {
@@ -31,16 +35,26 @@ import {
 import { buildCollectionByKey, omit } from '../../../util/iteratees';
 import { debounce, pause, throttle } from '../../../util/schedulers';
 import {
-  isChatSummaryOnly, isChatArchived, isChatBasicGroup, isUserBot,
+  isChatSummaryOnly, isChatArchived, isChatBasicGroup, isUserBot, isChatChannel, isChatSuperGroup,
 } from '../../helpers';
 import { processDeepLink } from '../../../util/deeplink';
 import { updateGroupCall } from '../../reducers/calls';
 import { selectGroupCall } from '../../selectors/calls';
 import { getOrderedIds } from '../../../util/folderManager';
 import * as langProvider from '../../../util/langProvider';
+import { selectCurrentLimit } from '../../selectors/limits';
 
 const TOP_CHAT_MESSAGES_PRELOAD_INTERVAL = 100;
 const INFINITE_LOOP_MARKER = 100;
+
+const SERVICE_NOTIFICATIONS_USER_MOCK: ApiUser = {
+  id: SERVICE_NOTIFICATIONS_USER_ID,
+  accessHash: '0',
+  type: 'userTypeRegular',
+  isMin: true,
+  username: '',
+  phoneNumber: '',
+};
 
 const runThrottledForLoadTopChats = throttle((cb) => cb(), 3000, true);
 const runDebouncedForLoadFullChat = debounce((cb) => cb(), 500, false, true);
@@ -156,6 +170,10 @@ addActionHandler('loadAllChats', async (global, actions, payload) => {
   let { shouldReplace } = payload;
   let i = 0;
 
+  const getOrderDate = (chat: ApiChat) => {
+    return chat.lastMessage?.date || chat.joinDate;
+  };
+
   while (shouldReplace || !getGlobal().chats.isFullyLoaded[listType]) {
     if (i++ >= INFINITE_LOOP_MARKER) {
       if (DEBUG) {
@@ -177,12 +195,16 @@ addActionHandler('loadAllChats', async (global, actions, payload) => {
       ? listIds
         /* eslint-disable @typescript-eslint/no-loop-func */
         .map((id) => global.chats.byId[id])
-        .filter((chat) => Boolean(chat?.lastMessage) && !selectIsChatPinned(global, chat.id))
+        .filter((chat) => (
+          Boolean(chat && getOrderDate(chat))
+          && chat.id !== SERVICE_NOTIFICATIONS_USER_ID
+          && !selectIsChatPinned(global, chat.id)
+        ))
         /* eslint-enable @typescript-eslint/no-loop-func */
-        .sort((chat1, chat2) => (chat1.lastMessage!.date - chat2.lastMessage!.date))[0]
+        .sort((chat1, chat2) => getOrderDate(chat1)! - getOrderDate(chat2)!)[0]
       : undefined;
 
-    await loadChats(listType, oldestChat?.id, oldestChat?.lastMessage!.date, shouldReplace);
+    await loadChats(listType, oldestChat?.id, oldestChat ? getOrderDate(oldestChat) : undefined, shouldReplace);
 
     if (shouldReplace) {
       onReplace?.();
@@ -259,9 +281,11 @@ addActionHandler('joinChannel', (global, actions, payload) => {
 
   const { id: channelId, accessHash } = chat;
 
-  if (channelId && accessHash) {
-    void callApi('joinChannel', { channelId, accessHash });
+  if (!(channelId && accessHash)) {
+    return;
   }
+
+  void joinChannel(channelId, accessHash);
 });
 
 addActionHandler('deleteChatUser', (global, actions, payload) => {
@@ -355,6 +379,8 @@ addActionHandler('toggleChatPinned', (global, actions, payload) => {
     return;
   }
 
+  const limit = selectCurrentLimit(global, 'dialogFolderPinned');
+
   if (folderId) {
     const folder = selectChatFolder(global, folderId);
     if (folder) {
@@ -380,6 +406,14 @@ addActionHandler('toggleChatPinned', (global, actions, payload) => {
   } else {
     const listType = selectChatListType(global, id);
     const isPinned = selectIsChatPinned(global, id, listType === 'archived' ? ARCHIVED_FOLDER_ID : undefined);
+
+    const ids = global.chats.orderedPinnedIds[listType === 'archived' ? 'archived' : 'active'];
+    if ((ids?.length || 0) >= limit && !isPinned) {
+      actions.openLimitReachedModal({
+        limit: 'dialogFolderPinned',
+      });
+      return;
+    }
     void callApi('toggleChatPinned', { chat, shouldBePinned: !isPinned });
   }
 });
@@ -405,6 +439,14 @@ addActionHandler('loadRecommendedChatFolders', () => {
 
 addActionHandler('editChatFolders', (global, actions, payload) => {
   const { chatId, idsToRemove, idsToAdd } = payload!;
+  const limit = selectCurrentLimit(global, 'dialogFiltersChats');
+
+  const isLimitReached = (idsToAdd as number[])
+    .some((id) => selectChatFolder(global, id)!.includedChatIds.length >= limit);
+  if (isLimitReached) {
+    actions.openLimitReachedModal({ limit: 'dialogFiltersChats' });
+    return;
+  }
 
   (idsToRemove as number[]).forEach(async (id) => {
     const folder = selectChatFolder(global, id);
@@ -453,10 +495,35 @@ addActionHandler('editChatFolder', (global, actions, payload) => {
 
 addActionHandler('addChatFolder', (global, actions, payload) => {
   const { folder } = payload!;
-  const { orderedIds } = global.chatFolders;
-  const maxId = orderedIds?.length ? Math.max.apply(Math.max, orderedIds) : ARCHIVED_FOLDER_ID;
+  const { orderedIds, byId } = global.chatFolders;
+
+  const limit = selectCurrentLimit(global, 'dialogFilters');
+  if (Object.keys(byId).length >= limit) {
+    actions.openLimitReachedModal({
+      limit: 'dialogFilters',
+    });
+    return;
+  }
+
+  const maxId = Math.max(...(orderedIds || []), ARCHIVED_FOLDER_ID);
 
   void createChatFolder(folder, maxId);
+});
+
+addActionHandler('sortChatFolders', async (global, actions, payload) => {
+  const { folderIds } = payload!;
+
+  const result = await callApi('sortChatFolders', folderIds);
+  if (result) {
+    global = getGlobal();
+    setGlobal({
+      ...global,
+      chatFolders: {
+        ...global.chatFolders,
+        orderedIds: folderIds,
+      },
+    });
+  }
 });
 
 addActionHandler('deleteChatFolder', (global, actions, payload) => {
@@ -519,13 +586,23 @@ addActionHandler('openChatByPhoneNumber', async (global, actions, payload) => {
 
 addActionHandler('openTelegramLink', (global, actions, payload) => {
   const { url } = payload!;
-  if (url.match(RE_TG_LINK)) {
-    processDeepLink(url.match(RE_TG_LINK)[0]);
+
+  const tgLinkMatch = url.match(RE_TG_LINK);
+  if (tgLinkMatch) {
+    processDeepLink(tgLinkMatch[0]);
     return;
   }
 
   const uri = new URL(url.startsWith('http') ? url : `https://${url}`);
-  const [part1, part2, part3] = uri.pathname.split('/').filter(Boolean).map((l) => decodeURI(l));
+  if (uri.hostname === 't.me' && uri.pathname === '/') {
+    window.open(uri.toString(), '_blank', 'noopener');
+    return;
+  }
+
+  const hostParts = uri.hostname.split('.');
+  if (hostParts.length > 3) return;
+  const pathname = hostParts.length === 3 ? `${hostParts[0]}/${uri.pathname}` : uri.pathname;
+  const [part1, part2, part3] = pathname.split('/').filter(Boolean).map((l) => decodeURI(l));
   const params = Object.fromEntries(uri.searchParams);
 
   let hash: string | undefined;
@@ -553,9 +630,11 @@ addActionHandler('openTelegramLink', (global, actions, payload) => {
     return;
   }
 
-  if (part1 === 'addstickers') {
-    actions.openStickerSetShortName({
-      stickerSetShortName: part2,
+  if (part1 === 'addstickers' || part1 === 'addemoji') {
+    actions.openStickerSet({
+      stickerSetInfo: {
+        shortName: part2,
+      },
     });
     return;
   }
@@ -580,6 +659,14 @@ addActionHandler('openTelegramLink', (global, actions, payload) => {
     actions.focusMessage({
       chatId,
       messageId,
+    });
+  } else if (part1.startsWith('$')) {
+    actions.openInvoice({
+      slug: part1.substring(1),
+    });
+  } else if (part1 === 'invoice') {
+    actions.openInvoice({
+      slug: part2,
     });
   } else {
     actions.openChatByUsername({
@@ -611,7 +698,7 @@ addActionHandler('openChatByUsername', async (global, actions, payload) => {
   const chat = selectCurrentChat(global);
 
   if (!commentId) {
-    if (chat && chat.username === username && !startAttach) {
+    if (chat && chat.username === username && !startAttach && !startParam) {
       actions.focusMessage({ chatId: chat.id, messageId });
       return;
     }
@@ -648,7 +735,7 @@ addActionHandler('togglePreHistoryHidden', async (global, actions, payload) => {
   }
 
   if (isChatBasicGroup(chat)) {
-    chat = await callApi('migrateChat', chat);
+    chat = await migrateChat(chat);
 
     if (!chat) {
       return;
@@ -681,7 +768,7 @@ addActionHandler('updateChatMemberBannedRights', async (global, actions, payload
   }
 
   if (isChatBasicGroup(chat)) {
-    chat = await callApi('migrateChat', chat);
+    chat = await migrateChat(chat);
 
     if (!chat) {
       return;
@@ -737,7 +824,7 @@ addActionHandler('updateChatAdmin', async (global, actions, payload) => {
   }
 
   if (isChatBasicGroup(chat)) {
-    chat = await callApi('migrateChat', chat);
+    chat = await migrateChat(chat);
     if (!chat) {
       return;
     }
@@ -849,7 +936,7 @@ addActionHandler('linkDiscussionGroup', async (global, actions, payload) => {
   }
 
   if (isChatBasicGroup(chat)) {
-    chat = await callApi('migrateChat', chat);
+    chat = await migrateChat(chat);
 
     if (!chat) {
       return;
@@ -895,28 +982,22 @@ addActionHandler('unlinkDiscussionGroup', async (global, actions, payload) => {
 });
 
 addActionHandler('setActiveChatFolder', (global, actions, payload) => {
+  const maxFolders = selectCurrentLimit(global, 'dialogFilters');
+
+  const isBlocked = payload + 1 > maxFolders;
+
+  if (isBlocked) {
+    actions.openLimitReachedModal({
+      limit: 'dialogFilters',
+    });
+    return undefined;
+  }
+
   return {
     ...global,
     chatFolders: {
       ...global.chatFolders,
       activeChatFolder: payload,
-    },
-  };
-});
-
-addActionHandler('openChatWithText', (global, actions, payload) => {
-  const { chatId, text } = payload;
-
-  actions.openChat({ id: chatId });
-  actions.exitMessageSelectMode();
-
-  global = getGlobal();
-
-  return {
-    ...global,
-    openChatWithText: {
-      chatId,
-      text,
     },
   };
 });
@@ -1016,18 +1097,36 @@ addActionHandler('loadChatSettings', async (global, actions, payload) => {
   setGlobal(updateChat(getGlobal(), chat.id, { settings }));
 });
 
+addActionHandler('toggleJoinToSend', async (global, actions, payload) => {
+  const { chatId, isEnabled } = payload;
+  const chat = selectChat(global, chatId);
+  if (!chat) return;
+  if (!isChatSuperGroup(chat) && !isChatChannel(chat)) return;
+
+  await callApi('toggleJoinToSend', chat, isEnabled);
+});
+
+addActionHandler('toggleJoinRequest', async (global, actions, payload) => {
+  const { chatId, isEnabled } = payload;
+  const chat = selectChat(global, chatId);
+  if (!chat) return;
+  if (!isChatSuperGroup(chat) && !isChatChannel(chat)) return;
+
+  await callApi('toggleJoinRequest', chat, isEnabled);
+});
+
 async function loadChats(
   listType: 'active' | 'archived', offsetId?: string, offsetDate?: number, shouldReplace = false,
 ) {
   let global = getGlobal();
-
+  const lastLocalServiceMessage = selectLastServiceNotification(global)?.message;
   const result = await callApi('fetchChats', {
     limit: CHAT_LIST_LOAD_SLICE,
     offsetDate,
     archived: listType === 'archived',
     withPinned: shouldReplace,
     serverTimeOffset: global.serverTimeOffset,
-    lastLocalServiceMessage: selectLastServiceNotification(global)?.message,
+    lastLocalServiceMessage,
   });
 
   if (!result) {
@@ -1043,6 +1142,25 @@ async function loadChats(
   global = getGlobal();
 
   if (shouldReplace && listType === 'active') {
+    // Always include service notifications chat
+    if (!chatIds.includes(SERVICE_NOTIFICATIONS_USER_ID)) {
+      const result2 = await callApi('fetchChat', {
+        type: 'user',
+        user: SERVICE_NOTIFICATIONS_USER_MOCK,
+      });
+
+      global = getGlobal();
+
+      const notificationsChat = result2 && selectChat(global, result2.chatId);
+      if (notificationsChat) {
+        chatIds.unshift(notificationsChat.id);
+        result.chats.unshift(notificationsChat);
+        if (lastLocalServiceMessage) {
+          notificationsChat.lastMessage = lastLocalServiceMessage;
+        }
+      }
+    }
+
     const currentChat = selectCurrentChat(global);
     const visibleChats = currentChat ? [currentChat] : [];
 
@@ -1137,9 +1255,10 @@ export async function loadFullChat(chat: ApiChat) {
   const stickerSet = fullInfo.stickerSet;
   if (stickerSet) {
     getActions().loadStickers({
-      stickerSetId: stickerSet.id,
-      stickerSetAccessHash: stickerSet.accessHash,
-      stickerSetShortName: stickerSet.shortName,
+      stickerSetInfo: {
+        id: stickerSet.id,
+        accessHash: stickerSet.accessHash,
+      },
     });
   }
 
@@ -1154,7 +1273,27 @@ async function createChannel(title: string, users: ApiUser[], about?: string, ph
     },
   });
 
-  const createdChannel = await callApi('createChannel', { title, about, users });
+  let createdChannel: ApiChat | undefined;
+
+  try {
+    createdChannel = await callApi('createChannel', { title, about, users });
+  } catch (error) {
+    const global = getGlobal();
+
+    setGlobal({
+      ...global,
+      chatCreation: {
+        progress: ChatCreationProgress.Error,
+      },
+    });
+
+    if ((error as ApiError).message === 'CHANNELS_TOO_MUCH') {
+      getActions().openLimitReachedModal({ limit: 'channels' });
+    } else {
+      getActions().showDialog({ data: { ...(error as ApiError), hasErrorKey: true } });
+    }
+  }
+
   if (!createdChannel) {
     return;
   }
@@ -1175,6 +1314,18 @@ async function createChannel(title: string, users: ApiUser[], about?: string, ph
 
   if (channelId && accessHash && photo) {
     await callApi('editChatPhoto', { chatId: channelId, accessHash, photo });
+  }
+}
+
+async function joinChannel(channelId: string, accessHash: string) {
+  try {
+    await callApi('joinChannel', { channelId, accessHash });
+  } catch (error) {
+    if ((error as ApiError).message === 'CHANNELS_TOO_MUCH') {
+      getActions().openLimitReachedModal({ limit: 'channels' });
+    } else {
+      getActions().showDialog({ data: { ...(error as ApiError), hasErrorKey: true } });
+    }
   }
 }
 
@@ -1232,6 +1383,22 @@ async function createGroupChat(title: string, users: ApiUser[], photo?: File) {
         },
       });
     }
+  }
+}
+
+export async function migrateChat(chat: ApiChat): Promise<ApiChat | undefined> {
+  try {
+    const supergroup = await callApi('migrateChat', chat);
+
+    return supergroup;
+  } catch (error) {
+    if ((error as ApiError).message === 'CHANNELS_TOO_MUCH') {
+      getActions().openLimitReachedModal({ limit: 'channels' });
+    } else {
+      getActions().showDialog({ data: { ...(error as ApiError), hasErrorKey: true } });
+    }
+
+    return undefined;
   }
 }
 
@@ -1345,22 +1512,25 @@ async function openChatByUsername(
   startAttach?: string | boolean,
   attach?: string,
 ) {
+  let global = getGlobal();
+  const currentChat = selectCurrentChat(global);
+
   // Attach in the current chat
   if (startAttach && !attach) {
     const chat = await fetchChatByUsername(username);
-
     if (!chat) return;
-    const global = getGlobal();
-    const user = selectUser(global, chat.id);
 
+    global = getGlobal();
+
+    const user = selectUser(global, chat.id);
     if (!user) return;
+
     const isBot = isUserBot(user);
     if (!isBot || !user.isAttachMenuBot) {
       actions.showNotification({ message: langProvider.getTranslation('WebApp.AddToAttachmentUnavailableError') });
+
       return;
     }
-
-    const currentChat = selectCurrentChat(global);
 
     if (!currentChat) return;
 
@@ -1369,25 +1539,33 @@ async function openChatByUsername(
       chatId: currentChat.id,
       ...(typeof startAttach === 'string' && { startParam: startAttach }),
     });
+
     return;
   }
 
-  // Open temporary empty chat to make the click response feel faster
-  actions.openChat({ id: TMP_CHAT_ID });
+  const isCurrentChat = currentChat?.username === username;
+
+  if (!isCurrentChat) {
+    // Open temporary empty chat to make the click response feel faster
+    actions.openChat({ id: TMP_CHAT_ID });
+  }
 
   const chat = await fetchChatByUsername(username);
-
   if (!chat) {
-    actions.openPreviousChat();
-    actions.showNotification({ message: 'User does not exist' });
+    if (!isCurrentChat) {
+      actions.openPreviousChat();
+      actions.showNotification({ message: 'User does not exist' });
+    }
+
     return;
   }
 
   if (channelPostId) {
     actions.focusMessage({ chatId: chat.id, messageId: channelPostId });
-  } else {
+  } else if (!isCurrentChat) {
     actions.openChat({ id: chat.id });
   }
+
   if (startParam) {
     actions.startBot({ botId: chat.id, param: startParam });
   }

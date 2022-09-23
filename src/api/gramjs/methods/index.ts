@@ -15,11 +15,11 @@ export {
   saveDraft, clearDraft, fetchChat, updateChatMutedState,
   createChannel, joinChannel, deleteChatUser, deleteChat, leaveChannel, deleteChannel, createGroupChat, editChatPhoto,
   toggleChatPinned, toggleChatArchived, toggleDialogUnread, setChatEnabledReactions,
-  fetchChatFolders, editChatFolder, deleteChatFolder, fetchRecommendedChatFolders,
+  fetchChatFolders, editChatFolder, deleteChatFolder, sortChatFolders, fetchRecommendedChatFolders,
   getChatByUsername, togglePreHistoryHidden, updateChatDefaultBannedRights, updateChatMemberBannedRights,
   updateChatTitle, updateChatAbout, toggleSignatures, updateChatAdmin, fetchGroupsForDiscussion, setDiscussionGroup,
   migrateChat, openChatByInvite, fetchMembers, importChatInvite, addChatMembers, deleteChatMember, toggleIsProtected,
-  getChatByPhoneNumber,
+  getChatByPhoneNumber, toggleJoinToSend, toggleJoinRequest,
 } from './chats';
 
 export {
@@ -28,7 +28,8 @@ export {
   fetchWebPagePreview, editMessage, forwardMessages, loadPollOptionResults, sendPollVote, findFirstMessageIdAfterDate,
   fetchPinnedMessages, fetchScheduledHistory, sendScheduledMessages, rescheduleMessage, deleteScheduledMessages,
   reportMessages, sendMessageAction, fetchSeenBy, fetchSponsoredMessages, viewSponsoredMessage, fetchSendAs,
-  saveDefaultSendAs, fetchUnreadReactions, readAllReactions, fetchUnreadMentions, readAllMentions,
+  saveDefaultSendAs, fetchUnreadReactions, readAllReactions, fetchUnreadMentions, readAllMentions, transcribeAudio,
+  closePoll,
 } from './messages';
 
 export {
@@ -40,7 +41,7 @@ export {
   fetchStickerSets, fetchRecentStickers, fetchFavoriteStickers, fetchFeaturedStickers,
   faveSticker, fetchStickers, fetchSavedGifs, saveGif, searchStickers, installStickerSet, uninstallStickerSet,
   searchGifs, fetchAnimatedEmojis, fetchStickersForEmoji, fetchEmojiKeywords, fetchAnimatedEmojiEffects,
-  removeRecentSticker, clearRecentStickers,
+  removeRecentSticker, clearRecentStickers, fetchCustomEmoji, fetchPremiumGifts, fetchCustomEmojiSets,
 } from './symbols';
 
 export {
@@ -58,6 +59,7 @@ export {
   fetchNotificationExceptions, fetchNotificationSettings, updateContactSignUpNotification, updateNotificationSettings,
   fetchLanguages, fetchLangPack, fetchPrivacySettings, setPrivacySettings, registerDevice, unregisterDevice,
   updateIsOnline, fetchContentSettings, updateContentSettings, fetchLangStrings, fetchCountryList, fetchAppConfig,
+  fetchGlobalPrivacySettings, updateGlobalPrivacySettings,
 } from './settings';
 
 export {
@@ -71,7 +73,7 @@ export {
 } from './bots';
 
 export {
-  validateRequestedInfo, sendPaymentForm, getPaymentForm, getReceipt,
+  validateRequestedInfo, sendPaymentForm, getPaymentForm, getReceipt, fetchPremiumPromo,
 } from './payments';
 
 export {

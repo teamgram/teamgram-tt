@@ -11,6 +11,12 @@
   cursor: pointer;
   direction: ltr;
 
+  @for $i from 1 through 8 {
+    &.color-#{$i} {
+      --accent-color: var(--color-user-#{$i});
+    }
+  }
+
   body.animation-level-1 & {
     .ripple-container {
       display: none;
@@ -45,7 +51,7 @@
     position: absolute;
     top: 0.3125rem;
     bottom: 0.3125rem;
-    left: 0.3125rem;
+    left: 0.375rem;
     width: 2px;
     background: var(--accent-color);
     border-radius: 2px;
@@ -97,10 +103,20 @@
       height: calc(1.125 * var(--message-text-size, 1rem)) !important;
       vertical-align: text-bottom !important;
     }
+
+    .text-entity-custom-emoji {
+      // Custom emoji needs to be slightly bigger than normal emoji
+      --custom-emoji-size: calc(1.125 * var(--message-text-size, 1rem) + 1px);
+      margin-inline-end: 1px;
+
+      & > img {
+        border-radius: 0;
+      }
+    }
   }
 
   .embedded-action-message {
-    color: var(--accent-color);
+    color: var(---secondary-color);
     opacity: 0.75;
   }
 
@@ -119,13 +135,10 @@
 
   &.inside-input {
     padding-inline-start: 0.5625rem;
-    margin: 0 0 -0.125rem -0.1875rem;
-    display: grid;
-    grid-template-columns: auto 1fr;
-    grid-template-rows: 1fr;
     width: 100%;
     --accent-color: var(--color-primary);
     --hover-color: var(--color-interactive-element-hover);
+    --active-color: var(--color-reply-active);
 
     &::before {
       bottom: 0.3125rem;
@@ -137,11 +150,18 @@
 
     .message-text {
       margin-inline-start: 0.375rem;
+      flex-grow: 1;
     }
 
     .message-title {
       font-weight: 500;
       color: var(--accent-color);
+    }
+
+    .embedded-more {
+      font-size: 1.5rem;
+      opacity: 0.8;
+      color: var(--color-text-secondary);
     }
   }
 }

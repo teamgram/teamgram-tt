@@ -1,8 +1,9 @@
 import { getActions } from '../global';
 import { IS_SAFARI } from './environment';
 
-type DeepLinkMethod = 'resolve' | 'login' | 'passport' | 'settings' | 'join' | 'addstickers' | 'setlanguage' |
-'addtheme' | 'confirmphone' | 'socks' | 'proxy' | 'privatepost' | 'bg' | 'share' | 'msg' | 'msg_url';
+type DeepLinkMethod = 'resolve' | 'login' | 'passport' | 'settings' | 'join' | 'addstickers' | 'addemoji' |
+'setlanguage' | 'addtheme' | 'confirmphone' | 'socks' | 'proxy' | 'privatepost' | 'bg' | 'share' | 'msg' | 'msg_url' |
+'invoice';
 
 export const processDeepLink = (url: string) => {
   const {
@@ -15,9 +16,10 @@ export const processDeepLink = (url: string) => {
     openChatByInvite,
     openChatByUsername,
     openChatByPhoneNumber,
-    openStickerSetShortName,
+    openStickerSet,
     focusMessage,
     joinVoiceChatByLink,
+    openInvoice,
   } = getActions();
 
   // Safari thinks the path in tg://path links is hostname for some reason
@@ -79,11 +81,14 @@ export const processDeepLink = (url: string) => {
       openChatByInvite({ hash: invite });
       break;
     }
+    case 'addemoji':
     case 'addstickers': {
       const { set } = params;
 
-      openStickerSetShortName({
-        stickerSetShortName: set,
+      openStickerSet({
+        stickerSetInfo: {
+          shortName: set,
+        },
       });
       break;
     }
@@ -94,6 +99,12 @@ export const processDeepLink = (url: string) => {
     }
     case 'login': {
       // const { code, token } = params;
+      break;
+    }
+
+    case 'invoice': {
+      const { slug } = params;
+      openInvoice({ slug });
       break;
     }
     default:

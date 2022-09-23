@@ -18,6 +18,8 @@ import type {
   ApiSticker,
   ApiVideo,
   ApiThemeParameters,
+  ApiPoll,
+  ApiRequestInputInvoice,
 } from '../../types';
 import {
   ApiMessageEntityTypes,
@@ -204,6 +206,27 @@ export function buildInputPoll(pollParams: ApiNewPoll, randomId: BigInt.BigInteg
   });
 }
 
+export function buildInputPollFromExisting(poll: ApiPoll, shouldClose = false) {
+  return new GramJs.InputMediaPoll({
+    poll: new GramJs.Poll({
+      id: BigInt(poll.id),
+      publicVoters: poll.summary.isPublic,
+      question: poll.summary.question,
+      answers: poll.summary.answers.map(({ text, option }) => {
+        return new GramJs.PollAnswer({ text, option: deserializeBytes(option) });
+      }),
+      quiz: poll.summary.quiz,
+      multipleChoice: poll.summary.multipleChoice,
+      closeDate: poll.summary.closeDate,
+      closePeriod: poll.summary.closePeriod,
+      closed: shouldClose ? true : poll.summary.closed,
+    }),
+    correctAnswers: poll.results.results?.filter((o) => o.isCorrect).map((o) => deserializeBytes(o.option)),
+    solution: poll.results.solution,
+    solutionEntities: poll.results.solutionEntities?.map(buildMtpMessageEntity),
+  });
+}
+
 export function buildFilterFromApiFolder(folder: ApiChatFolder): GramJs.DialogFilter {
   const {
     emoticon,
@@ -274,10 +297,10 @@ export function buildMessageFromUpdate(
 
 export function buildMtpMessageEntity(entity: ApiMessageEntity): GramJs.TypeMessageEntity {
   const {
-    type, offset, length, url, userId, language,
+    type, offset, length,
   } = entity;
 
-  const user = userId ? localDb.users[userId] : undefined;
+  const user = 'userId' in entity ? localDb.users[entity.userId] : undefined;
 
   switch (type) {
     case ApiMessageEntityTypes.Bold:
@@ -291,11 +314,11 @@ export function buildMtpMessageEntity(entity: ApiMessageEntity): GramJs.TypeMess
     case ApiMessageEntityTypes.Code:
       return new GramJs.MessageEntityCode({ offset, length });
     case ApiMessageEntityTypes.Pre:
-      return new GramJs.MessageEntityPre({ offset, length, language: language || '' });
+      return new GramJs.MessageEntityPre({ offset, length, language: entity.language || '' });
     case ApiMessageEntityTypes.Blockquote:
       return new GramJs.MessageEntityBlockquote({ offset, length });
     case ApiMessageEntityTypes.TextUrl:
-      return new GramJs.MessageEntityTextUrl({ offset, length, url: url! });
+      return new GramJs.MessageEntityTextUrl({ offset, length, url: entity.url });
     case ApiMessageEntityTypes.Url:
       return new GramJs.MessageEntityUrl({ offset, length });
     case ApiMessageEntityTypes.Hashtag:
@@ -304,10 +327,12 @@ export function buildMtpMessageEntity(entity: ApiMessageEntity): GramJs.TypeMess
       return new GramJs.InputMessageEntityMentionName({
         offset,
         length,
-        userId: new GramJs.InputUser({ userId: BigInt(userId!), accessHash: user!.accessHash! }),
+        userId: new GramJs.InputUser({ userId: BigInt(user!.id), accessHash: user!.accessHash! }),
       });
     case ApiMessageEntityTypes.Spoiler:
       return new GramJs.MessageEntitySpoiler({ offset, length });
+    case ApiMessageEntityTypes.CustomEmoji:
+      return new GramJs.MessageEntityCustomEmoji({ offset, length, documentId: BigInt(entity.documentId) });
     default:
       return new GramJs.MessageEntityUnknown({ offset, length });
   }
@@ -334,6 +359,8 @@ export function isMessageWithMedia(message: GramJs.Message | GramJs.UpdateServic
     ) || (
       media instanceof GramJs.MessageMediaGame
       && (media.game.document instanceof GramJs.Document || media.game.photo instanceof GramJs.Photo)
+    ) || (
+      media instanceof GramJs.MessageMediaInvoice && media.photo
     )
   );
 }
@@ -434,6 +461,9 @@ export function buildInputPrivacyKey(privacyKey: ApiPrivacyKey) {
 
     case 'phoneP2P':
       return new GramJs.InputPrivacyKeyPhoneP2P();
+
+    case 'voiceMessages':
+      return new GramJs.InputPrivacyKeyVoiceMessages();
   }
 
   return undefined;
@@ -509,4 +539,17 @@ export function buildInputPhoneCall({ id, accessHash }: ApiPhoneCall) {
     id: BigInt(id),
     accessHash: BigInt(accessHash!),
   });
+}
+
+export function buildInputInvoice(invoice: ApiRequestInputInvoice) {
+  if ('slug' in invoice) {
+    return new GramJs.InputInvoiceSlug({
+      slug: invoice.slug,
+    });
+  } else {
+    return new GramJs.InputInvoiceMessage({
+      peer: buildInputPeer(invoice.chat.id, invoice.chat.accessHash),
+      msgId: invoice.messageId,
+    });
+  }
 }

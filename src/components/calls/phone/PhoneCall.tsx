@@ -6,6 +6,7 @@ import { getActions, withGlobal } from '../../../global';
 import '../../../global/actions/calls';
 
 import type { ApiPhoneCall, ApiUser } from '../../../api/types';
+import type { AnimationLevel } from '../../../types';
 
 import {
   IS_ANDROID,
@@ -39,6 +40,7 @@ type StateProps = {
   phoneCall?: ApiPhoneCall;
   isOutgoing: boolean;
   isCallPanelVisible?: boolean;
+  animationLevel: AnimationLevel;
 };
 
 const PhoneCall: FC<StateProps> = ({
@@ -46,6 +48,7 @@ const PhoneCall: FC<StateProps> = ({
   isOutgoing,
   phoneCall,
   isCallPanelVisible,
+  animationLevel,
 }) => {
   const lang = useLang();
   const {
@@ -101,8 +104,16 @@ const PhoneCall: FC<StateProps> = ({
   const isActive = phoneCall?.state === 'active';
   const isConnected = phoneCall?.isConnected;
 
+  const [isHangingUp, startHangingUp, stopHangingUp] = useFlag();
+  const handleHangUp = useCallback(() => {
+    startHangingUp();
+    hangUp();
+  }, [hangUp, startHangingUp]);
+
   useEffect(() => {
-    if (isIncomingRequested) {
+    if (isHangingUp) {
+      playGroupCallSound({ sound: 'end' });
+    } else if (isIncomingRequested) {
       playGroupCallSound({ sound: 'incoming' });
     } else if (isBusy) {
       playGroupCallSound({ sound: 'busy' });
@@ -113,13 +124,7 @@ const PhoneCall: FC<StateProps> = ({
     } else if (isConnected) {
       playGroupCallSound({ sound: 'connect' });
     }
-  }, [isBusy, isDiscarded, isIncomingRequested, isOutgoingRequested, isConnected, playGroupCallSound]);
-
-  const [isHangingUp, startHangingUp, stopHangingUp] = useFlag();
-  const handleHangUp = useCallback(() => {
-    startHangingUp();
-    hangUp();
-  }, [hangUp, startHangingUp]);
+  }, [isBusy, isDiscarded, isIncomingRequested, isOutgoingRequested, isConnected, playGroupCallSound, isHangingUp]);
 
   useEffect(() => {
     if (phoneCall?.id) {
@@ -229,7 +234,14 @@ const PhoneCall: FC<StateProps> = ({
       )}
       dialogRef={containerRef}
     >
-      <Avatar user={user} size="jumbo" className={hasVideo || hasPresentation ? styles.blurred : ''} />
+      <Avatar
+        user={user}
+        size="jumbo"
+        className={hasVideo || hasPresentation ? styles.blurred : ''}
+        withVideo
+        noLoop={phoneCall?.state !== 'requesting'}
+        animationLevel={animationLevel}
+      />
       {phoneCall?.screencastState === 'active' && streams?.presentation
         && <video className={styles.mainVideo} muted autoPlay playsInline srcObject={streams.presentation} />}
       {phoneCall?.videoState === 'active' && streams?.video
@@ -363,6 +375,7 @@ export default memo(withGlobal(
       user: selectPhoneCallUser(global),
       isOutgoing: phoneCall?.adminId === currentUserId,
       phoneCall,
+      animationLevel: global.settings.byKey.animationLevel,
     };
   },
 )(PhoneCall));

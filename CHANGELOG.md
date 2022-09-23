@@ -1,13 +1,112 @@
+## 1.52.0 (2022-09-16)
+
+### 👏 **Harder**
+* Added support for username.t.me links.
+* ‘Update Telegram’ button now automatically appears when an update is available.
+* Games can now request a share window.
+
+### 🤩 **Better**
+* Square images for web page previews are now properly displayed.
+* Auth screen transitions are now smoother.
+* Changelog notifications are only delivered every 3 days.
+
+### 🚀 **Faster**
+* Interface performance was heavily optimized.
+* Initial app bundle is now even more lightweight.
+
+### 💪 **Stronger**
+* Fixed several issues causing missing chats.
+* Fixed frozen UI on Android after selecting ‘Nice and Fast’ animation setting.
+* Fixed Play button overlapping with Slide Left button in Media Viewer.
+* Fixed quick reaction button not showing in some cases.
+* Fixed names and profile pictures for deleted accounts.
+* Numerous other layout fixes.
+
+## 1.51.0 (2022-08-31)
+
+### 👏 **Harder**
+* Custom Animated Emoji: Messages with custom emoji are now viewable.
+* Gifting Telegram Premium: Premium users can send friends, family, and coworkers a prepaid subscription from their profile for 3, 6, or 12 months – at a discount.
+* Privacy Settings for Voice Messages: Control who can send you voice and video messages with Telegram Premium.
+
+### 🚀 **Faster**
+* Increased download speed.
+* Optimized Premium modal.
+
+### 💪 **Stronger**
+* Fixed ‘No File’ error when downloading media.
+* Fixed issues with hiding video controls.
+* Various RTL layout fixes.
+* Fixed scrolling with mouse wheel inside horizontal containers.
+* Fixed jumping text cursor on Windows.
+* Fixed display problems with the ‘Next’ button in payments.
+* Fixed voting in polls on mobile devices triggering a quick reaction.
+* Fixed page reload when rotating device during a call.
+* Fixed hanging calls after signing out.
+* Fixed copying message content and removed the ‘Report’ option in scheduled messages.
+* Small fixes and improvements for bots running web apps.
+
+## 1.50.0 (2022-08-07)
+
+### 👏 **Harder**
+* Flexible Forwarding: Forward messages without the sender's name or media captions.
+* Reorder Folders: Change the order of your folders in Settings.
+* Better Drag & Drop: Open a chat in your list by dragging a file to it.
+
+### 🤩 **Better**
+* Added more emojis.
+* Media Viewer now supports scrolling through profile pictures.
+* Use the hotkey `⌘+0` to open Saved Messages on macOS.
+* Triple click will now select all text in the message field.
+* Large file downloads (2 GB+) are supported in more browsers.
+* Added colored icons for the invite link section in groups and channels.
+* Added support for deleting chats with service notifications.
+* Background color now adapts for better contrast in uploaded transparent images.
+* Added support for SmallTalk highlighting, thanks to LinqLover on GitHub.
+
+### 💪 **Stronger**
+* Fixed issue with countable text localization in some languages.
+* Removed download button from media in chats with content protection enabled.
+* Various call fixes.
+* Small redesign for code formatting, fixed parsing issues.
+* Fixed video controls on mobile devices, thanks to y0ung3r on GitHub.
+* Fixed duplicated messages in CJK languages.
+* Removed ‘View in Picture-in-Picture’ button from stickers.
+* Fixed layout issues in Waterfox Classic.
+* Fixed issue with replies in discussions.
+* Small design improvements related to Telegram Premium.
+
+## 1.49.0 (2022-07-08)
+
+### 👏 **Harder**
+* [Telegram Premium](https://t.me/TelegramTips/336). By subscribing, users unlock doubled limits, 4 GB file uploads, faster downloads, exclusive stickers and reactions, improved chat management – and a whole lot more.
+* Native trackpad gestures in the Media Viewer. Swipe left or right to move through media, swipe up or down to exit.
+* Improved polls that support retracting votes and closing the poll – plus a confetti effect.
+
+### 🤩 **Better**
+* Various layout and performance improvements.
+* Improved payment form validation.
+* Use the hotkey `⌘+`, to access app Settings on macOS.
+* See a helpful info screen when JavaScript support is disabled.
+
+### 💪 **Stronger**
+* Call panel properly disappears after answering on another device.
+* Fixed unexpected message deleting when using search in the forwarding menu.
+* Fixed unnecessary up-scaling when uploading small images.
+* Archived chats do not appear in the ‘Forward to’ list.
+* Fixed loading loop when disabling reactions in group management.
+* Various fixes in the text formatting menu.
+
 ## 1.48.0 (2022-06-06)
 
-👏 **Harder**
+### 👏 **Harder**
 * Meet Seamless Web Bots, such as [@discussbot](https://t.me/discussbot), that help you log in on websites with your Telegram account.
 
-🤩 **Better**
+### 🤩 **Better**
 * Podcasts and long audio can now be played at 2X speed.
 * Audio Player buttons do not jump anymore when navigating between tracks.
 
-💪 **Stronger**
+### 💪 **Stronger**
 * Fixed pasting text after switching chat.
 * Fixed sending and playing `.mov` videos.
 

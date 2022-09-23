@@ -1,5 +1,10 @@
+import type { ApiLimitType } from './global/types';
+
 export const APP_NAME = process.env.APP_NAME || 'Teamgram WebZ';
 export const APP_VERSION = process.env.APP_VERSION!;
+export const RELEASE_DATETIME = process.env.RELEASE_DATETIME;
+
+export const PRODUCTION_HOSTNAME = 'web.telegram.org';
 
 export const DEBUG = process.env.APP_ENV !== 'production';
 export const DEBUG_MORE = false;
@@ -10,8 +15,6 @@ export const IS_PERF = process.env.APP_ENV === 'perf';
 export const IS_BETA = process.env.APP_ENV === 'staging';
 
 export const BETA_CHANGELOG_URL = 'https://telegra.ph/WebZ-Beta-04-01';
-export const BETA_DISCUSSION_CHAT_RU = 'webzcommentsru';
-export const BETA_DISCUSSION_CHAT_EN = 'webzchat';
 
 export const DEBUG_ALERT_MSG = 'Shoot!\nSomething went wrong, please see the error details in Dev Tools Console.';
 export const DEBUG_GRAMJS = false;
@@ -30,6 +33,7 @@ export const GLOBAL_STATE_CACHE_KEY = 'tt-global-state';
 export const GLOBAL_STATE_CACHE_USER_LIST_LIMIT = 500;
 export const GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT = 200;
 export const GLOBAL_STATE_CACHE_CHATS_WITH_MESSAGES_LIMIT = 30;
+export const GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT = 150;
 
 export const MEDIA_CACHE_DISABLED = false;
 export const MEDIA_CACHE_NAME = 'tt-media';
@@ -38,7 +42,7 @@ export const MEDIA_PROGRESSIVE_CACHE_DISABLED = false;
 export const MEDIA_PROGRESSIVE_CACHE_NAME = 'tt-media-progressive';
 export const MEDIA_CACHE_MAX_BYTES = 512 * 1024; // 512 KB
 export const CUSTOM_BG_CACHE_NAME = 'tt-custom-bg';
-export const LANG_CACHE_NAME = 'tt-lang-packs-v9';
+export const LANG_CACHE_NAME = 'tt-lang-packs-v13';
 export const ASSET_CACHE_NAME = 'tt-assets';
 export const AUTODOWNLOAD_FILESIZE_MB_LIMITS = [1, 5, 10, 50, 100, 500];
 
@@ -104,6 +108,7 @@ export const SAFE_SCREEN_WIDTH_FOR_CHAT_INFO = 1150; // px
 
 export const MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN = 1275; // px
 export const MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN = 925; // px
+export const MAX_SCREEN_WIDTH_FOR_EXPAND_PINNED_MESSAGES = 1340; // px
 export const MOBILE_SCREEN_MAX_WIDTH = 600; // px
 export const MOBILE_SCREEN_LANDSCAPE_MAX_WIDTH = 950; // px
 export const MOBILE_SCREEN_LANDSCAPE_MAX_HEIGHT = 450; // px
@@ -131,10 +136,12 @@ export const STICKER_SIZE_INLINE_MOBILE_FACTOR = 11;
 export const STICKER_SIZE_AUTH = 160;
 export const STICKER_SIZE_AUTH_MOBILE = 120;
 export const STICKER_SIZE_PICKER = 64;
+export const EMOJI_SIZE_PICKER = 40;
 export const STICKER_SIZE_GENERAL_SETTINGS = 48;
 export const STICKER_SIZE_PICKER_HEADER = 32;
 export const STICKER_SIZE_SEARCH = 64;
 export const STICKER_SIZE_MODAL = 64;
+export const EMOJI_SIZE_MODAL = 40;
 export const STICKER_SIZE_TWO_FA = 160;
 export const STICKER_SIZE_PASSCODE = 160;
 export const STICKER_SIZE_DISCUSSION_GROUPS = 140;
@@ -143,10 +150,10 @@ export const STICKER_SIZE_INLINE_BOT_RESULT = 100;
 export const STICKER_SIZE_JOIN_REQUESTS = 140;
 export const STICKER_SIZE_INVITES = 140;
 export const RECENT_STICKERS_LIMIT = 20;
-export const NO_STICKER_SET_ID = 'NO_STICKER_SET';
 export const RECENT_SYMBOL_SET_ID = 'recent';
 export const FAVORITE_SYMBOL_SET_ID = 'favorite';
 export const CHAT_STICKER_SET_ID = 'chatStickers';
+export const PREMIUM_STICKER_SET_ID = 'premium';
 
 export const BASE_EMOJI_KEYWORD_LANG = 'en';
 
@@ -186,8 +193,10 @@ export const CONTENT_NOT_SUPPORTED = 'The message is not supported on this versi
 // eslint-disable-next-line max-len
 export const RE_LINK_TEMPLATE = '((ftp|https?):\\/\\/)?((www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,63})\\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)';
 export const RE_MENTION_TEMPLATE = '(@[\\w\\d_-]+)';
-export const RE_TG_LINK = /^tg:(\/\/)?([?=&\d\w_-]+)?/gm;
-export const RE_TME_LINK = /^(?:https?:\/\/)?(?:t\.me\/)/gm;
+export const RE_TG_LINK = /^tg:(\/\/)?([?=&\d\w_-]+)?/;
+export const RE_TME_LINK = /^(https?:\/\/)?([-a-zA-Z0-9@:%_+~#=]{1,32}\.)?t\.me/;
+export const RE_TELEGRAM_LINK = /^(https?:\/\/)?telegram\.org\//;
+export const TME_LINK_PREFIX = 'https://t.me/';
 
 // eslint-disable-next-line max-len
 export const COUNTRIES_WITH_12H_TIME_FORMAT = new Set(['AU', 'BD', 'CA', 'CO', 'EG', 'HN', 'IE', 'IN', 'JO', 'MX', 'MY', 'NI', 'NZ', 'PH', 'PK', 'SA', 'SV', 'US']);
@@ -205,12 +214,27 @@ export const DEFAULT_LANG_CODE = 'en';
 export const DEFAULT_LANG_PACK = 'android';
 export const LANG_PACKS = ['android', 'ios', 'tdesktop', 'macos'] as const;
 export const FEEDBACK_URL = 'https://bugs.telegram.org/?tag_ids=41&sort=time';
+
 export const LIGHT_THEME_BG_COLOR = '#99BA92';
 export const DARK_THEME_BG_COLOR = '#0F0F0F';
 export const DEFAULT_PATTERN_COLOR = '#4A8E3A8C';
 export const DARK_THEME_PATTERN_COLOR = '#0A0A0A8C';
+export const MAX_UPLOAD_FILEPART_SIZE = 524288;
 
 // Group calls
 export const GROUP_CALL_VOLUME_MULTIPLIER = 100;
 export const GROUP_CALL_DEFAULT_VOLUME = 100 * GROUP_CALL_VOLUME_MULTIPLIER;
-export const ENABLE_THUMBNAIL_VIDEO = false;
+export const GROUP_CALL_THUMB_VIDEO_DISABLED = true;
+
+export const DEFAULT_LIMITS: Record<ApiLimitType, readonly [number, number]> = {
+  uploadMaxFileparts: [4000, 8000],
+  stickersFaved: [5, 10],
+  savedGifs: [200, 400],
+  dialogFiltersChats: [100, 200],
+  dialogFilters: [10, 20],
+  dialogFolderPinned: [5, 10],
+  captionLength: [1024, 2048],
+  channels: [500, 1000],
+  channelsPublic: [10, 20],
+  aboutLength: [70, 140],
+};

@@ -37,6 +37,11 @@
     position: relative;
     bottom: calc(0px - env(safe-area-inset-bottom));
 
+    // Target: Old Firefox (Waterfox Classic)
+    @supports not (bottom: calc(0px - env(safe-area-inset-bottom))) {
+      bottom: 0;
+    }
+
     body.keyboard-visible.animation-level-0 & {
       transition: none !important;
     }
@@ -187,6 +192,29 @@
       text-align: left;
     }
 
+    & > .bot-info {
+      max-width: 80%;
+      display: flex;
+      flex-direction: column;
+
+      background: var(--pattern-color);
+      color: white;
+      font-size: calc(var(--message-text-size, 1rem) - 0.0625rem);
+      line-height: 1.75;
+      border-radius: var(--border-radius-messages);
+      overflow: hidden;
+      text-align: initial;
+
+      & > .bot-info-description {
+        padding: 0.5rem 1rem;
+      }
+
+      .bot-info-title {
+        font-weight: 500;
+        margin-bottom: 0.25rem;
+      }
+    }
+
     .text-entity-link {
       color: inherit !important;
       text-decoration: underline;
@@ -229,6 +257,31 @@
         background-size: calc(1.25 * var(--message-text-size, 1rem));
       }
     }
+  }
+
+  .ActionMessage.premium-gift {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .action-message-gift {
+    display: flex !important;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1rem !important;
+    padding-bottom: 0.75rem !important;
+    margin-top: 0.5rem;
+    cursor: pointer;
+    outline: none;
+  }
+
+  .action-message-button {
+    display: inline-block;
+    border-radius: var(--border-radius-default);
+    padding: 0.5rem 0.75rem;
+    margin-top: 0.5rem;
+    background-color: var(--pattern-color);
   }
 
   .sticky-date {
@@ -294,6 +347,14 @@
 
       &:hover {
         text-decoration: underline;
+      }
+    }
+
+    .underlined-link {
+      text-decoration: underline;
+
+      &:hover {
+        text-decoration: none;
       }
     }
   }

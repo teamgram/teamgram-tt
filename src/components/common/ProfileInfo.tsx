@@ -6,9 +6,11 @@ import { getActions, withGlobal } from '../../global';
 
 import type { ApiUser, ApiChat, ApiUserStatus } from '../../api/types';
 import type { GlobalState } from '../../global/types';
+import type { AnimationLevel } from '../../types';
 import { MediaViewerOrigin } from '../../types';
 
 import { IS_TOUCH_ENV } from '../../util/environment';
+import { MEMO_EMPTY_ARRAY } from '../../util/memo';
 import { selectChat, selectUser, selectUserStatus } from '../../global/selectors';
 import {
   getUserFullName, getUserStatus, isChatChannel, isUserOnline,
@@ -18,11 +20,13 @@ import { captureEvents, SwipeDirection } from '../../util/captureEvents';
 import buildClassName from '../../util/buildClassName';
 import usePhotosPreload from './hooks/usePhotosPreload';
 import useLang from '../../hooks/useLang';
+import usePrevious from '../../hooks/usePrevious';
 
 import VerifiedIcon from './VerifiedIcon';
 import ProfilePhoto from './ProfilePhoto';
 import Transition from '../ui/Transition';
 import FakeIcon from './FakeIcon';
+import PremiumIcon from './PremiumIcon';
 
 import './ProfileInfo.scss';
 
@@ -37,8 +41,10 @@ type StateProps =
     userStatus?: ApiUserStatus;
     chat?: ApiChat;
     isSavedMessages?: boolean;
-    animationLevel: 0 | 1 | 2;
+    animationLevel: AnimationLevel;
     serverTimeOffset: number;
+    mediaId?: number;
+    avatarOwnerId?: string;
   }
   & Pick<GlobalState, 'connectionState'>;
 
@@ -51,10 +57,13 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
   connectionState,
   animationLevel,
   serverTimeOffset,
+  mediaId,
+  avatarOwnerId,
 }) => {
   const {
     loadFullUser,
     openMediaViewer,
+    openPremiumModal,
   } = getActions();
 
   const lang = useLang();
@@ -62,14 +71,25 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
   const { id: userId } = user || {};
   const { id: chatId } = chat || {};
   const fullName = user ? getUserFullName(user) : (chat ? chat.title : '');
-  const photos = user?.photos || chat?.photos || [];
-  const slideAnimation = animationLevel >= 1
-    ? (lang.isRtl ? 'slide-optimized-rtl' : 'slide-optimized')
+  const photos = user?.photos || chat?.photos || MEMO_EMPTY_ARRAY;
+  const prevMediaId = usePrevious(mediaId);
+  const prevAvatarOwnerId = usePrevious(avatarOwnerId);
+  const [hasSlideAnimation, setHasSlideAnimation] = useState(true);
+  const slideAnimation = hasSlideAnimation
+    ? animationLevel >= 1 ? (lang.isRtl ? 'slide-optimized-rtl' : 'slide-optimized') : 'none'
     : 'none';
 
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
   const isFirst = isSavedMessages || photos.length <= 1 || currentPhotoIndex === 0;
   const isLast = isSavedMessages || photos.length <= 1 || currentPhotoIndex === photos.length - 1;
+
+  // Set the current avatar photo to the last selected photo in Media Viewer after it is closed
+  useEffect(() => {
+    if (prevAvatarOwnerId && prevMediaId !== undefined && mediaId === undefined) {
+      setHasSlideAnimation(false);
+      setCurrentPhotoIndex(prevMediaId);
+    }
+  }, [mediaId, prevMediaId, prevAvatarOwnerId]);
 
   // Deleting the last profile photo may result in an error
   useEffect(() => {
@@ -89,16 +109,22 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
   const handleProfilePhotoClick = useCallback(() => {
     openMediaViewer({
       avatarOwnerId: userId || chatId,
-      profilePhotoIndex: currentPhotoIndex,
+      mediaId: currentPhotoIndex,
       origin: forceShowSelf ? MediaViewerOrigin.SettingsAvatar : MediaViewerOrigin.ProfileAvatar,
     });
   }, [openMediaViewer, userId, chatId, currentPhotoIndex, forceShowSelf]);
+
+  const handleClickPremium = useCallback(() => {
+    if (!user) return;
+
+    openPremiumModal({ fromUserId: user.id });
+  }, [openPremiumModal, user]);
 
   const selectPreviousMedia = useCallback(() => {
     if (isFirst) {
       return;
     }
-
+    setHasSlideAnimation(true);
     setCurrentPhotoIndex(currentPhotoIndex - 1);
   }, [currentPhotoIndex, isFirst]);
 
@@ -106,7 +132,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
     if (isLast) {
       return;
     }
-
+    setHasSlideAnimation(true);
     setCurrentPhotoIndex(currentPhotoIndex + 1);
   }, [currentPhotoIndex, isLast]);
 
@@ -151,9 +177,8 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
     );
   }
 
-  function renderPhoto() {
-    const photo = !isSavedMessages && photos && photos.length > 0 ? photos[currentPhotoIndex] : undefined;
-
+  function renderPhoto(isActive?: boolean) {
+    const photo = !isSavedMessages && photos.length > 0 ? photos[currentPhotoIndex] : undefined;
     return (
       <ProfilePhoto
         key={currentPhotoIndex}
@@ -162,6 +187,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
         photo={photo}
         isSavedMessages={isSavedMessages}
         isFirstPhoto={isFirst}
+        notActive={!isActive}
         onClick={handleProfilePhotoClick}
       />
     );
@@ -187,6 +213,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
   }
 
   const isVerifiedIconShown = (user || chat)?.isVerified;
+  const isPremiumIconShown = user?.isPremium;
   const fakeType = (user || chat)?.fakeType;
 
   return (
@@ -194,7 +221,7 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
       <div className="photo-wrapper">
         {renderPhotoTabs()}
         <Transition activeKey={currentPhotoIndex} name={slideAnimation} className="profile-slide-container">
-          {renderPhoto()}
+          {renderPhoto}
         </Transition>
 
         {!isFirst && (
@@ -218,12 +245,13 @@ const ProfileInfo: FC<OwnProps & StateProps> = ({
       <div className="info" dir={lang.isRtl ? 'rtl' : 'auto'}>
         {isSavedMessages ? (
           <div className="title">
-            <h3 dir="auto">{lang('SavedMessages')}</h3>
+            <div className="fullName" dir="auto">{lang('SavedMessages')}</div>
           </div>
         ) : (
           <div className="title">
-            <h3 dir="auto">{fullName && renderText(fullName)}</h3>
+            <div className="fullName" dir="auto">{fullName && renderText(fullName)}</div>
             {isVerifiedIconShown && <VerifiedIcon />}
+            {isPremiumIconShown && <PremiumIcon onClick={handleClickPremium} />}
             {fakeType && <FakeIcon fakeType={fakeType} />}
           </div>
         )}
@@ -241,6 +269,7 @@ export default memo(withGlobal<OwnProps>(
     const chat = selectChat(global, userId);
     const isSavedMessages = !forceShowSelf && user && user.isSelf;
     const { animationLevel } = global.settings.byKey;
+    const { mediaId, avatarOwnerId } = global.mediaViewer;
 
     return {
       connectionState,
@@ -250,6 +279,8 @@ export default memo(withGlobal<OwnProps>(
       isSavedMessages,
       animationLevel,
       serverTimeOffset,
+      mediaId,
+      avatarOwnerId,
     };
   },
 )(ProfileInfo));

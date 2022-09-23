@@ -4,28 +4,14 @@ import React, {
 } from '../../lib/teact/teact';
 
 import type {
-  ApiChat, ApiDimensions, ApiMessage, ApiUser,
+  ApiChat, ApiMessage, ApiUser,
 } from '../../api/types';
-import { ApiMediaFormat } from '../../api/types';
+import type { AnimationLevel } from '../../types';
 import { MediaViewerOrigin } from '../../types';
 
 import { getActions, withGlobal } from '../../global';
 import {
-  getChatAvatarHash,
   getChatMediaMessageIds,
-  getMessageDocument,
-  getMessageFileName,
-  getMessageMediaFormat,
-  getMessageMediaHash,
-  getMessageMediaThumbDataUri,
-  getMessagePhoto,
-  getMessageVideo,
-  getMessageWebPagePhoto,
-  getMessageWebPageVideo,
-  getPhotoFullDimensions,
-  getVideoDimensions,
-  isMessageDocumentPhoto,
-  isMessageDocumentVideo,
 } from '../../global/helpers';
 import {
   selectChat,
@@ -43,20 +29,18 @@ import { stopCurrentAudio } from '../../util/audioPlayer';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
 import { ANIMATION_END_DELAY } from '../../config';
-import { AVATAR_FULL_DIMENSIONS, MEDIA_VIEWER_MEDIA_QUERY } from '../common/helpers/mediaDimensions';
+import { MEDIA_VIEWER_MEDIA_QUERY } from '../common/helpers/mediaDimensions';
 import windowSize from '../../util/windowSize';
 import { animateClosing, animateOpening } from './helpers/ghostAnimation';
 import { renderMessageText } from '../common/helpers/renderMessageText';
 
-import useBlurSync from '../../hooks/useBlurSync';
 import useFlag from '../../hooks/useFlag';
 import useForceUpdate from '../../hooks/useForceUpdate';
 import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import useHistoryBack from '../../hooks/useHistoryBack';
 import useLang from '../../hooks/useLang';
-import useMedia from '../../hooks/useMedia';
-import useMediaWithLoadProgress from '../../hooks/useMediaWithLoadProgress';
 import usePrevious from '../../hooks/usePrevious';
+import { useMediaProps } from './hooks/useMediaProps';
 
 import ReportModal from '../common/ReportModal';
 import Button from '../ui/Button';
@@ -71,16 +55,15 @@ import './MediaViewer.scss';
 type StateProps = {
   chatId?: string;
   threadId?: number;
-  messageId?: number;
+  mediaId?: number;
   senderId?: string;
   isChatWithSelf?: boolean;
   origin?: MediaViewerOrigin;
   avatarOwner?: ApiChat | ApiUser;
-  profilePhotoIndex?: number;
   message?: ApiMessage;
   chatMessages?: Record<number, ApiMessage>;
   collectionIds?: number[];
-  animationLevel: 0 | 1 | 2;
+  animationLevel: AnimationLevel;
 };
 
 const ANIMATION_DURATION = 350;
@@ -88,12 +71,11 @@ const ANIMATION_DURATION = 350;
 const MediaViewer: FC<StateProps> = ({
   chatId,
   threadId,
-  messageId,
+  mediaId,
   senderId,
   isChatWithSelf,
   origin,
   avatarOwner,
-  profilePhotoIndex,
   message,
   chatMessages,
   collectionIds,
@@ -107,40 +89,11 @@ const MediaViewer: FC<StateProps> = ({
     toggleChatInfo,
   } = getActions();
 
-  const isOpen = Boolean(avatarOwner || messageId);
-
-  const isFromSharedMedia = origin === MediaViewerOrigin.SharedMedia;
-  const isFromSearch = origin === MediaViewerOrigin.SearchResult;
-
-  /* Content */
-  const photo = message ? getMessagePhoto(message) : undefined;
-  const video = message ? getMessageVideo(message) : undefined;
-  const webPagePhoto = message ? getMessageWebPagePhoto(message) : undefined;
-  const webPageVideo = message ? getMessageWebPageVideo(message) : undefined;
-  const isDocumentPhoto = message ? isMessageDocumentPhoto(message) : false;
-  const isDocumentVideo = message ? isMessageDocumentVideo(message) : false;
-  const isVideo = Boolean(video || webPageVideo || isDocumentVideo);
-  const { isGif } = video || webPageVideo || {};
-  const isPhoto = Boolean(!isVideo && (photo || webPagePhoto || isDocumentPhoto));
-  const isAvatar = Boolean(avatarOwner);
-
-  /* Navigation */
-  const singleMessageId = webPagePhoto || webPageVideo ? messageId : undefined;
-
-  const messageIds = useMemo(() => {
-    return singleMessageId
-      ? [singleMessageId]
-      : getChatMediaMessageIds(chatMessages || {}, collectionIds || [], isFromSharedMedia);
-  }, [singleMessageId, chatMessages, collectionIds, isFromSharedMedia]);
-
-  const selectedMediaMessageIndex = messageId ? messageIds.indexOf(messageId) : -1;
+  const isOpen = Boolean(avatarOwner || mediaId);
 
   /* Animation */
   const animationKey = useRef<number>();
   const prevSenderId = usePrevious<string | undefined>(senderId);
-  if (isOpen && (!prevSenderId || prevSenderId !== senderId || !animationKey.current)) {
-    animationKey.current = selectedMediaMessageIndex;
-  }
   const headerAnimation = animationLevel === 2 ? 'slide-fade' : 'none';
   const isGhostAnimation = animationLevel === 2;
 
@@ -148,74 +101,46 @@ const MediaViewer: FC<StateProps> = ({
   const [isReportModalOpen, openReportModal, closeReportModal] = useFlag();
   const [zoomLevelChange, setZoomLevelChange] = useState<number>(1);
 
-  /* Media data */
-  function getMediaHash(isFull?: boolean) {
-    if (isAvatar && profilePhotoIndex !== undefined) {
-      const { photos } = avatarOwner!;
-      return photos && photos[profilePhotoIndex]
-        ? `photo${photos[profilePhotoIndex].id}?size=c`
-        : getChatAvatarHash(avatarOwner!, isFull ? 'big' : 'normal');
+  const {
+    webPagePhoto,
+    webPageVideo,
+    isVideo,
+    isPhoto,
+    bestImageData,
+    dimensions,
+    isGif,
+    isFromSharedMedia,
+    avatarPhoto,
+    fileName,
+    fullMediaBlobUrl,
+    previewBlobUrl,
+  } = useMediaProps({
+    message, avatarOwner, mediaId, delay: isGhostAnimation && ANIMATION_DURATION,
+  });
+
+  const canReport = !!avatarPhoto && !isChatWithSelf;
+
+  /* Navigation */
+  const singleMediaId = webPagePhoto || webPageVideo ? mediaId : undefined;
+
+  const mediaIds = useMemo(() => {
+    if (singleMediaId) {
+      return [singleMediaId];
+    } else if (avatarOwner) {
+      return avatarOwner.photos?.map((p, i) => i) || [];
+    } else {
+      return getChatMediaMessageIds(chatMessages || {}, collectionIds || [], isFromSharedMedia);
     }
+  }, [singleMediaId, avatarOwner, chatMessages, collectionIds, isFromSharedMedia]);
 
-    return message && getMessageMediaHash(message, isFull ? 'viewerFull' : 'viewerPreview');
-  }
+  const selectedMediaIndex = mediaId ? mediaIds.indexOf(mediaId) : -1;
 
-  const pictogramBlobUrl = useMedia(
-    message && (isFromSharedMedia || isFromSearch) && getMessageMediaHash(message, 'pictogram'),
-    undefined,
-    ApiMediaFormat.BlobUrl,
-    undefined,
-    isGhostAnimation && ANIMATION_DURATION,
-  );
-  const previewMediaHash = getMediaHash();
-  const previewBlobUrl = useMedia(
-    previewMediaHash,
-    undefined,
-    ApiMediaFormat.BlobUrl,
-    undefined,
-    isGhostAnimation && ANIMATION_DURATION,
-  );
-  const { mediaData: fullMediaBlobUrl } = useMediaWithLoadProgress(
-    getMediaHash(true),
-    undefined,
-    message && getMessageMediaFormat(message, 'viewerFull'),
-    undefined,
-    isGhostAnimation && ANIMATION_DURATION,
-  );
-  const avatarPhoto = avatarOwner?.photos?.[profilePhotoIndex!];
-  const canReport = !!avatarPhoto && profilePhotoIndex! > 0 && !isChatWithSelf;
-
-  const localBlobUrl = (photo || video) ? (photo || video)!.blobUrl : undefined;
-  let bestImageData = (!isVideo && (localBlobUrl || fullMediaBlobUrl)) || previewBlobUrl || pictogramBlobUrl;
-  const thumbDataUri = useBlurSync(!bestImageData && message && getMessageMediaThumbDataUri(message));
-  if (!bestImageData && origin !== MediaViewerOrigin.SearchResult) {
-    bestImageData = thumbDataUri;
-  }
-
-  const fileName = message
-    ? getMessageFileName(message)
-    : isAvatar
-      ? `avatar${avatarOwner!.id}-${profilePhotoIndex}.jpg`
-      : undefined;
-
-  let dimensions!: ApiDimensions;
-  if (message) {
-    if (isDocumentPhoto || isDocumentVideo) {
-      dimensions = getMessageDocument(message)!.mediaSize!;
-    } else if (photo || webPagePhoto) {
-      dimensions = getPhotoFullDimensions((photo || webPagePhoto)!)!;
-    } else if (video || webPageVideo) {
-      dimensions = getVideoDimensions((video || webPageVideo)!)!;
-    }
-  } else {
-    dimensions = AVATAR_FULL_DIMENSIONS;
+  if (isOpen && (!prevSenderId || prevSenderId !== senderId || !animationKey.current)) {
+    animationKey.current = selectedMediaIndex;
   }
 
   useEffect(() => {
-    if (!IS_SINGLE_COLUMN_LAYOUT) {
-      return;
-    }
-
+    if (!IS_SINGLE_COLUMN_LAYOUT) return;
     document.body.classList.toggle('is-media-viewer-open', isOpen);
   }, [isOpen]);
 
@@ -269,28 +194,31 @@ const MediaViewer: FC<StateProps> = ({
     if (IS_SINGLE_COLUMN_LAYOUT) {
       setTimeout(() => {
         toggleChatInfo(false, { forceSyncOnIOs: true });
-        focusMessage({ chatId, threadId, messageId });
+        focusMessage({ chatId, threadId, mediaId });
       }, ANIMATION_DURATION);
     } else {
-      focusMessage({ chatId, threadId, messageId });
+      focusMessage({ chatId, threadId, mediaId });
     }
-  }, [close, chatId, threadId, focusMessage, toggleChatInfo, messageId]);
+  }, [close, chatId, threadId, focusMessage, toggleChatInfo, mediaId]);
 
   const handleForward = useCallback(() => {
     openForwardMenu({
-      fromChatId: chatId,
-      messageIds: [messageId],
+      fromChatId: chatId!,
+      messageIds: [mediaId!],
     });
-  }, [openForwardMenu, chatId, messageId]);
+  }, [openForwardMenu, chatId, mediaId]);
 
-  const selectMessage = useCallback((id?: number) => openMediaViewer({
-    chatId,
-    threadId,
-    messageId: id,
-    origin,
-  }, {
-    forceOnHeavyAnimation: true,
-  }), [chatId, openMediaViewer, origin, threadId]);
+  const selectMedia = useCallback((id?: number) => {
+    openMediaViewer({
+      chatId,
+      threadId,
+      mediaId: id,
+      avatarOwnerId: avatarOwner?.id,
+      origin,
+    }, {
+      forceOnHeavyAnimation: true,
+    });
+  }, [avatarOwner?.id, chatId, openMediaViewer, origin, threadId]);
 
   useEffect(() => (isOpen ? captureEscKeyListener(() => {
     close();
@@ -315,14 +243,14 @@ const MediaViewer: FC<StateProps> = ({
     };
   }, [isOpen]);
 
-  const getMessageId = useCallback((fromId?: number, direction?: number): number | undefined => {
-    if (!fromId) return undefined;
-    const index = messageIds.indexOf(fromId);
-    if ((direction === -1 && index > 0) || (direction === 1 && index < messageIds.length - 1)) {
-      return messageIds[index + direction];
+  const getMediaId = useCallback((fromId?: number, direction?: number): number | undefined => {
+    if (fromId === undefined) return undefined;
+    const index = mediaIds.indexOf(fromId);
+    if ((direction === -1 && index > 0) || (direction === 1 && index < mediaIds.length - 1)) {
+      return mediaIds[index + direction];
     }
     return undefined;
-  }, [messageIds]);
+  }, [mediaIds]);
 
   const lang = useLang();
 
@@ -332,17 +260,17 @@ const MediaViewer: FC<StateProps> = ({
   });
 
   function renderSenderInfo() {
-    return isAvatar ? (
+    return avatarOwner ? (
       <SenderInfo
-        key={avatarOwner!.id}
-        chatId={avatarOwner!.id}
+        key={avatarOwner.id}
+        chatId={avatarOwner.id}
         isAvatar
       />
     ) : (
       <SenderInfo
-        key={messageId}
+        key={mediaId}
         chatId={chatId}
-        messageId={messageId}
+        messageId={mediaId}
       />
     );
   }
@@ -376,7 +304,7 @@ const MediaViewer: FC<StateProps> = ({
           onForward={handleForward}
           zoomLevelChange={zoomLevelChange}
           setZoomLevelChange={setZoomLevelChange}
-          isAvatar={isAvatar}
+          isAvatar={Boolean(avatarOwner)}
         />
         <ReportModal
           isOpen={isReportModalOpen}
@@ -387,23 +315,21 @@ const MediaViewer: FC<StateProps> = ({
         />
       </div>
       <MediaViewerSlides
-        messageId={messageId}
-        getMessageId={getMessageId}
+        mediaId={mediaId}
+        getMediaId={getMediaId}
         chatId={chatId}
         isPhoto={isPhoto}
         isGif={isGif}
         threadId={threadId}
-        avatarOwnerId={avatarOwner && avatarOwner.id}
-        profilePhotoIndex={profilePhotoIndex}
+        avatarOwnerId={avatarOwner?.id}
         origin={origin}
         isOpen={isOpen}
         hasFooter={hasFooter}
         zoomLevelChange={zoomLevelChange}
-        isActive
         isVideo={isVideo}
         animationLevel={animationLevel}
         onClose={close}
-        selectMessage={selectMessage}
+        selectMedia={selectMedia}
         onFooterClick={handleFooterClick}
       />
     </ShowTransition>
@@ -415,9 +341,8 @@ export default memo(withGlobal(
     const {
       chatId,
       threadId,
-      messageId,
+      mediaId,
       avatarOwnerId,
-      profilePhotoIndex,
       origin,
     } = global.mediaViewer;
     const {
@@ -427,18 +352,18 @@ export default memo(withGlobal(
     let isChatWithSelf = !!chatId && selectIsChatWithSelf(global, chatId);
 
     if (origin === MediaViewerOrigin.SearchResult) {
-      if (!(chatId && messageId)) {
+      if (!(chatId && mediaId)) {
         return { animationLevel };
       }
 
-      const message = selectChatMessage(global, chatId, messageId);
+      const message = selectChatMessage(global, chatId, mediaId);
       if (!message) {
         return { animationLevel };
       }
 
       return {
         chatId,
-        messageId,
+        mediaId,
         senderId: message.senderId,
         isChatWithSelf,
         origin,
@@ -452,25 +377,24 @@ export default memo(withGlobal(
       isChatWithSelf = selectIsChatWithSelf(global, avatarOwnerId);
 
       return {
-        messageId: -1,
+        mediaId,
         senderId: avatarOwnerId,
         avatarOwner: sender,
         isChatWithSelf,
-        profilePhotoIndex: profilePhotoIndex || 0,
         animationLevel,
         origin,
       };
     }
 
-    if (!(chatId && threadId && messageId)) {
+    if (!(chatId && threadId && mediaId)) {
       return { animationLevel };
     }
 
     let message: ApiMessage | undefined;
     if (origin && [MediaViewerOrigin.ScheduledAlbum, MediaViewerOrigin.ScheduledInline].includes(origin)) {
-      message = selectScheduledMessage(global, chatId, messageId);
+      message = selectScheduledMessage(global, chatId, mediaId);
     } else {
-      message = selectChatMessage(global, chatId, messageId);
+      message = selectChatMessage(global, chatId, mediaId);
     }
 
     if (!message) {
@@ -497,7 +421,7 @@ export default memo(withGlobal(
     return {
       chatId,
       threadId,
-      messageId,
+      mediaId,
       senderId: message.senderId,
       isChatWithSelf,
       origin,

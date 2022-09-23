@@ -212,7 +212,7 @@ addActionHandler('connectToActiveGroupCall', async (global, actions) => {
   }
 });
 
-addActionHandler('connectToActivePhoneCall', async (global) => {
+addActionHandler('connectToActivePhoneCall', async (global, actions) => {
   const { phoneCall } = global;
 
   if (!phoneCall) return;
@@ -229,7 +229,11 @@ addActionHandler('connectToActivePhoneCall', async (global) => {
 
   const gAHash = await callApi('requestPhoneCall', [dhConfig])!;
 
-  await callApi('requestCall', { user, gAHash, isVideo: phoneCall.isVideo });
+  const result = await callApi('requestCall', { user, gAHash, isVideo: phoneCall.isVideo });
+
+  if (!result) {
+    actions.hangUp();
+  }
 });
 
 addActionHandler('acceptCall', async (global) => {
@@ -312,6 +316,14 @@ addActionHandler('hangUp', (global) => {
       isCallPanelVisible: undefined,
     };
   }
+
+  setTimeout(() => {
+    setGlobal({
+      ...getGlobal(),
+      phoneCall: undefined,
+      isCallPanelVisible: undefined,
+    });
+  }, 500);
 
   return undefined;
 });

@@ -7,6 +7,7 @@ import { FocusDirection } from '../../../types';
 import {
   ANIMATION_END_DELAY,
   APP_VERSION,
+  RELEASE_DATETIME,
   FAST_SMOOTH_MAX_DURATION,
   SERVICE_NOTIFICATIONS_USER_ID,
 } from '../../../config';
@@ -34,6 +35,7 @@ import {
   selectReplyingToId,
   selectReplyStack,
   selectSender,
+  selectScheduledMessages,
 } from '../../selectors';
 import { findLast } from '../../../util/iteratees';
 import { getServerTime } from '../../../util/serverTime';
@@ -48,6 +50,7 @@ import type { GlobalState } from '../../types';
 const FOCUS_DURATION = 1500;
 const FOCUS_NO_HIGHLIGHT_DURATION = FAST_SMOOTH_MAX_DURATION + ANIMATION_END_DELAY;
 const POLL_RESULT_OPEN_DELAY_MS = 450;
+const VERSION_NOTIFICATION_DURATION = 1000 * 60 * 60 * 24 * 3; // 3 days
 const SERVICE_NOTIFICATIONS_MAX_AMOUNT = 1e3;
 
 let blurTimeout: number | undefined;
@@ -413,7 +416,7 @@ addActionHandler('focusMessage', (global, actions, payload) => {
 addActionHandler('openForwardMenu', (global, actions, payload) => {
   const {
     fromChatId, messageIds, groupedId, withMyScore,
-  } = payload!;
+  } = payload;
   let groupedMessageIds;
   if (groupedId) {
     groupedMessageIds = selectMessageIdsByGroupId(global, fromChatId, groupedId);
@@ -429,28 +432,46 @@ addActionHandler('openForwardMenu', (global, actions, payload) => {
   };
 });
 
+addActionHandler('changeForwardRecipient', (global) => {
+  return {
+    ...global,
+    forwardMessages: {
+      ...global.forwardMessages,
+      toChatId: undefined,
+      isModalShown: true,
+      noAuthors: false,
+      noCaptions: false,
+    },
+  };
+});
+
+addActionHandler('setForwardNoAuthors', (global, actions, payload) => {
+  return {
+    ...global,
+    forwardMessages: {
+      ...global.forwardMessages,
+      noAuthors: payload,
+      noCaptions: payload && global.forwardMessages.noCaptions, // `noCaptions` cannot be true when `noAuthors` is false
+    },
+  };
+});
+
+addActionHandler('setForwardNoCaptions', (global, actions, payload) => {
+  return {
+    ...global,
+    forwardMessages: {
+      ...global.forwardMessages,
+      noCaptions: payload,
+      noAuthors: payload, // On other clients `noAuthors` updates together with `noCaptions`
+    },
+  };
+});
+
 addActionHandler('exitForwardMode', (global) => {
   setGlobal({
     ...global,
     forwardMessages: {},
   });
-});
-
-addActionHandler('setForwardChatId', (global, actions, payload) => {
-  const { id } = payload!;
-
-  setGlobal({
-    ...global,
-    forwardMessages: {
-      ...global.forwardMessages,
-      toChatId: id,
-      isModalShown: false,
-    },
-  });
-
-  actions.openChat({ id });
-  actions.closeMediaViewer();
-  actions.exitMessageSelectMode();
 });
 
 addActionHandler('openForwardMenuForSelectedMessages', (global, actions) => {
@@ -598,6 +619,10 @@ addActionHandler('closePollModal', (global) => {
 });
 
 addActionHandler('checkVersionNotification', (global, actions) => {
+  if (RELEASE_DATETIME && Date.now() > Number(RELEASE_DATETIME) + VERSION_NOTIFICATION_DURATION) {
+    return;
+  }
+
   const currentVersion = APP_VERSION.split('.').slice(0, 2).join('.');
   const { serviceNotifications } = global;
 
@@ -711,10 +736,12 @@ addActionHandler('copyMessagesByIds', (global, actions, payload: { messageIds?: 
 });
 
 function copyTextForMessages(global: GlobalState, chatId: string, messageIds: number[]) {
-  const { threadId } = selectCurrentMessageList(global) || {};
+  const { type: messageListType, threadId } = selectCurrentMessageList(global) || {};
   const lang = langProvider.getTranslation;
 
-  const chatMessages = selectChatMessages(global, chatId);
+  const chatMessages = messageListType === 'scheduled'
+    ? selectScheduledMessages(global, chatId)
+    : selectChatMessages(global, chatId);
   if (!chatMessages || !threadId) return;
   const messages = messageIds
     .map((id) => chatMessages[id])

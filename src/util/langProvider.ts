@@ -204,12 +204,15 @@ function processTemplate(template: string, value: any) {
   const initialValue = translationSlices.shift();
 
   return translationSlices.reduce((result, str, index) => {
-    return `${result}${String(value[index] || '')}${str}`;
+    return `${result}${String(value[index] ?? '')}${str}`;
   }, initialValue || '');
 }
 
 function processTranslation(langString: ApiLangString | undefined, key: string, value?: any, format?: 'i') {
-  const template = langString ? langString[typeof value === 'number' ? getPluralOption(value) : 'value'] : undefined;
+  const preferredPluralOption = typeof value === 'number' ? getPluralOption(value) : 'value';
+  const template = langString ? (
+    langString[preferredPluralOption] || langString.otherValue || langString.value
+  ) : undefined;
   if (!template || !template.trim()) {
     const parts = key.split('.');
 

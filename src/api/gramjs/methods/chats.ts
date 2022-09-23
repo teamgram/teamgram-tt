@@ -16,7 +16,7 @@ import type {
 } from '../../types';
 
 import {
-  DEBUG, ARCHIVED_FOLDER_ID, MEMBERS_LOAD_SLICE, SERVICE_NOTIFICATIONS_USER_ID,
+  DEBUG, ARCHIVED_FOLDER_ID, MEMBERS_LOAD_SLICE, SERVICE_NOTIFICATIONS_USER_ID, ALL_FOLDER_ID,
 } from '../../../config';
 import { invokeRequest, uploadFile } from './client';
 import {
@@ -45,6 +45,7 @@ import { addEntitiesWithPhotosToLocalDb, addMessageToLocalDb, addPhotoToLocalDb 
 import { buildApiPeerId, getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 import { buildApiPhoto } from '../apiBuilders/common';
 import { buildStickerSet } from '../apiBuilders/symbols';
+import localDb from '../localDb';
 
 type FullChatData = {
   fullInfo: ApiChatFullInfo;
@@ -371,7 +372,12 @@ async function getFullChatInfo(chatId: string): Promise<FullChatData | undefined
     availableReactions,
     recentRequesters,
     requestsPending,
+    chatPhoto,
   } = result.fullChat;
+
+  if (chatPhoto instanceof GramJs.Photo) {
+    localDb.photos[chatPhoto.id.toString()] = chatPhoto;
+  }
 
   const members = buildChatMembers(participants);
   const adminMembers = members ? members.filter(({ isAdmin, isOwner }) => isAdmin || isOwner) : undefined;
@@ -380,12 +386,14 @@ async function getFullChatInfo(chatId: string): Promise<FullChatData | undefined
 
   return {
     fullInfo: {
+      ...(chatPhoto instanceof GramJs.Photo && { profilePhoto: buildApiPhoto(chatPhoto) }),
       about,
       members,
       adminMembers,
       canViewMembers: true,
       botCommands,
-      ...(exportedInvite && {
+      ...(exportedInvite instanceof GramJs.ChatInviteExported && {
+        // TODO Verify Exported Invite logic
         inviteLink: exportedInvite.link,
       }),
       groupCallId: call?.id.toString(),
@@ -443,7 +451,12 @@ async function getFullChannelInfo(
     statsDc,
     participantsCount,
     stickerset,
+    chatPhoto,
   } = result.fullChat;
+
+  if (chatPhoto instanceof GramJs.Photo) {
+    localDb.photos[chatPhoto.id.toString()] = chatPhoto;
+  }
 
   const inviteLink = exportedInvite instanceof GramJs.ChatInviteExported
     ? exportedInvite.link
@@ -462,7 +475,7 @@ async function getFullChannelInfo(
     updateLocalDb(result);
 
     const [, mtpLinkedChat] = result.chats;
-    const chat = buildApiChatFromPreview(mtpLinkedChat, undefined, true);
+    const chat = buildApiChatFromPreview(mtpLinkedChat);
     if (chat) {
       onUpdate({
         '@type': 'updateChat',
@@ -480,6 +493,7 @@ async function getFullChannelInfo(
 
   return {
     fullInfo: {
+      ...(chatPhoto instanceof GramJs.Photo && { profilePhoto: buildApiPhoto(chatPhoto) }),
       about,
       onlineCount,
       inviteLink,
@@ -557,7 +571,7 @@ export async function createChannel({
     broadcast: true,
     title,
     about,
-  }));
+  }), undefined, true);
 
   // `createChannel` can return a lot of different update types according to docs,
   // but currently channel creation returns only `Updates` type.
@@ -602,7 +616,7 @@ export function joinChannel({
 }) {
   return invokeRequest(new GramJs.channels.JoinChannel({
     channel: buildInputEntity(channelId, accessHash) as GramJs.InputChannel,
-  }), true);
+  }), true, true);
 }
 
 export function deleteChatUser({
@@ -753,9 +767,18 @@ export async function fetchChatFolders() {
     return undefined;
   }
 
+  const defaultFolderPosition = result.findIndex((l) => l instanceof GramJs.DialogFilterDefault);
+  const dialogFilters = result.filter((df): df is GramJs.DialogFilter => df instanceof GramJs.DialogFilter);
+  const orderedIds = dialogFilters.map(({ id }) => id);
+  if (defaultFolderPosition !== -1) {
+    orderedIds.splice(defaultFolderPosition, 0, ALL_FOLDER_ID);
+  }
   return {
-    byId: buildCollectionByKey(result.map(buildApiChatFolder), 'id') as Record<number, ApiChatFolder>,
-    orderedIds: result.map(({ id }) => id),
+    byId: buildCollectionByKey(
+      dialogFilters
+        .map(buildApiChatFolder), 'id',
+    ) as Record<number, ApiChatFolder>,
+    orderedIds,
   };
 }
 
@@ -766,7 +789,7 @@ export async function fetchRecommendedChatFolders() {
     return undefined;
   }
 
-  return results.map(buildApiChatFolderFromSuggested);
+  return results.map(buildApiChatFolderFromSuggested).filter(Boolean);
 }
 
 export async function editChatFolder({
@@ -812,6 +835,12 @@ export async function deleteChatFolder(id: number) {
       folders: recommendedChatFolders,
     });
   }
+}
+
+export function sortChatFolders(ids: number[]) {
+  return invokeRequest(new GramJs.messages.UpdateDialogFiltersOrder({
+    order: ids,
+  }));
 }
 
 export async function toggleDialogUnread({
@@ -1044,6 +1073,8 @@ export function setDiscussionGroup({
 export async function migrateChat(chat: ApiChat) {
   const result = await invokeRequest(
     new GramJs.messages.MigrateChat({ chatId: buildInputEntity(chat.id) as BigInt.BigInteger }),
+    undefined,
+    true,
   );
 
   // `migrateChat` can return a lot of different update types according to docs,
@@ -1162,16 +1193,30 @@ export function deleteChatMember(chat: ApiChat, user: ApiUser) {
   }
 }
 
+export function toggleJoinToSend(chat: ApiChat, isEnabled: boolean) {
+  return invokeRequest(new GramJs.channels.ToggleJoinToSend({
+    channel: buildInputEntity(chat.id, chat.accessHash) as GramJs.InputChannel,
+    enabled: isEnabled,
+  }), true);
+}
+
+export function toggleJoinRequest(chat: ApiChat, isEnabled: boolean) {
+  return invokeRequest(new GramJs.channels.ToggleJoinRequest({
+    channel: buildInputEntity(chat.id, chat.accessHash) as GramJs.InputChannel,
+    enabled: isEnabled,
+  }), true);
+}
+
 function preparePeers(
   result: GramJs.messages.Dialogs | GramJs.messages.DialogsSlice | GramJs.messages.PeerDialogs,
 ) {
   const store: Record<string, GramJs.TypeChat | GramJs.TypeUser> = {};
 
-  result.chats.forEach((chat) => {
+  result.chats?.forEach((chat) => {
     store[`chat${chat.id}`] = chat;
   });
 
-  result.users.forEach((user) => {
+  result.users?.forEach((user) => {
     store[`user${user.id}`] = user;
   });
 

@@ -5,9 +5,9 @@ import React, {
 import buildClassName from '../../util/buildClassName';
 
 import useFlag from '../../hooks/useFlag';
-import { IS_IOS, IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
+import { IS_IOS, IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../util/environment';
 import { formatMediaDuration } from '../../util/dateFormat';
-import formatFileSize from './helpers/formatFileSize';
+import { formatFileSize } from '../../util/textFormat';
 import useLang from '../../hooks/useLang';
 import type { BufferedRange } from '../../hooks/useBuffering';
 import { captureEvents } from '../../util/captureEvents';
@@ -54,7 +54,7 @@ const PLAYBACK_RATES = [
   2,
 ];
 
-const HIDE_CONTROLS_TIMEOUT_MS = 1500;
+const HIDE_CONTROLS_TIMEOUT_MS = 3000;
 
 const VideoPlayerControls: FC<OwnProps> = ({
   bufferedRanges,
@@ -86,6 +86,7 @@ const VideoPlayerControls: FC<OwnProps> = ({
   const isSeeking = isSeekingRef.current;
 
   useEffect(() => {
+    if (!IS_TOUCH_ENV) return undefined;
     let timeout: number | undefined;
     if (!isVisible || !isPlayed || isSeeking || isPlaybackMenuOpen) {
       if (timeout) window.clearTimeout(timeout);
@@ -187,7 +188,11 @@ const VideoPlayerControls: FC<OwnProps> = ({
           <RangeSlider bold className="volume-slider" value={isMuted ? 0 : volume * 100} onChange={onVolumeChange} />
         )}
         {renderTime(currentTime, duration)}
-        {!isBuffered && renderFileSize(bufferedProgress, fileSize)}
+        {!isBuffered && (
+          <div className="player-file-size">
+            {`${formatFileSize(lang, fileSize * bufferedProgress)} / ${formatFileSize(lang, fileSize)}`}
+          </div>
+        )}
         <div className="spacer" />
         <Button
           ariaLabel="Playback rate"
@@ -214,7 +219,7 @@ const VideoPlayerControls: FC<OwnProps> = ({
       </div>
       <Menu
         isOpen={isPlaybackMenuOpen}
-        className="playback-rate-menu"
+        className={buildClassName('playback-rate-menu', !isFullscreenSupported && 'no-fullscreen')}
         positionX="right"
         positionY="bottom"
         autoClose
@@ -235,14 +240,6 @@ function renderTime(currentTime: number, duration: number) {
   return (
     <div className="player-time">
       {`${formatMediaDuration(currentTime)} / ${formatMediaDuration(duration)}`}
-    </div>
-  );
-}
-
-function renderFileSize(loadedPercent: number, totalSize: number) {
-  return (
-    <div className="player-file-size">
-      {`${formatFileSize(totalSize * loadedPercent)} / ${formatFileSize(totalSize)}`}
     </div>
   );
 }

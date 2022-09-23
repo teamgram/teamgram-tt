@@ -1,19 +1,24 @@
 import type {
   ApiAudio,
+  ApiDimensions,
+  ApiDocument,
+  ApiGame,
+  ApiLocation,
   ApiMessage,
   ApiMessageSearchType,
   ApiPhoto,
   ApiVideo,
-  ApiDimensions,
-  ApiLocation,
-  ApiGame,
-  ApiDocument,
+  ApiWebDocument,
 } from '../../api/types';
-import {
-  ApiMediaFormat,
-} from '../../api/types';
+import { ApiMediaFormat } from '../../api/types';
 
-import { IS_OPUS_SUPPORTED, IS_PROGRESSIVE_SUPPORTED, IS_SAFARI } from '../../util/environment';
+import {
+  IS_OPFS_SUPPORTED,
+  IS_OPUS_SUPPORTED,
+  IS_PROGRESSIVE_SUPPORTED,
+  IS_SAFARI,
+  MAX_BUFFER_SIZE,
+} from '../../util/environment';
 import { getMessageKey, isMessageLocal, matchLinkInMessageText } from './messages';
 import { getDocumentHasPreview } from '../../components/common/helpers/documentInfo';
 
@@ -267,6 +272,11 @@ export function getMessageMediaHash(
   return undefined;
 }
 
+export function getWebDocumentHash(webDocument?: ApiWebDocument) {
+  if (!webDocument) return undefined;
+  return `webDocument:${webDocument.url}`;
+}
+
 export function getGamePreviewPhotoHash(game: ApiGame) {
   const { photo } = game;
 
@@ -302,14 +312,25 @@ export function getAudioHasCover(media: ApiAudio) {
 export function getMessageMediaFormat(
   message: ApiMessage, target: Target,
 ): ApiMediaFormat {
-  const { video, audio, voice } = message.content;
+  const {
+    video, audio, voice, document,
+  } = message.content;
   const fullVideo = video || getMessageWebPageVideo(message);
+  const size = (video || audio || document)?.size!;
+  if (target === 'download') {
+    if (IS_PROGRESSIVE_SUPPORTED && size > MAX_BUFFER_SIZE && !IS_OPFS_SUPPORTED) {
+      return ApiMediaFormat.DownloadUrl;
+    }
+    return ApiMediaFormat.BlobUrl;
+  }
 
   if (fullVideo && IS_PROGRESSIVE_SUPPORTED && (
     target === 'viewerFull' || target === 'inline'
   )) {
     return ApiMediaFormat.Progressive;
-  } else if (audio || voice) {
+  }
+
+  if (audio || voice) {
     // Safari
     if (voice && !IS_OPUS_SUPPORTED) {
       return ApiMediaFormat.BlobUrl;
@@ -357,7 +378,7 @@ export function getChatMediaMessageIds(
   return getMessageContentIds(messages, listedIds, isFromSharedMedia ? 'media' : 'inlineMedia');
 }
 
-export function getPhotoFullDimensions(photo: ApiPhoto): ApiDimensions | undefined {
+export function getPhotoFullDimensions(photo: Pick<ApiPhoto, 'sizes' | 'thumbnail'>): ApiDimensions | undefined {
   return (
     photo.sizes.find((size) => size.type === 'z')
     || photo.sizes.find((size) => size.type === 'y')
@@ -365,7 +386,7 @@ export function getPhotoFullDimensions(photo: ApiPhoto): ApiDimensions | undefin
   );
 }
 
-export function getPhotoInlineDimensions(photo: ApiPhoto): ApiDimensions | undefined {
+export function getPhotoInlineDimensions(photo: Pick<ApiPhoto, 'sizes' | 'thumbnail'>): ApiDimensions | undefined {
   return (
     photo.sizes.find((size) => size.type === 'x')
     || photo.sizes.find((size) => size.type === 'm')

@@ -38,6 +38,11 @@ import type {
   ApiAttachMenuBot,
   ApiPhoneCall,
   ApiWebSession,
+  ApiPremiumPromo,
+  ApiTranscription,
+  ApiInputInvoice,
+  ApiInvoice,
+  ApiStickerSetInfo,
 } from '../api/types';
 import type {
   FocusDirection,
@@ -118,7 +123,17 @@ export interface ServiceNotification {
   message: ApiMessage;
   version?: string;
   isUnread?: boolean;
+  isDeleted?: boolean;
 }
+
+export type ApiLimitType = (
+  'uploadMaxFileparts' | 'stickersFaved' | 'savedGifs' | 'dialogFiltersChats' | 'dialogFilters' | 'dialogFolderPinned' |
+  'captionLength' | 'channels' | 'channelsPublic' | 'aboutLength'
+);
+
+export type ApiLimitTypeWithModal = Exclude<ApiLimitType, (
+  'captionLength' | 'aboutLength' | 'stickersFaved' | 'savedGifs'
+)>;
 
 export type GlobalState = {
   appConfig?: ApiAppConfig;
@@ -132,6 +147,7 @@ export type GlobalState = {
   connectionState?: ApiUpdateConnectionStateType;
   currentUserId?: string;
   isSyncing?: boolean;
+  isUpdateAvailable?: boolean;
   lastSyncTime?: number;
   serverTimeOffset: number;
   leftColumnWidth?: number;
@@ -260,6 +276,7 @@ export type GlobalState = {
   };
 
   recentEmojis: string[];
+  recentCustomEmojis: string[];
 
   stickers: {
     setsById: Record<string, ApiStickerSet>;
@@ -279,6 +296,14 @@ export type GlobalState = {
       hash?: string;
       stickers: ApiSticker[];
     };
+    premium: {
+      hash?: string;
+      stickers: ApiSticker[];
+    };
+    premiumSet: {
+      hash?: string;
+      stickers: ApiSticker[];
+    };
     featured: {
       hash?: string;
       setIds?: string[];
@@ -294,8 +319,18 @@ export type GlobalState = {
     };
   };
 
+  customEmojis: {
+    added: {
+      hash?: string;
+      setIds?: string[];
+    };
+    lastRendered: string[];
+    byId: Record<string, ApiSticker>;
+  };
+
   animatedEmojis?: ApiStickerSet;
   animatedEmojiEffects?: ApiStickerSet;
+  premiumGifts?: ApiStickerSet;
   emojiKeywords: Partial<Record<LangCode, EmojiKeywords>>;
 
   gifs: {
@@ -382,7 +417,7 @@ export type GlobalState = {
   mediaViewer: {
     chatId?: string;
     threadId?: number;
-    messageId?: number;
+    mediaId?: number;
     avatarOwnerId?: string;
     profilePhotoIndex?: number;
     origin?: MediaViewerOrigin;
@@ -419,6 +454,8 @@ export type GlobalState = {
     messageIds?: number[];
     toChatId?: string;
     withMyScore?: boolean;
+    noAuthors?: boolean;
+    noCaptions?: boolean;
   };
 
   pollResults: {
@@ -429,23 +466,16 @@ export type GlobalState = {
   };
 
   payment: {
-    chatId?: string;
-    messageId?: number;
+    inputInvoice?: ApiInputInvoice;
     step?: PaymentStep;
+    status?: 'paid' | 'failed' | 'pending' | 'cancelled';
     shippingOptions?: ShippingOption[];
     formId?: string;
     requestId?: string;
     savedInfo?: ApiPaymentSavedInfo;
     canSaveCredentials?: boolean;
     invoice?: Invoice;
-    invoiceContent?: {
-      title?: string;
-      text?: string;
-      photoUrl?: string;
-      amount?: number;
-      currency?: string;
-      isTest?: boolean;
-    };
+    invoiceContent?: Omit<ApiInvoice, 'receiptMsgId'>;
     nativeProvider?: string;
     providerId?: string;
     nativeParams?: ApiPaymentFormNativeParams;
@@ -528,6 +558,7 @@ export type GlobalState = {
   safeLinkModalUrl?: string;
   historyCalendarSelectedAt?: number;
   openedStickerSetShortName?: string;
+  openedCustomEmojiSetIds?: string[];
 
   activeDownloads: {
     byChatId: Record<string, number[]>;
@@ -571,14 +602,15 @@ export type GlobalState = {
 
   webApp?: {
     url: string;
-    bot: ApiUser;
+    botId: string;
     buttonText: string;
     queryId?: string;
+    slug?: string;
   };
 
   trustedBotIds: string[];
   botTrustRequest?: {
-    bot: ApiUser;
+    botId: string;
     type: 'game' | 'webApp';
     onConfirm?: {
       action: keyof GlobalActions;
@@ -586,7 +618,7 @@ export type GlobalState = {
     };
   };
   botAttachRequest?: {
-    bot: ApiUser;
+    botId: string;
     chatId: string;
     startParam?: string;
   };
@@ -594,6 +626,14 @@ export type GlobalState = {
   attachMenu: {
     hash?: string;
     bots: Record<string, ApiAttachMenuBot>;
+  };
+
+  confetti?: {
+    lastConfettiTime?: number;
+    top?: number;
+    left?: number;
+    width?: number;
+    height?: number;
   };
 
   urlAuth?: {
@@ -609,6 +649,33 @@ export type GlobalState = {
     };
     url: string;
   };
+
+  premiumModal?: {
+    isOpen?: boolean;
+    isClosing?: boolean;
+    promo: ApiPremiumPromo;
+    initialSection?: string;
+    fromUserId?: string;
+    toUserId?: string;
+    isGift?: boolean;
+    monthsAmount?: number;
+    isSuccess?: boolean;
+  };
+
+  giftPremiumModal?: {
+    isOpen?: boolean;
+    forUserId?: string;
+    monthlyCurrency?: string;
+    monthlyAmount?: string;
+  };
+
+  transcriptions: Record<string, ApiTranscription>;
+
+  limitReachedModal?: {
+    limit: ApiLimitTypeWithModal;
+  };
+
+  deleteFolderDialogModal?: number;
 };
 
 export type CallSound = (
@@ -622,6 +689,9 @@ export interface ActionPayloads {
 
   // Misc
   setInstallPrompt: { canInstall: boolean };
+  openLimitReachedModal: { limit: ApiLimitTypeWithModal };
+  closeLimitReachedModal: never;
+  checkAppVersion: never;
 
   // Accounts
   reportPeer: {
@@ -656,8 +726,17 @@ export interface ActionPayloads {
     chatId: string;
     text: string;
   };
-
   resetOpenChatWithText: never;
+
+  toggleJoinToSend: {
+    chatId: string;
+    isEnabled: boolean;
+  };
+
+  toggleJoinRequest: {
+    chatId: string;
+    isEnabled: boolean;
+  };
 
   // Messages
   setEditingDraft: {
@@ -685,11 +764,25 @@ export interface ActionPayloads {
     messageIds: number[];
   };
 
+  sendPollVote: {
+    chatId: string;
+    messageId: number;
+    options: string[];
+  };
+  cancelPollVote: {
+    chatId: string;
+    messageId: number;
+  };
+  closePoll: {
+    chatId: string;
+    messageId: number;
+  };
+
   // Media Viewer & Audio Player
   openMediaViewer: {
     chatId?: string;
     threadId?: number;
-    messageId?: number;
+    mediaId?: number;
     avatarOwnerId?: string;
     profilePhotoIndex?: number;
     origin?: MediaViewerOrigin;
@@ -762,7 +855,36 @@ export interface ActionPayloads {
     shouldSharePhoneNumber?: boolean;
   };
 
+  // Forwards
+  openForwardMenu: {
+    fromChatId: string;
+    messageIds?: number[];
+    groupedId?: string;
+    withMyScore?: boolean;
+  };
+  openForwardMenuForSelectedMessages: never;
+  setForwardChatId: {
+    id: string;
+  };
+  forwardMessages: {
+    isSilent?: boolean;
+    scheduledAt?: number;
+  };
+  setForwardNoAuthors: boolean;
+  setForwardNoCaptions: boolean;
+  exitForwardMode: never;
+  changeForwardRecipient: never;
+
+  // GIFs
+  loadSavedGifs: never;
+
   // Stickers
+  loadStickers: {
+    stickerSetInfo: ApiStickerSetInfo;
+  };
+  loadAnimatedEmojis: never;
+  loadGreetingStickers: never;
+
   addRecentSticker: {
     sticker: ApiSticker;
   };
@@ -771,15 +893,16 @@ export interface ActionPayloads {
     sticker: ApiSticker;
   };
 
-  clearRecentStickers: {};
+  clearRecentStickers: never;
 
-  loadStickerSets: {};
-  loadAddedStickers: {};
-  loadRecentStickers: {};
-  loadFavoriteStickers: {};
-  loadFeaturedStickers: {};
+  loadStickerSets: never;
+  loadAddedStickers: never;
+  loadRecentStickers: never;
+  loadFavoriteStickers: never;
+  loadFeaturedStickers: never;
 
   reorderStickerSets: {
+    isCustomEmoji?: boolean;
     order: string[];
   };
 
@@ -787,15 +910,41 @@ export interface ActionPayloads {
     stickerSet: ApiStickerSet;
   };
 
-  openStickerSetShortName: {
-    stickerSetShortName?: string;
+  openStickerSet: {
+    stickerSetInfo: ApiStickerSetInfo;
+  };
+  closeStickerSetModal: never;
+
+  loadStickersForEmoji: {
+    emoji: string;
+  };
+  clearStickersForEmoji: never;
+
+  addRecentEmoji: {
+    emoji: string;
   };
 
-  openStickerSet: {
-    sticker: ApiSticker;
+  loadCustomEmojis: {
+    ids: string[];
+    ignoreCache?: boolean;
   };
+  updateLastRenderedCustomEmojis: {
+    ids: string[];
+  };
+  openCustomEmojiSets: {
+    setIds: string[];
+  };
+  closeCustomEmojiSets: never;
 
   // Bots
+  startBot: {
+    botId: string;
+    param?: string;
+  };
+  restartBot: {
+    chatId: string;
+  };
+
   clickBotInlineButton: {
     messageId: number;
     button: ApiKeyboardButton;
@@ -818,8 +967,8 @@ export interface ActionPayloads {
 
   requestWebView: {
     url?: string;
-    bot: ApiUser;
-    peer: ApiChat | ApiUser;
+    botId: string;
+    peerId: string;
     theme?: ApiThemeParameters;
     isSilent?: boolean;
     buttonText: string;
@@ -827,19 +976,22 @@ export interface ActionPayloads {
     startParam?: string;
   };
   prolongWebView: {
-    bot: ApiUser;
-    peer: ApiChat | ApiUser;
+    botId: string;
+    peerId: string;
     queryId: string;
     isSilent?: boolean;
     replyToMessageId?: number;
   };
   requestSimpleWebView: {
     url: string;
-    bot: ApiUser;
+    botId: string;
     buttonText: string;
     theme?: ApiThemeParameters;
   };
   closeWebApp: never;
+  setWebAppPaymentSlug: {
+    slug?: string;
+  };
 
   cancelBotTrustRequest: never;
   markBotTrusted: {
@@ -909,6 +1061,12 @@ export interface ActionPayloads {
     isQuiz?: boolean;
   };
   closePollModal: never;
+  requestConfetti: {
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | undefined;
 
   openUrl: {
     url: string;
@@ -951,6 +1109,46 @@ export interface ActionPayloads {
 
   // Settings
   requestNextSettingsScreen: SettingsScreens;
+  sortChatFolders: { folderIds: number[] };
+  closeDeleteChatFolderModal: never;
+  openDeleteChatFolderModal: { folderId: number };
+  loadGlobalPrivacySettings: never;
+  updateGlobalPrivacySettings: { shouldArchiveAndMuteNewNonContact: boolean };
+
+  // Premium
+  openPremiumModal: {
+    initialSection?: string;
+    fromUserId?: string;
+    toUserId?: string;
+    isSuccess?: boolean;
+    isGift?: boolean;
+    monthsAmount?: number;
+  };
+  closePremiumModal: never | {
+    isClosed?: boolean;
+  };
+
+  transcribeAudio: {
+    chatId: string;
+    messageId: number;
+  };
+
+  loadPremiumGifts: never;
+  loadPremiumStickers: {
+    hash?: string;
+  };
+  loadPremiumSetStickers: {
+    hash?: string;
+  };
+
+  openGiftPremiumModal: {
+    forUserId?: string;
+  };
+
+  closeGiftPremiumModal: never;
+
+  // Invoice
+  openInvoice: ApiInputInvoice;
 }
 
 export type NonTypedActionNames = (
@@ -958,7 +1156,7 @@ export type NonTypedActionNames = (
   'init' | 'reset' | 'disconnect' | 'initApi' | 'sync' | 'saveSession' |
   'showNotification' | 'dismissNotification' | 'showDialog' | 'dismissDialog' |
   // ui
-  'toggleChatInfo' | 'setIsUiReady' | 'addRecentEmoji' | 'toggleLeftColumn' |
+  'toggleChatInfo' | 'setIsUiReady' | 'toggleLeftColumn' |
   'toggleSafeLinkModal' | 'openHistoryCalendar' | 'closeHistoryCalendar' | 'disableContextMenuHint' |
   'setNewChatMembersDialogState' | 'disableHistoryAnimations' | 'setLeftColumnWidth' | 'resetLeftColumnWidth' |
   'openSeenByModal' | 'closeSeenByModal' | 'closeReactorListModal' | 'openReactorListModal' |
@@ -977,7 +1175,7 @@ export type NonTypedActionNames = (
   'addChatMembers' | 'deleteChatMember' | 'openPreviousChat' | 'editChatFolders' | 'toggleIsProtected' |
   // messages
   'loadViewportMessages' | 'selectMessage' | 'sendMessage' | 'cancelSendingMessage' | 'pinMessage' | 'deleteMessages' |
-  'markMessageListRead' | 'markMessagesRead' | 'loadMessage' | 'focusMessage' | 'focusLastMessage' | 'sendPollVote' |
+  'markMessageListRead' | 'markMessagesRead' | 'loadMessage' | 'focusMessage' | 'focusLastMessage' |
   'editMessage' | 'deleteHistory' | 'enterMessageSelectMode' | 'toggleMessageSelection' | 'exitMessageSelectMode' |
   'openTelegramLink' | 'openChatByUsername' | 'requestThreadInfoUpdate' | 'setScrollOffset' | 'unpinAllMessages' |
   'setReplyingToId' | 'editLastMessage' | 'saveDraft' | 'clearDraft' | 'loadPinnedMessages' |
@@ -992,9 +1190,6 @@ export type NonTypedActionNames = (
   'loadScheduledHistory' | 'sendScheduledMessages' | 'rescheduleMessage' | 'deleteScheduledMessages' |
   // poll result
   'openPollResults' | 'closePollResults' | 'loadPollOptionResults' |
-  // forwarding messages
-  'openForwardMenu' | 'exitForwardMode' | 'setForwardChatId' | 'forwardMessages' |
-  'openForwardMenuForSelectedMessages' |
   // global search
   'setGlobalSearchQuery' | 'searchMessagesGlobal' | 'addRecentlyFoundChatId' | 'clearRecentlyFoundChats' |
   'setGlobalSearchContent' | 'setGlobalSearchChatId' | 'setGlobalSearchDate' |
@@ -1026,20 +1221,19 @@ export type NonTypedActionNames = (
   'loadContentSettings' | 'updateContentSettings' |
   'loadCountryList' | 'ensureTimeFormat' | 'loadAppConfig' |
   // stickers & GIFs
-  'setStickerSearchQuery' | 'loadSavedGifs' | 'saveGif' | 'setGifSearchQuery' | 'searchMoreGifs' |
-  'faveSticker' | 'unfaveSticker' | 'toggleStickerSet' | 'loadAnimatedEmojis' | 'loadStickers' |
-  'loadStickersForEmoji' | 'clearStickersForEmoji' | 'loadEmojiKeywords' | 'loadGreetingStickers' |
+  'setStickerSearchQuery' | 'saveGif' | 'setGifSearchQuery' | 'searchMoreGifs' |
+  'faveSticker' | 'unfaveSticker' | 'toggleStickerSet' |
+  'loadEmojiKeywords' |
   // bots
   'sendBotCommand' | 'loadTopInlineBots' | 'queryInlineBot' | 'sendInlineBotResult' |
-  'resetInlineBot' | 'restartBot' | 'startBot' |
+  'resetInlineBot' |
   // misc
   'loadWebPagePreview' | 'clearWebPagePreview' | 'loadWallpapers' | 'uploadWallpaper' |
   'setDeviceToken' | 'deleteDeviceToken' |
   'checkVersionNotification' | 'createServiceNotification' |
   // payment
-  'openPaymentModal' | 'closePaymentModal' | 'addPaymentError' |
-  'validateRequestedInfo' | 'setPaymentStep' | 'sendPaymentForm' | 'getPaymentForm' | 'getReceipt' |
-  'sendCredentialsInfo' | 'setInvoiceMessageInfo' | 'clearPaymentError' | 'clearReceipt' |
+  'closePaymentModal' | 'addPaymentError' | 'validateRequestedInfo' | 'setPaymentStep' | 'sendPaymentForm' |
+  'getReceipt' | 'sendCredentialsInfo' | 'clearPaymentError' | 'clearReceipt' |
   // calls
   'joinGroupCall' | 'toggleGroupCallMute' | 'toggleGroupCallPresentation' | 'leaveGroupCall' |
   'toggleGroupCallVideo' | 'requestToSpeak' | 'setGroupCallParticipantVolume' | 'toggleGroupCallPanel' |

@@ -50,21 +50,31 @@ type OwnProps = {
   origin: AudioOrigin;
   date?: number;
   lastSyncTime?: number;
+  noAvatars?: boolean;
   className?: string;
   isSelectable?: boolean;
   isSelected?: boolean;
   isDownloading: boolean;
+  isTranscribing?: boolean;
+  isTranscribed?: boolean;
+  canDownload?: boolean;
+  canTranscribe?: boolean;
+  isTranscriptionHidden?: boolean;
+  isTranscriptionError?: boolean;
+  onHideTranscription?: (isHidden: boolean) => void;
   onPlay: (messageId: number, chatId: string) => void;
   onReadMedia?: () => void;
   onCancelUpload?: () => void;
   onDateClick?: (messageId: number, chatId: string) => void;
 };
 
+export const TINY_SCREEN_WIDTH_MQL = window.matchMedia('(max-width: 375px)');
+export const WITH_AVATAR_TINY_SCREEN_WIDTH_MQL = window.matchMedia('(max-width: 410px)');
 const AVG_VOICE_DURATION = 10;
-const MIN_SPIKES = IS_SINGLE_COLUMN_LAYOUT ? 20 : 25;
-const MAX_SPIKES = IS_SINGLE_COLUMN_LAYOUT ? 50 : 75;
 // This is needed for browsers requiring user interaction before playing.
 const PRELOAD = true;
+// eslint-disable-next-line max-len
+const TRANSCRIBE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 24" class="loading-svg"><rect class="loading-rect" fill="transparent" width="32" height="24" stroke-width="3" stroke-linejoin="round" rx="6" ry="6" stroke="var(--accent-color)" stroke-dashoffset="1" stroke-dasharray="32,68"></rect></svg>';
 
 const Audio: FC<OwnProps> = ({
   theme,
@@ -74,16 +84,24 @@ const Audio: FC<OwnProps> = ({
   origin,
   date,
   lastSyncTime,
+  noAvatars,
   className,
   isSelectable,
   isSelected,
   isDownloading,
+  isTranscribing,
+  isTranscriptionHidden,
+  isTranscribed,
+  isTranscriptionError,
+  canDownload,
+  canTranscribe,
+  onHideTranscription,
   onPlay,
   onReadMedia,
   onCancelUpload,
   onDateClick,
 }) => {
-  const { cancelMessageMediaDownload, downloadMessageMedia } = getActions();
+  const { cancelMessageMediaDownload, downloadMessageMedia, transcribeAudio } = getActions();
 
   const { content: { audio, voice, video }, isMediaUnread } = message;
   const isVoice = Boolean(voice || video);
@@ -107,6 +125,7 @@ const Audio: FC<OwnProps> = ({
   const { loadProgress: downloadProgress } = useMediaWithLoadProgress(
     getMessageMediaHash(message, 'download'),
     !isDownloading,
+    getMessageMediaFormat(message, 'download'),
   );
 
   const handleForcePlay = useCallback(() => {
@@ -139,7 +158,9 @@ const Audio: FC<OwnProps> = ({
   );
 
   const isOwn = isOwnMessage(message);
-  const waveformCanvasRef = useWaveformCanvas(theme, voice, (isMediaUnread && !isOwn) ? 1 : playProgress, isOwn);
+  const waveformCanvasRef = useWaveformCanvas(
+    theme, voice, (isMediaUnread && !isOwn) ? 1 : playProgress, isOwn, !noAvatars,
+  );
 
   const withSeekline = isPlaying || (playProgress > 0 && playProgress < 1);
 
@@ -217,6 +238,10 @@ const Audio: FC<OwnProps> = ({
     onDateClick!(message.id, message.chatId);
   }, [onDateClick, message.id, message.chatId]);
 
+  const handleTranscribe = useCallback(() => {
+    transcribeAudio({ chatId: message.chatId, messageId: message.id });
+  }, [message.chatId, message.id, transcribeAudio]);
+
   useEffect(() => {
     if (!seekerRef.current || !withSeekline) return undefined;
     return captureEvents(seekerRef.current, {
@@ -226,6 +251,10 @@ const Audio: FC<OwnProps> = ({
       onDrag: handleSeek,
     });
   }, [withSeekline, handleStartSeek, handleSeek, handleStopSeek]);
+
+  const transcribeSvgMemo = useMemo(() => (
+    <div dangerouslySetInnerHTML={{ __html: TRANSCRIBE_SVG }} />
+  ), []);
 
   function renderFirstLine() {
     if (isVoice) {
@@ -339,7 +368,7 @@ const Audio: FC<OwnProps> = ({
           />
         </div>
       )}
-      {audio && !isUploading && (
+      {audio && canDownload && !isUploading && (
         <Button
           round
           size="tiny"
@@ -366,11 +395,35 @@ const Audio: FC<OwnProps> = ({
       )}
       {origin === AudioOrigin.SharedMedia && (voice || video) && renderWithTitle()}
       {origin === AudioOrigin.Inline && voice && (
-        renderVoice(voice, seekerRef, waveformCanvasRef, playProgress, isMediaUnread)
+        renderVoice(
+          voice,
+          seekerRef,
+          waveformCanvasRef,
+          playProgress,
+          isMediaUnread,
+          isTranscribing,
+          isTranscriptionHidden,
+          isTranscribed,
+          isTranscriptionError,
+          transcribeSvgMemo,
+          canTranscribe ? handleTranscribe : undefined,
+          onHideTranscription,
+        )
       )}
     </div>
   );
 };
+
+function getSeeklineSpikeAmounts(withAvatar?: boolean) {
+  return {
+    MIN_SPIKES: IS_SINGLE_COLUMN_LAYOUT ? (TINY_SCREEN_WIDTH_MQL.matches ? 16 : 20) : 25,
+    MAX_SPIKES: IS_SINGLE_COLUMN_LAYOUT
+      ? (TINY_SCREEN_WIDTH_MQL.matches
+        ? 35
+        : (withAvatar && WITH_AVATAR_TINY_SCREEN_WIDTH_MQL.matches ? 40 : 45))
+      : 75,
+  };
+}
 
 function renderAudio(
   lang: LangFn,
@@ -436,15 +489,43 @@ function renderVoice(
   waveformCanvasRef: React.Ref<HTMLCanvasElement>,
   playProgress: number,
   isMediaUnread?: boolean,
+  isTranscribing?: boolean,
+  isTranscriptionHidden?: boolean,
+  isTranscribed?: boolean,
+  isTranscriptionError?: boolean,
+  svgMemo?: React.ReactNode,
+  onClickTranscribe?: VoidFunction,
+  onHideTranscription?: (isHidden: boolean) => void,
 ) {
   return (
     <div className="content">
-      <div
-        className="waveform"
-        draggable={false}
-        ref={seekerRef}
-      >
-        <canvas ref={waveformCanvasRef} />
+      <div className="waveform-wrapper">
+        <div
+          className="waveform"
+          draggable={false}
+          ref={seekerRef}
+        >
+          <canvas ref={waveformCanvasRef} />
+        </div>
+        {onClickTranscribe && (
+          // eslint-disable-next-line react/jsx-no-bind
+          <Button onClick={() => {
+            if ((isTranscribed || isTranscriptionError) && onHideTranscription) {
+              onHideTranscription(!isTranscriptionHidden);
+            } else if (!isTranscribing) {
+              onClickTranscribe();
+            }
+          }}
+          >
+            <i className={buildClassName(
+              'transcribe-icon',
+              (isTranscribed || isTranscriptionError) ? 'icon-down' : 'icon-transcribe',
+              (isTranscribed || isTranscriptionError) && !isTranscriptionHidden && 'transcribe-shown',
+            )}
+            />
+            {isTranscribing && svgMemo}
+          </Button>
+        )}
       </div>
       <p className={buildClassName('voice-duration', isMediaUnread && 'unread')} dir="auto">
         {playProgress === 0 ? formatMediaDuration(voice.duration) : formatMediaDuration(voice.duration * playProgress)}
@@ -458,6 +539,7 @@ function useWaveformCanvas(
   voice?: ApiVoice,
   playProgress = 0,
   isOwn = false,
+  withAvatar = false,
 ) {
   // eslint-disable-next-line no-null/no-null
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -475,12 +557,13 @@ function useWaveformCanvas(
       };
     }
 
+    const { MIN_SPIKES, MAX_SPIKES } = getSeeklineSpikeAmounts(withAvatar);
     const durationFactor = Math.min(duration / AVG_VOICE_DURATION, 1);
     const spikesCount = Math.round(MIN_SPIKES + (MAX_SPIKES - MIN_SPIKES) * durationFactor);
     const decodedWaveform = decodeWaveform(new Uint8Array(waveform));
 
     return interpolateArray(decodedWaveform, spikesCount);
-  }, [voice]) || {};
+  }, [voice, withAvatar]) || {};
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;

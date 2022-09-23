@@ -33,10 +33,13 @@ export type OwnProps = {
   href?: string;
   download?: string;
   disabled?: boolean;
+  allowDisabledClick?: boolean;
   ripple?: boolean;
   faded?: boolean;
   tabIndex?: number;
   isRtl?: boolean;
+  isShiny?: boolean;
+  withPremiumGradient?: boolean;
   noPreventDefault?: boolean;
   shouldStopPropagation?: boolean;
   style?: string;
@@ -71,12 +74,15 @@ const Button: FC<OwnProps> = ({
   fluid,
   isText,
   isLoading,
+  isShiny,
+  withPremiumGradient,
   ariaLabel,
   ariaControls,
   hasPopup,
   href,
   download,
   disabled,
+  allowDisabledClick,
   ripple,
   faded,
   tabIndex,
@@ -102,16 +108,19 @@ const Button: FC<OwnProps> = ({
     pill && 'pill',
     fluid && 'fluid',
     disabled && 'disabled',
+    allowDisabledClick && 'click-allowed',
     isText && 'text',
     isLoading && 'loading',
     ripple && 'has-ripple',
     faded && 'faded',
     isClicked && 'clicked',
     backgroundImage && 'with-image',
+    isShiny && 'shiny',
+    withPremiumGradient && 'premium',
   );
 
   const handleClick = useCallback((e: ReactMouseEvent<HTMLButtonElement, MouseEvent>) => {
-    if (!disabled && onClick) {
+    if ((allowDisabledClick || !disabled) && onClick) {
       onClick(e);
     }
 
@@ -121,15 +130,15 @@ const Button: FC<OwnProps> = ({
     setTimeout(() => {
       setIsClicked(false);
     }, CLICKED_TIMEOUT);
-  }, [disabled, onClick, shouldStopPropagation]);
+  }, [allowDisabledClick, disabled, onClick, shouldStopPropagation]);
 
   const handleMouseDown = useCallback((e: ReactMouseEvent<HTMLButtonElement>) => {
     if (!noPreventDefault) e.preventDefault();
 
-    if (!disabled && onMouseDown) {
+    if ((allowDisabledClick || !disabled) && onMouseDown) {
       onMouseDown(e);
     }
-  }, [disabled, noPreventDefault, onMouseDown]);
+  }, [allowDisabledClick, disabled, noPreventDefault, onMouseDown]);
 
   if (href) {
     return (

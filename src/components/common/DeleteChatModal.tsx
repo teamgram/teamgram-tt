@@ -3,6 +3,7 @@ import React, { useCallback, memo } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import type { ApiChat } from '../../api/types';
+import type { AnimationLevel } from '../../types';
 
 import { selectIsChatWithSelf, selectUser } from '../../global/selectors';
 import {
@@ -41,6 +42,7 @@ type StateProps = {
   currentUserId: string | undefined;
   canDeleteForAll?: boolean;
   contactName?: string;
+  animationLevel: AnimationLevel;
 };
 
 const DeleteChatModal: FC<OwnProps & StateProps> = ({
@@ -55,6 +57,7 @@ const DeleteChatModal: FC<OwnProps & StateProps> = ({
   currentUserId,
   canDeleteForAll,
   contactName,
+  animationLevel,
   onClose,
   onCloseAnimationEnd,
 }) => {
@@ -69,7 +72,7 @@ const DeleteChatModal: FC<OwnProps & StateProps> = ({
   const lang = useLang();
   const chatTitle = getChatTitle(lang, chat);
 
-  const handleDeleteMessageForAll = useCallback(() => {
+  const handleDeleteForAll = useCallback(() => {
     deleteHistory({ chatId: chat.id, shouldDeleteForAll: true });
 
     onClose();
@@ -125,6 +128,8 @@ const DeleteChatModal: FC<OwnProps & StateProps> = ({
           size="tiny"
           chat={chat}
           isSavedMessages={isChatWithSelf}
+          animationLevel={animationLevel}
+          withVideo
         />
         <h3 className="modal-title">{lang(renderTitle())}</h3>
       </div>
@@ -147,16 +152,20 @@ const DeleteChatModal: FC<OwnProps & StateProps> = ({
     return 'DeleteChatUser';
   }
 
-  function renderMessage() {
+  function renderContent() {
     if (isChannel && chat.isCreator) {
-      return <p>{renderText(lang('ChatList.DeleteAndLeaveGroupConfirmation', chatTitle), ['simple_markdown'])}</p>;
+      return (
+        <p>
+          {renderText(lang('ChatList.DeleteAndLeaveGroupConfirmation', chatTitle), ['simple_markdown', 'emoji'])}
+        </p>
+      );
     }
 
     if ((isChannel && !chat.isCreator) || isBasicGroup || isSuperGroup) {
-      return <p>{renderText(lang('ChannelLeaveAlertWithName', chatTitle), ['simple_markdown'])}</p>;
+      return <p>{renderText(lang('ChannelLeaveAlertWithName', chatTitle), ['simple_markdown', 'emoji'])}</p>;
     }
 
-    return <p>{renderText(lang('ChatList.DeleteChatConfirmation', contactName), ['simple_markdown'])}</p>;
+    return <p>{renderText(lang('ChatList.DeleteChatConfirmation', contactName), ['simple_markdown', 'emoji'])}</p>;
   }
 
   function renderActionText() {
@@ -182,14 +191,14 @@ const DeleteChatModal: FC<OwnProps & StateProps> = ({
       onClose={onClose}
       onCloseAnimationEnd={onCloseAnimationEnd}
     >
-      {renderMessage()}
+      {renderContent()}
       {isBot && (
         <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteAndStop}>
           {lang('DeleteAndStop')}
         </Button>
       )}
       {canDeleteForAll && (
-        <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteMessageForAll}>
+        <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteForAll}>
           {contactName ? renderText(lang('ChatList.DeleteForEveryone', contactName)) : lang('DeleteForAll')}
         </Button>
       )}
@@ -232,6 +241,7 @@ export default memo(withGlobal<OwnProps>(
       currentUserId: global.currentUserId,
       canDeleteForAll,
       contactName,
+      animationLevel: global.settings.byKey.animationLevel,
     };
   },
 )(DeleteChatModal));

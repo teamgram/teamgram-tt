@@ -4,71 +4,73 @@ import React, {
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import type { ApiStickerSet } from '../../api/types';
+import type { ApiSticker, ApiStickerSet } from '../../api/types';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 
 import { STICKER_SIZE_SEARCH } from '../../config';
-import { selectShouldLoopStickers, selectStickerSet } from '../../global/selectors';
-import useFlag from '../../hooks/useFlag';
-import useOnChange from '../../hooks/useOnChange';
+import { selectIsCurrentUserPremium, selectShouldLoopStickers, selectStickerSet } from '../../global/selectors';
 import useLang from '../../hooks/useLang';
 
 import Button from '../ui/Button';
 import StickerButton from '../common/StickerButton';
-import StickerSetModal from '../common/StickerSetModal.async';
 import Spinner from '../ui/Spinner';
 
 type OwnProps = {
   stickerSetId: string;
   observeIntersection: ObserveFn;
-  isSomeModalOpen: boolean;
-  onModalToggle: (isOpen: boolean) => void;
+  isModalOpen?: boolean;
 };
 
 type StateProps = {
   set?: ApiStickerSet;
   shouldPlay?: boolean;
+  isCurrentUserPremium?: boolean;
 };
 
+const PREMIUM_STICKERS_TO_DISPLAY = 3;
 const STICKERS_TO_DISPLAY = 5;
 
 const StickerSetResult: FC<OwnProps & StateProps> = ({
   stickerSetId, observeIntersection, set, shouldPlay,
-  isSomeModalOpen, onModalToggle,
+  isModalOpen, isCurrentUserPremium,
 }) => {
-  const { loadStickers, toggleStickerSet } = getActions();
+  const { loadStickers, toggleStickerSet, openStickerSet } = getActions();
 
   const lang = useLang();
   const isAdded = set && Boolean(set.installedDate);
   const areStickersLoaded = Boolean(set?.stickers);
-
-  const [isModalOpen, openModal, closeModal] = useFlag();
-
-  useOnChange(() => {
-    onModalToggle(isModalOpen);
-  }, [isModalOpen, onModalToggle]);
 
   const displayedStickers = useMemo(() => {
     if (!set) {
       return [];
     }
 
+    const premiumStickerIds = (set.stickers?.filter(({ hasEffect }) => hasEffect) ?? [])
+      .slice(0, PREMIUM_STICKERS_TO_DISPLAY);
     const coverStickerIds = (set.covers || []).map(({ id }) => id);
     const otherStickers = set.stickers ? set.stickers.filter(({ id }) => !coverStickerIds.includes(id)) : [];
 
-    return [...(set.covers || []), ...otherStickers].slice(0, STICKERS_TO_DISPLAY);
+    return [...premiumStickerIds, ...(set.covers || []), ...otherStickers].slice(0, STICKERS_TO_DISPLAY);
   }, [set]);
 
   useEffect(() => {
     // Featured stickers are initialized with one sticker in collection (cover of SickerSet)
-    if (!areStickersLoaded && displayedStickers.length < STICKERS_TO_DISPLAY) {
-      loadStickers({ stickerSetId });
+    if (!areStickersLoaded && displayedStickers.length < STICKERS_TO_DISPLAY && set) {
+      loadStickers({
+        stickerSetInfo: {
+          shortName: set.shortName,
+        },
+      });
     }
-  }, [areStickersLoaded, displayedStickers.length, loadStickers, stickerSetId]);
+  }, [areStickersLoaded, displayedStickers.length, loadStickers, set, stickerSetId]);
 
   const handleAddClick = useCallback(() => {
     toggleStickerSet({ stickerSetId });
   }, [toggleStickerSet, stickerSetId]);
+
+  const handleStickerClick = useCallback((sticker: ApiSticker) => {
+    openStickerSet({ stickerSetInfo: sticker.stickerSetInfo });
+  }, [openStickerSet]);
 
   if (!set) {
     return undefined;
@@ -101,20 +103,14 @@ const StickerSetResult: FC<OwnProps & StateProps> = ({
             sticker={sticker}
             size={STICKER_SIZE_SEARCH}
             observeIntersection={observeIntersection}
-            noAnimate={!shouldPlay || isModalOpen || isSomeModalOpen}
-            clickArg={undefined}
-            onClick={openModal}
+            noAnimate={!shouldPlay || isModalOpen}
+            clickArg={sticker}
+            onClick={handleStickerClick}
             noContextMenu
+            isCurrentUserPremium={isCurrentUserPremium}
           />
         ))}
       </div>
-      {canRenderStickers && (
-        <StickerSetModal
-          isOpen={isModalOpen}
-          fromSticker={displayedStickers[0]}
-          onClose={closeModal}
-        />
-      )}
     </div>
   );
 };
@@ -124,6 +120,7 @@ export default memo(withGlobal<OwnProps>(
     return {
       set: selectStickerSet(global, stickerSetId),
       shouldPlay: selectShouldLoopStickers(global),
+      isCurrentUserPremium: selectIsCurrentUserPremium(global),
     };
   },
 )(StickerSetResult));

@@ -137,16 +137,14 @@ async function saveToCache(cacheKey: string, arrayBuffer: ArrayBuffer, headers: 
   ]);
 }
 
-async function requestPart(
+export async function requestPart(
   e: FetchEvent,
   params: { url: string; start: number; end: number },
 ): Promise<PartInfo | undefined> {
-  if (!e.clientId) {
-    return undefined;
-  }
-
-  // eslint-disable-next-line no-restricted-globals
-  const client = await self.clients.get(e.clientId);
+  const isDownload = params.url.includes('/download/');
+  const client = isDownload ? (await self.clients.matchAll())
+    .find((c) => c.type === 'window' && c.frameType === 'top-level')
+    : await (self.clients.get(e.clientId));
   if (!client) {
     return undefined;
   }
@@ -154,8 +152,9 @@ async function requestPart(
   const messageId = generateIdFor(requestStates);
   const requestState = {} as RequestStates;
 
+  let isResolved = false;
   const promise = Promise.race([
-    pause(PART_TIMEOUT).then(() => Promise.reject(new Error('ERROR_PART_TIMEOUT'))),
+    pause(PART_TIMEOUT).then(() => (isResolved ? undefined : Promise.reject(new Error('ERROR_PART_TIMEOUT')))),
     new Promise<PartInfo>((resolve, reject) => {
       Object.assign(requestState, { resolve, reject });
     }),
@@ -166,6 +165,7 @@ async function requestPart(
     .catch(() => undefined)
     .finally(() => {
       requestStates.delete(messageId);
+      isResolved = true;
     });
 
   client.postMessage({

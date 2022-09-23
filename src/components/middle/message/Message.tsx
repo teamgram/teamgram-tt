@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
@@ -17,7 +18,9 @@ import type {
   ApiThreadInfo,
   ApiAvailableReaction,
 } from '../../../api/types';
-import type { FocusDirection, IAlbum, ISettings } from '../../../types';
+import type {
+  AnimationLevel, FocusDirection, IAlbum, ISettings,
+} from '../../../types';
 import {
   AudioOrigin,
 } from '../../../types';
@@ -51,6 +54,7 @@ import {
   selectReplySender,
   selectAnimatedEmoji,
   selectLocalAnimatedEmoji,
+  selectIsCurrentUserPremium,
 } from '../../../global/selectors';
 import {
   getMessageContent,
@@ -114,6 +118,8 @@ import CommentButton from './CommentButton';
 import Reactions from './Reactions';
 import ReactionStaticEmoji from '../../common/ReactionStaticEmoji';
 import MessagePhoneCall from './MessagePhoneCall';
+import PremiumIcon from '../../common/PremiumIcon';
+import DotAnimation from '../../common/DotAnimation';
 
 import './Message.scss';
 
@@ -140,6 +146,7 @@ type OwnProps =
     messageListType: MessageListType;
     noComments: boolean;
     appearanceOrder: number;
+    memoFirstUnreadIdRef: { current: number | undefined };
   }
   & MessagePositionProperties;
 
@@ -189,6 +196,11 @@ type StateProps = {
   activeReaction?: ActiveReaction;
   activeEmojiInteractions?: ActiveEmojiInteraction[];
   hasUnreadReaction?: boolean;
+  isTranscribing?: boolean;
+  transcribedText?: string;
+  isTranscriptionError?: boolean;
+  isPremium: boolean;
+  animationLevel: AnimationLevel;
 };
 
 type MetaPosition =
@@ -223,9 +235,12 @@ const Message: FC<OwnProps & StateProps> = ({
   noComments,
   appearanceOrder,
   isFirstInGroup,
+  isPremium,
   isLastInGroup,
   isFirstInDocumentGroup,
   isLastInDocumentGroup,
+  isTranscribing,
+  transcribedText,
   isLastInList,
   theme,
   forceSenderName,
@@ -272,12 +287,15 @@ const Message: FC<OwnProps & StateProps> = ({
   autoLoadFileMaxSizeMb,
   threadInfo,
   hasUnreadReaction,
+  memoFirstUnreadIdRef,
+  animationLevel,
 }) => {
   const {
     toggleMessageSelection,
     clickBotInlineButton,
     disableContextMenuHint,
     animateUnreadReaction,
+    focusLastMessage,
   } = getActions();
 
   // eslint-disable-next-line no-null/no-null
@@ -288,6 +306,9 @@ const Message: FC<OwnProps & StateProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
 
   const lang = useLang();
+
+  const [isTranscriptionHidden, setTranscriptionHidden] = useState(false);
+  const [hasActiveStickerEffect, startStickerEffect, stopStickerEffect] = useFlag();
 
   useOnIntersect(bottomMarkerRef, observeIntersectionForBottom);
 
@@ -315,7 +336,7 @@ const Message: FC<OwnProps & StateProps> = ({
   const { transitionClassNames } = useShowTransition(isShown, undefined, noAppearanceAnimation, false);
 
   const {
-    id: messageId, chatId, forwardInfo, viaBotId,
+    id: messageId, chatId, forwardInfo, viaBotId, isTranscriptionError,
   } = message;
 
   const isLocal = isMessageLocal(message);
@@ -333,7 +354,8 @@ const Message: FC<OwnProps & StateProps> = ({
     && !forwardInfo.isLinkedChannelPost
     && !customShape
   );
-  const isAlbum = Boolean(album) && album!.messages.length > 1;
+  const isAlbum = Boolean(album) && album!.messages.length > 1
+    && !album?.messages.some((msg) => Object.keys(msg.content).length === 0);
   const isInDocumentGroupNotFirst = isInDocumentGroup && !isFirstInDocumentGroup;
   const isInDocumentGroupNotLast = isInDocumentGroup && !isLastInDocumentGroup;
   const isContextMenuShown = contextMenuPosition !== undefined;
@@ -358,6 +380,7 @@ const Message: FC<OwnProps & StateProps> = ({
   }, [toggleMessageSelection, messageId, isAlbum, album]);
 
   const messageSender = canShowSender ? sender : undefined;
+  const withVoiceTranscription = Boolean(!isTranscriptionHidden && (isTranscriptionError || transcribedText));
 
   const avatarPeer = forwardInfo && (isChatWithSelf || isRepliesChat || !messageSender) ? originSender : messageSender;
   const senderPeer = forwardInfo ? originSender : messageSender;
@@ -424,6 +447,16 @@ const Message: FC<OwnProps & StateProps> = ({
     botSender,
   );
 
+  useEffect(() => {
+    if (!isLastInList) {
+      return;
+    }
+
+    if (withVoiceTranscription && transcribedText) {
+      focusLastMessage();
+    }
+  }, [focusLastMessage, isLastInList, transcribedText, withVoiceTranscription]);
+
   const containerClassName = buildClassName(
     'Message message-list-item',
     isFirstInGroup && 'first-in-group',
@@ -449,7 +482,7 @@ const Message: FC<OwnProps & StateProps> = ({
     Boolean(message.inlineButtons) && 'has-inline-buttons',
     isSwiped && 'is-swiped',
     transitionClassNames,
-    Boolean(activeReaction) && 'has-active-reaction',
+    (Boolean(activeReaction) || hasActiveStickerEffect) && 'has-active-reaction',
   );
 
   const {
@@ -473,11 +506,18 @@ const Message: FC<OwnProps & StateProps> = ({
     hasActionButton: canForward || canFocus,
     hasReactions,
     isGeoLiveActive: location?.type === 'geoLive' && !isGeoLiveExpired(message, getServerTime(serverTimeOffset)),
+    withVoiceTranscription,
   });
 
   const withAppendix = contentClassName.includes('has-appendix');
   const textParts = renderMessageText(
-    message, highlight, isEmojiOnlyMessage(customShape), undefined, undefined, isProtected,
+    message,
+    highlight,
+    isEmojiOnlyMessage(customShape),
+    undefined,
+    undefined,
+    isProtected,
+    observeIntersectionForAnimatedStickers,
   );
 
   let metaPosition!: MetaPosition;
@@ -569,16 +609,23 @@ const Message: FC<OwnProps & StateProps> = ({
     const avatarUser = (avatarPeer && isAvatarPeerUser) ? avatarPeer as ApiUser : undefined;
     const avatarChat = (avatarPeer && !isAvatarPeerUser) ? avatarPeer as ApiChat : undefined;
     const hiddenName = (!avatarPeer && forwardInfo) ? forwardInfo.hiddenUserName : undefined;
+    const isAvatarPremium = avatarUser?.isPremium;
 
     return (
-      <Avatar
-        size="small"
-        user={avatarUser}
-        chat={avatarChat}
-        text={hiddenName}
-        lastSyncTime={lastSyncTime}
-        onClick={(avatarUser || avatarChat) ? handleAvatarClick : undefined}
-      />
+      <>
+        <Avatar
+          size="small"
+          user={avatarUser}
+          chat={avatarChat}
+          text={hiddenName}
+          lastSyncTime={lastSyncTime}
+          onClick={(avatarUser || avatarChat) ? handleAvatarClick : undefined}
+          observeIntersection={observeIntersectionForMedia}
+          animationLevel={animationLevel}
+          withVideo
+        />
+        {isAvatarPremium && <PremiumIcon className="chat-avatar-premium" />}
+      </>
     );
   }
 
@@ -631,6 +678,7 @@ const Message: FC<OwnProps & StateProps> = ({
         {hasReply && (
           <EmbeddedMessage
             message={replyMessage}
+            noUserColors={isOwn}
             isProtected={isProtected}
             sender={replyMessageSender}
             observeIntersection={observeIntersectionForMedia}
@@ -644,6 +692,13 @@ const Message: FC<OwnProps & StateProps> = ({
             observeIntersectionForPlaying={observeIntersectionForAnimatedStickers}
             shouldLoop={shouldLoopStickers}
             lastSyncTime={lastSyncTime}
+            shouldPlayEffect={(
+              sticker.hasEffect && ((
+                memoFirstUnreadIdRef.current && messageId >= memoFirstUnreadIdRef.current
+              ) || isLocal)
+            ) || undefined}
+            onPlayEffect={startStickerEffect}
+            onStopEffect={stopStickerEffect}
           />
         )}
         {animatedEmoji && (
@@ -726,10 +781,18 @@ const Message: FC<OwnProps & StateProps> = ({
             lastSyncTime={lastSyncTime}
             isSelectable={isInDocumentGroup}
             isSelected={isSelected}
+            noAvatars={noAvatars}
             onPlay={handleAudioPlay}
             onReadMedia={voice && (!isOwn || isChatWithSelf) ? handleReadMedia : undefined}
             onCancelUpload={handleCancelUpload}
             isDownloading={isDownloading}
+            isTranscribing={isTranscribing}
+            isTranscriptionHidden={isTranscriptionHidden}
+            isTranscribed={Boolean(transcribedText)}
+            isTranscriptionError={isTranscriptionError}
+            canDownload={!isProtected}
+            onHideTranscription={setTranscriptionHidden}
+            canTranscribe={isPremium}
           />
         )}
         {document && (
@@ -759,6 +822,21 @@ const Message: FC<OwnProps & StateProps> = ({
             lastSyncTime={lastSyncTime}
           />
         )}
+
+        {withVoiceTranscription && (
+          <p
+            className={buildClassName(
+              'transcription',
+              !isTranscriptionHidden && isTranscriptionError && 'transcription-error',
+            )}
+            dir="auto"
+          >
+            {(isTranscriptionError ? lang('NoWordsRecognized') : (
+              isTranscribing && transcribedText ? <DotAnimation content={transcribedText} /> : transcribedText
+            ))}
+          </p>
+        )}
+
         {!hasAnimatedEmoji && textParts && (
           <p className={textContentClass} dir="auto">
             {textParts}
@@ -986,7 +1064,7 @@ export default memo(withGlobal<OwnProps>(
       message, album, withSenderName, withAvatar, threadId, messageListType, isLastInDocumentGroup,
     } = ownProps;
     const {
-      id, chatId, viaBotId, replyToChatId, replyToMessageId, isOutgoing, threadInfo, forwardInfo,
+      id, chatId, viaBotId, replyToChatId, replyToMessageId, isOutgoing, threadInfo, forwardInfo, transcriptionId,
     } = message;
 
     const chat = selectChat(global, chatId);
@@ -1101,6 +1179,10 @@ export default memo(withGlobal<OwnProps>(
       ...(typeof uploadProgress === 'number' && { uploadProgress }),
       ...(isFocused && { focusDirection, noFocusHighlight, isResizingContainer }),
       hasUnreadReaction,
+      isTranscribing: transcriptionId !== undefined && global.transcriptions[transcriptionId]?.isPending,
+      transcribedText: transcriptionId !== undefined ? global.transcriptions[transcriptionId]?.text : undefined,
+      isPremium: selectIsCurrentUserPremium(global),
+      animationLevel: global.settings.byKey.animationLevel,
     };
   },
 )(Message));

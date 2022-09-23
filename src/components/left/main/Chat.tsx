@@ -5,11 +5,11 @@ import React, {
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import type { LangFn } from '../../../hooks/useLang';
-import useLang from '../../../hooks/useLang';
-
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import type {
   ApiChat, ApiUser, ApiMessage, ApiMessageOutgoingStatus, ApiFormattedText, ApiUserStatus,
 } from '../../../api/types';
+import type { AnimationLevel } from '../../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 
 import { ANIMATION_END_DELAY } from '../../../config';
@@ -37,12 +37,14 @@ import { renderActionMessageText } from '../../common/helpers/renderActionMessag
 import renderText from '../../common/helpers/renderText';
 import { fastRaf } from '../../../util/schedulers';
 import buildClassName from '../../../util/buildClassName';
+import { renderMessageSummary } from '../../common/helpers/renderMessageText';
+
 import useEnsureMessage from '../../../hooks/useEnsureMessage';
 import useChatContextActions from '../../../hooks/useChatContextActions';
 import useFlag from '../../../hooks/useFlag';
 import useMedia from '../../../hooks/useMedia';
 import { ChatAnimationTypes } from './hooks';
-import { renderMessageSummary } from '../../common/helpers/renderMessageText';
+import useLang from '../../../hooks/useLang';
 
 import Avatar from '../../common/Avatar';
 import VerifiedIcon from '../../common/VerifiedIcon';
@@ -55,6 +57,7 @@ import ChatFolderModal from '../ChatFolderModal.async';
 import ChatCallStatus from './ChatCallStatus';
 import ReportModal from '../../common/ReportModal';
 import FakeIcon from '../../common/FakeIcon';
+import PremiumIcon from '../../common/PremiumIcon';
 
 import './Chat.scss';
 
@@ -65,6 +68,8 @@ type OwnProps = {
   orderDiff: number;
   animationType: ChatAnimationTypes;
   isPinned?: boolean;
+  observeIntersection?: ObserveFn;
+  onDragEnter?: (chatId: string) => void;
 };
 
 type StateProps = {
@@ -78,7 +83,7 @@ type StateProps = {
   lastMessageSender?: ApiUser;
   lastMessageOutgoingStatus?: ApiMessageOutgoingStatus;
   draft?: ApiFormattedText;
-  animationLevel?: number;
+  animationLevel?: AnimationLevel;
   isSelected?: boolean;
   canScrollDown?: boolean;
   canChangeFolder?: boolean;
@@ -94,6 +99,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   orderDiff,
   animationType,
   isPinned,
+  observeIntersection,
   chat,
   isMuted,
   user,
@@ -109,6 +115,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   canScrollDown,
   canChangeFolder,
   lastSyncTime,
+  onDragEnter,
 }) => {
   const {
     openChat,
@@ -128,7 +135,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   const { lastMessage, typingStatus } = chat || {};
   const isAction = lastMessage && isActionMessage(lastMessage);
 
-  useEnsureMessage(chatId, isAction ? lastMessage!.replyToMessageId : undefined, actionTargetMessage);
+  useEnsureMessage(chatId, isAction ? lastMessage.replyToMessageId : undefined, actionTargetMessage);
 
   const mediaThumbnail = lastMessage && !getMessageSticker(lastMessage)
     ? getMessageMediaThumbDataUri(lastMessage)
@@ -183,7 +190,7 @@ const Chat: FC<OwnProps & StateProps> = ({
   }, [animationLevel, orderDiff, animationType]);
 
   const handleClick = useCallback(() => {
-    openChat({ id: chatId, shouldReplaceHistory: true });
+    openChat({ id: chatId, shouldReplaceHistory: true }, { forceOnHeavyAnimation: true });
 
     if (isSelected && canScrollDown) {
       focusLastMessage();
@@ -195,6 +202,11 @@ const Chat: FC<OwnProps & StateProps> = ({
     chatId,
     focusLastMessage,
   ]);
+
+  const handleDragEnter = useCallback((e) => {
+    e.preventDefault();
+    onDragEnter?.(chatId);
+  }, [chatId, onDragEnter]);
 
   const handleDelete = useCallback(() => {
     markRenderDeleteModal();
@@ -276,7 +288,7 @@ const Chat: FC<OwnProps & StateProps> = ({
             <span className="colon">:</span>
           </>
         )}
-        {renderSummary(lang, lastMessage!, mediaBlobUrl || mediaThumbnail, isRoundVideo)}
+        {renderSummary(lang, lastMessage, observeIntersection, mediaBlobUrl || mediaThumbnail, isRoundVideo)}
       </p>
     );
   }
@@ -295,6 +307,7 @@ const Chat: FC<OwnProps & StateProps> = ({
       ripple={!IS_SINGLE_COLUMN_LAYOUT}
       contextActions={contextActions}
       onClick={handleClick}
+      onDragEnter={handleDragEnter}
     >
       <div className="status">
         <Avatar
@@ -303,6 +316,9 @@ const Chat: FC<OwnProps & StateProps> = ({
           userStatus={userStatus}
           isSavedMessages={user?.isSelf}
           lastSyncTime={lastSyncTime}
+          animationLevel={animationLevel}
+          withVideo
+          observeIntersection={observeIntersection}
         />
         {chat.isCallActive && chat.isCallNotEmpty && (
           <ChatCallStatus isSelected={isSelected} isActive={animationLevel !== 0} />
@@ -312,6 +328,7 @@ const Chat: FC<OwnProps & StateProps> = ({
         <div className="title">
           <h3>{renderText(getChatTitle(lang, chat, user))}</h3>
           {chat.isVerified && <VerifiedIcon />}
+          {user?.isPremium && !user.isSelf && <PremiumIcon />}
           {chat.fakeType && <FakeIcon fakeType={chat.fakeType} />}
           {isMuted && <i className="icon-muted" />}
           {chat.lastMessage && (
@@ -355,16 +372,18 @@ const Chat: FC<OwnProps & StateProps> = ({
   );
 };
 
-function renderSummary(lang: LangFn, message: ApiMessage, blobUrl?: string, isRoundVideo?: boolean) {
+function renderSummary(
+  lang: LangFn, message: ApiMessage, observeIntersection?: ObserveFn, blobUrl?: string, isRoundVideo?: boolean,
+) {
   if (!blobUrl) {
-    return renderMessageSummary(lang, message);
+    return renderMessageSummary(lang, message, undefined, undefined, undefined, observeIntersection);
   }
 
   return (
     <span className="media-preview">
       <img src={blobUrl} alt="" className={buildClassName('media-preview--image', isRoundVideo && 'round')} />
       {getMessageVideo(message) && <i className="icon-play" />}
-      {renderMessageSummary(lang, message, true)}
+      {renderMessageSummary(lang, message, true, undefined, undefined, observeIntersection)}
     </span>
   );
 }
@@ -372,13 +391,13 @@ function renderSummary(lang: LangFn, message: ApiMessage, blobUrl?: string, isRo
 export default memo(withGlobal<OwnProps>(
   (global, { chatId }): StateProps => {
     const chat = selectChat(global, chatId);
-    if (!chat || !chat.lastMessage) {
+    if (!chat) {
       return {};
     }
 
-    const { senderId, replyToMessageId, isOutgoing } = chat.lastMessage;
+    const { senderId, replyToMessageId, isOutgoing } = chat.lastMessage || {};
     const lastMessageSender = senderId ? selectUser(global, senderId) : undefined;
-    const lastMessageAction = getMessageAction(chat.lastMessage);
+    const lastMessageAction = chat.lastMessage ? getMessageAction(chat.lastMessage) : undefined;
     const actionTargetMessage = lastMessageAction && replyToMessageId
       ? selectChatMessage(global, chat.id, replyToMessageId)
       : undefined;
@@ -402,9 +421,11 @@ export default memo(withGlobal<OwnProps>(
       animationLevel: global.settings.byKey.animationLevel,
       isSelected,
       canScrollDown: isSelected && messageListType === 'thread',
-      canChangeFolder: Boolean(global.chatFolders.orderedIds?.length),
+      canChangeFolder: (global.chatFolders.orderedIds?.length || 0) > 1,
       lastSyncTime: global.lastSyncTime,
-      ...(isOutgoing && { lastMessageOutgoingStatus: selectOutgoingStatus(global, chat.lastMessage) }),
+      ...(isOutgoing && chat.lastMessage && {
+        lastMessageOutgoingStatus: selectOutgoingStatus(global, chat.lastMessage),
+      }),
       ...(privateChatUserId && {
         user: selectUser(global, privateChatUserId),
         userStatus: selectUserStatus(global, privateChatUserId),

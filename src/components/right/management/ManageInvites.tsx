@@ -7,7 +7,7 @@ import { getActions, withGlobal } from '../../../global';
 import type { ApiChat, ApiExportedInvite } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
-import { STICKER_SIZE_INVITES } from '../../../config';
+import { STICKER_SIZE_INVITES, TME_LINK_PREFIX } from '../../../config';
 import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
@@ -100,7 +100,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
   }, hasDetailedCountdown ? 1000 : undefined);
 
   const primaryInvite = exportedInvites?.find(({ isPermanent }) => isPermanent);
-  const primaryInviteLink = chat?.username ? `t.me/${chat.username}` : primaryInvite?.link;
+  const primaryInviteLink = chat?.username ? `${TME_LINK_PREFIX}${chat.username}` : primaryInvite?.link;
   const temporalInvites = useMemo(() => {
     const invites = chat?.username ? exportedInvites : exportedInvites?.filter(({ isPermanent }) => !isPermanent);
     return invites?.sort(inviteComparator);
@@ -224,6 +224,25 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
     return text;
   };
 
+  const getInviteIconClass = (invite: ApiExportedInvite) => {
+    const {
+      usage = 0, usageLimit, isRevoked, expireDate,
+    } = invite;
+    if (isRevoked) {
+      return 'link-status-icon-gray';
+    }
+    if (usageLimit && usage < usageLimit) {
+      return 'link-status-icon-green';
+    }
+    if (expireDate) {
+      const diff = (expireDate - getServerTime(serverTimeOffset)) * 1000;
+      if (diff <= 0) {
+        return 'link-status-icon-red';
+      }
+    }
+    return 'link-status-icon-blue';
+  };
+
   const prepareContextActions = (invite: ApiExportedInvite) => {
     const actions = [];
     actions.push({
@@ -318,7 +337,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
           {(!temporalInvites || !temporalInvites.length) && <NothingFound text="No links found" key="nothing" />}
           {temporalInvites?.map((invite) => (
             <ListItem
-              icon="link"
+              leftElement={<i className={`icon-link link-status-icon ${getInviteIconClass(invite)}`} />}
               secondaryIcon="more"
               multiline
               // eslint-disable-next-line react/jsx-no-bind
@@ -347,7 +366,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
             </ListItem>
             {revokedExportedInvites?.map((invite) => (
               <ListItem
-                icon="link"
+                leftElement={<i className={`icon-link link-status-icon ${getInviteIconClass(invite)}`} />}
                 secondaryIcon="more"
                 multiline
                 // eslint-disable-next-line react/jsx-no-bind

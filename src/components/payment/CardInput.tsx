@@ -14,6 +14,7 @@ import './CardInput.scss';
 
 import mastercardIconPath from '../../assets/mastercard.svg';
 import visaIconPath from '../../assets/visa.svg';
+import mirIconPath from '../../assets/mir.svg';
 
 const CARD_NUMBER_MAX_LENGTH = 23;
 
@@ -42,26 +43,25 @@ const CardInput : FC<OwnProps> = ({ value, error, onChange }) => {
     const newCardType = detectCardType(e.target.value);
     setCardType(newCardType);
     onChange(newValue);
-    if (cardNumberRef.current) {
-      cardNumberRef.current.value = newValue;
-    }
-  }, [onChange, cardNumberRef]);
+  }, [onChange]);
 
   const cardIcon = getCardIcon(cardType);
 
   return (
     <div className="CardInput">
-      <span className="left-addon">{cardIcon}</span>
       <InputText
         ref={cardNumberRef}
         label={lang('PaymentCardNumber')}
         onChange={handleChange}
         value={value}
         inputMode="numeric"
-        className={cardType ? 'has-left-addon' : ''}
+        className={cardType ? 'has-right-addon' : ''}
         error={error}
+        tabIndex={0}
         maxLength={CARD_NUMBER_MAX_LENGTH}
+        teactExperimentControlled
       />
+      <span className="right-addon">{cardIcon}</span>
     </div>
   );
 };
@@ -74,6 +74,8 @@ function getCardIcon(cardType: CardType) {
       return <img src={mastercardIconPath} alt="" />;
     case CardType.Visa:
       return <img src={visaIconPath} alt="" />;
+    case CardType.Mir:
+      return <img src={mirIconPath} alt="" />;
     default:
       return undefined;
   }

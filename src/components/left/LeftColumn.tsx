@@ -6,8 +6,9 @@ import { getActions, withGlobal } from '../../global';
 
 import { LeftColumnContent, SettingsScreens } from '../../types';
 
-import { LAYERS_ANIMATION_NAME } from '../../util/environment';
+import { IS_MAC_OS, IS_PWA, LAYERS_ANIMATION_NAME } from '../../util/environment';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
+import { selectCurrentChat } from '../../global/selectors';
 import useFoldersReducer from '../../hooks/reducers/useFoldersReducer';
 import { useResize } from '../../hooks/useResize';
 import { useHotkeys } from '../../hooks/useHotkeys';
@@ -24,12 +25,14 @@ import './LeftColumn.scss';
 type StateProps = {
   searchQuery?: string;
   searchDate?: number;
-  activeChatFolder: number;
+  isFirstChatFolderActive: boolean;
   shouldSkipHistoryAnimations?: boolean;
   leftColumnWidth?: number;
   currentUserId?: string;
   hasPasscode?: boolean;
   nextSettingsScreen?: SettingsScreens;
+  isChatOpen: boolean;
+  isUpdateAvailable?: boolean;
 };
 
 enum ContentType {
@@ -49,12 +52,14 @@ const RESET_TRANSITION_DELAY_MS = 250;
 const LeftColumn: FC<StateProps> = ({
   searchQuery,
   searchDate,
-  activeChatFolder,
+  isFirstChatFolderActive,
   shouldSkipHistoryAnimations,
   leftColumnWidth,
   currentUserId,
   hasPasscode,
   nextSettingsScreen,
+  isChatOpen,
+  isUpdateAvailable,
 }) => {
   const {
     setGlobalSearchQuery,
@@ -142,11 +147,12 @@ const LeftColumn: FC<StateProps> = ({
         case SettingsScreens.Privacy:
         case SettingsScreens.ActiveSessions:
         case SettingsScreens.Language:
+        case SettingsScreens.Stickers:
+        case SettingsScreens.Experimental:
           setSettingsScreen(SettingsScreens.Main);
           return;
 
         case SettingsScreens.GeneralChatBackground:
-        case SettingsScreens.QuickReaction:
           setSettingsScreen(SettingsScreens.General);
           return;
         case SettingsScreens.GeneralChatBackgroundColor:
@@ -160,6 +166,7 @@ const LeftColumn: FC<StateProps> = ({
         case SettingsScreens.PrivacyPhoneP2P:
         case SettingsScreens.PrivacyForwarding:
         case SettingsScreens.PrivacyGroupChats:
+        case SettingsScreens.PrivacyVoiceMessages:
         case SettingsScreens.PrivacyBlockedUsers:
         case SettingsScreens.ActiveWebsites:
         case SettingsScreens.TwoFaDisabled:
@@ -216,6 +223,10 @@ const LeftColumn: FC<StateProps> = ({
         case SettingsScreens.PrivacyForwardingDeniedContacts:
           setSettingsScreen(SettingsScreens.PrivacyForwarding);
           return;
+        case SettingsScreens.PrivacyVoiceMessagesAllowedContacts:
+        case SettingsScreens.PrivacyVoiceMessagesDeniedContacts:
+          setSettingsScreen(SettingsScreens.PrivacyVoiceMessages);
+          return;
         case SettingsScreens.PrivacyGroupChatsAllowedContacts:
         case SettingsScreens.PrivacyGroupChatsDeniedContacts:
           setSettingsScreen(SettingsScreens.PrivacyGroupChats);
@@ -270,19 +281,25 @@ const LeftColumn: FC<StateProps> = ({
           setContent(LeftColumnContent.ChatList);
           setSettingsScreen(SettingsScreens.Main);
           return;
+
+        case SettingsScreens.QuickReaction:
+        case SettingsScreens.CustomEmoji:
+          setSettingsScreen(SettingsScreens.Stickers);
+          return;
         default:
           break;
       }
     }
 
-    if (content === LeftColumnContent.ChatList && activeChatFolder === 0) {
+    if (content === LeftColumnContent.ChatList && isFirstChatFolderActive) {
       setContent(LeftColumnContent.GlobalSearch);
+
       return;
     }
 
     fullReset();
   }, [
-    content, activeChatFolder, settingsScreen, setGlobalSearchQuery, setGlobalSearchDate, setGlobalSearchChatId,
+    content, isFirstChatFolderActive, settingsScreen, setGlobalSearchQuery, setGlobalSearchDate, setGlobalSearchChatId,
     resetChatCreation, hasPasscode,
   ]);
 
@@ -300,10 +317,10 @@ const LeftColumn: FC<StateProps> = ({
   }, [content, searchQuery, setGlobalSearchQuery]);
 
   useEffect(
-    () => (content !== LeftColumnContent.ChatList || activeChatFolder === 0
+    () => (content !== LeftColumnContent.ChatList || (isFirstChatFolderActive && !isChatOpen)
       ? captureEscKeyListener(() => handleReset())
       : undefined),
-    [activeChatFolder, content, handleReset],
+    [isFirstChatFolderActive, content, handleReset, isChatOpen],
   );
 
   const handleHotkeySearch = useCallback((e: KeyboardEvent) => {
@@ -317,12 +334,19 @@ const LeftColumn: FC<StateProps> = ({
 
   const handleHotkeySavedMessages = useCallback((e: KeyboardEvent) => {
     e.preventDefault();
-    openChat({ id: currentUserId });
+    openChat({ id: currentUserId, shouldReplaceHistory: true });
   }, [currentUserId, openChat]);
 
+  const handleHotkeySettings = useCallback((e: KeyboardEvent) => {
+    e.preventDefault();
+    setContent(LeftColumnContent.Settings);
+  }, []);
+
   useHotkeys({
-    'mod+shift+F': handleHotkeySearch,
-    'mod+shift+S': handleHotkeySavedMessages,
+    'Mod+Shift+F': handleHotkeySearch,
+    'Mod+Shift+S': handleHotkeySavedMessages,
+    'Mod+0': handleHotkeySavedMessages,
+    ...(IS_MAC_OS && IS_PWA && { 'Mod+,': handleHotkeySettings }),
   });
 
   useEffect(() => {
@@ -418,6 +442,7 @@ const LeftColumn: FC<StateProps> = ({
                   onScreenSelect={handleSettingsScreenSelect}
                   onReset={handleReset}
                   shouldSkipTransition={shouldSkipHistoryAnimations}
+                  isUpdateAvailable={isUpdateAvailable}
                 />
               );
           }
@@ -452,17 +477,22 @@ export default memo(withGlobal(
       settings: {
         nextScreen: nextSettingsScreen,
       },
+      isUpdateAvailable,
     } = global;
+
+    const isChatOpen = Boolean(selectCurrentChat(global)?.id);
 
     return {
       searchQuery: query,
       searchDate: date,
-      activeChatFolder,
+      isFirstChatFolderActive: activeChatFolder === 0,
       shouldSkipHistoryAnimations,
       leftColumnWidth,
       currentUserId,
       hasPasscode,
       nextSettingsScreen,
+      isChatOpen,
+      isUpdateAvailable,
     };
   },
 )(LeftColumn));

@@ -5,6 +5,7 @@ import { getActions, withGlobal } from '../../../global';
 import type {
   ApiChat, ApiUser, ApiMessage, ApiMessageOutgoingStatus,
 } from '../../../api/types';
+import type { AnimationLevel } from '../../../types';
 
 import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import {
@@ -14,6 +15,7 @@ import {
   getMessageMediaThumbDataUri,
   getMessageVideo,
   getMessageRoundVideo,
+  getMessageSticker,
 } from '../../../global/helpers';
 import { selectChat, selectUser } from '../../../global/selectors';
 import buildClassName from '../../../util/buildClassName';
@@ -31,6 +33,7 @@ import VerifiedIcon from '../../common/VerifiedIcon';
 import ListItem from '../../ui/ListItem';
 import Link from '../../ui/Link';
 import FakeIcon from '../../common/FakeIcon';
+import PremiumIcon from '../../common/PremiumIcon';
 
 import './ChatMessage.scss';
 
@@ -45,6 +48,7 @@ type StateProps = {
   privateChatUser?: ApiUser;
   lastMessageOutgoingStatus?: ApiMessageOutgoingStatus;
   lastSyncTime?: number;
+  animationLevel?: AnimationLevel;
 };
 
 const ChatMessage: FC<OwnProps & StateProps> = ({
@@ -53,11 +57,12 @@ const ChatMessage: FC<OwnProps & StateProps> = ({
   chatId,
   chat,
   privateChatUser,
+  animationLevel,
   lastSyncTime,
 }) => {
   const { focusMessage } = getActions();
 
-  const mediaThumbnail = getMessageMediaThumbDataUri(message);
+  const mediaThumbnail = !getMessageSticker(message) ? getMessageMediaThumbDataUri(message) : undefined;
   const mediaBlobUrl = useMedia(getMessageMediaHash(message, 'micro'));
   const isRoundVideo = Boolean(getMessageRoundVideo(message));
 
@@ -85,12 +90,15 @@ const ChatMessage: FC<OwnProps & StateProps> = ({
         user={privateChatUser}
         isSavedMessages={privateChatUser?.isSelf}
         lastSyncTime={lastSyncTime}
+        withVideo
+        animationLevel={animationLevel}
       />
       <div className="info">
         <div className="info-row">
           <div className="title">
             <h3 dir="auto">{renderText(getChatTitle(lang, chat, privateChatUser))}</h3>
             {chat.isVerified && <VerifiedIcon />}
+            {privateChatUser?.isPremium && <PremiumIcon />}
             {chat.fakeType && <FakeIcon fakeType={chat.fakeType} />}
           </div>
           <div className="message-date">
@@ -138,6 +146,7 @@ export default memo(withGlobal<OwnProps>(
     return {
       chat,
       lastSyncTime: global.lastSyncTime,
+      animationLevel: global.settings.byKey.animationLevel,
       ...(privateChatUserId && { privateChatUser: selectUser(global, privateChatUserId) }),
     };
   },

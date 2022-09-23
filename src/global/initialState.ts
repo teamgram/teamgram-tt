@@ -15,6 +15,7 @@ export const INITIAL_STATE: GlobalState = {
   newChatMembersProgress: NewChatMembersProgress.Closed,
   uiReadyState: 0,
   serverTimeOffset: 0,
+  isUpdateAvailable: false,
 
   authRememberMe: true,
   countryList: {
@@ -63,7 +64,8 @@ export const INITIAL_STATE: GlobalState = {
     byMessageLocalId: {},
   },
 
-  recentEmojis: ['grinning', 'kissing_heart', 'christmas_tree', 'brain', 'trophy'],
+  recentEmojis: ['grinning', 'kissing_heart', 'christmas_tree', 'brain', 'trophy', 'duck', 'cherries'],
+  recentCustomEmojis: ['5377305978079288312'],
 
   stickers: {
     setsById: {},
@@ -77,11 +79,23 @@ export const INITIAL_STATE: GlobalState = {
     greeting: {
       stickers: [],
     },
+    premium: {
+      stickers: [],
+    },
+    premiumSet: {
+      stickers: [],
+    },
     featured: {
       setIds: [],
     },
     search: {},
     forEmoji: {},
+  },
+
+  customEmojis: {
+    lastRendered: [],
+    byId: {},
+    added: {},
   },
 
   emojiKeywords: {},
@@ -181,6 +195,7 @@ export const INITIAL_STATE: GlobalState = {
       timeFormat: '24h',
       wasTimeFormatSetManually: false,
       isConnectionStatusMinimized: true,
+      shouldArchiveAndMuteNewNonContact: false,
     },
     themes: {
       light: {
@@ -221,4 +236,6 @@ export const INITIAL_STATE: GlobalState = {
   attachMenu: {
     bots: {},
   },
+
+  transcriptions: {},
 };

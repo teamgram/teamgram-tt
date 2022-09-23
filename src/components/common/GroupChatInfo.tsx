@@ -5,6 +5,7 @@ import { getActions, withGlobal } from '../../global';
 
 import type { ApiChat, ApiTypingStatus } from '../../api/types';
 import type { GlobalState } from '../../global/types';
+import type { AnimationLevel } from '../../types';
 import { MediaViewerOrigin } from '../../types';
 
 import {
@@ -34,6 +35,7 @@ type OwnProps = {
   withFullInfo?: boolean;
   withUpdatingStatus?: boolean;
   withChatType?: boolean;
+  withVideoAvatar?: boolean;
   noRtl?: boolean;
 };
 
@@ -42,6 +44,7 @@ type StateProps =
     chat?: ApiChat;
     onlineCount?: number;
     areMessagesLoaded: boolean;
+    animationLevel: AnimationLevel;
   }
   & Pick<GlobalState, 'lastSyncTime'>;
 
@@ -55,31 +58,36 @@ const GroupChatInfo: FC<OwnProps & StateProps> = ({
   withFullInfo,
   withUpdatingStatus,
   withChatType,
+  withVideoAvatar,
   noRtl,
   chat,
   onlineCount,
   areMessagesLoaded,
+  animationLevel,
   lastSyncTime,
 }) => {
   const {
     loadFullChat,
     openMediaViewer,
+    loadProfilePhotos,
   } = getActions();
 
   const isSuperGroup = chat && isChatSuperGroup(chat);
   const { id: chatId, isMin, isRestricted } = chat || {};
 
   useEffect(() => {
-    if (chatId && !isMin && withFullInfo && lastSyncTime) {
-      loadFullChat({ chatId });
+    if (chatId && !isMin && lastSyncTime) {
+      if (withFullInfo) loadFullChat({ chatId });
+      if (withMediaViewer) loadProfilePhotos({ profileId: chatId });
     }
-  }, [chatId, isMin, lastSyncTime, withFullInfo, loadFullChat, isSuperGroup]);
+  }, [chatId, isMin, lastSyncTime, withFullInfo, loadFullChat, loadProfilePhotos, isSuperGroup, withMediaViewer]);
 
-  const handleAvatarViewerOpen = useCallback((e: ReactMouseEvent<HTMLDivElement, MouseEvent>, hasPhoto: boolean) => {
-    if (chat && hasPhoto) {
+  const handleAvatarViewerOpen = useCallback((e: ReactMouseEvent<HTMLDivElement, MouseEvent>, hasMedia: boolean) => {
+    if (chat && hasMedia) {
       e.stopPropagation();
       openMediaViewer({
         avatarOwnerId: chat.id,
+        mediaId: 0,
         origin: avatarSize === 'jumbo' ? MediaViewerOrigin.ProfileAvatar : MediaViewerOrigin.MiddleHeaderAvatar,
       });
     }
@@ -140,6 +148,8 @@ const GroupChatInfo: FC<OwnProps & StateProps> = ({
         size={avatarSize}
         chat={chat}
         onClick={withMediaViewer ? handleAvatarViewerOpen : undefined}
+        withVideo={withVideoAvatar}
+        animationLevel={animationLevel}
       />
       <div className="info">
         <div className="title">
@@ -178,7 +188,11 @@ export default memo(withGlobal<OwnProps>(
     const areMessagesLoaded = Boolean(selectChatMessages(global, chatId));
 
     return {
-      lastSyncTime, chat, onlineCount, areMessagesLoaded,
+      lastSyncTime,
+      chat,
+      onlineCount,
+      areMessagesLoaded,
+      animationLevel: global.settings.byKey.animationLevel,
     };
   },
 )(GroupChatInfo));

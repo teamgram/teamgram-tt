@@ -1,4 +1,7 @@
 import { Api as GramJs } from '../../../lib/gramjs';
+import {
+  ApiMessageEntityTypes,
+} from '../../types';
 import type {
   ApiMessage,
   ApiMessageForwardInfo,
@@ -31,6 +34,8 @@ import type {
   ApiLocation,
   ApiGame,
   PhoneCallAction,
+  ApiWebDocument,
+  ApiMessageEntityDefault,
 } from '../../types';
 
 import {
@@ -66,7 +71,7 @@ export function setMessageBuilderCurrentUserId(_currentUserId: string) {
 
 export function buildApiSponsoredMessage(mtpMessage: GramJs.SponsoredMessage): ApiSponsoredMessage | undefined {
   const {
-    fromId, message, entities, startParam, channelPost, chatInvite, chatInviteHash, randomId,
+    fromId, message, entities, startParam, channelPost, chatInvite, chatInviteHash, randomId, recommended,
   } = mtpMessage;
   const chatId = fromId ? getApiChatIdFromMtpPeer(fromId) : undefined;
   const chatInviteTitle = chatInvite
@@ -80,6 +85,7 @@ export function buildApiSponsoredMessage(mtpMessage: GramJs.SponsoredMessage): A
     isBot: fromId ? isPeerUser(fromId) : false,
     text: buildMessageTextContent(message, entities),
     expiresAt: Math.round(Date.now() / 1000) + SPONSORED_MESSAGE_CACHE_MS,
+    isRecommended: Boolean(recommended),
     ...(chatId && { chatId }),
     ...(chatInviteHash && { chatInviteHash }),
     ...(chatInvite && { chatInviteTitle }),
@@ -237,17 +243,21 @@ export function buildMessagePeerReaction(userReaction: GramJs.MessagePeerReactio
 export function buildApiAvailableReaction(availableReaction: GramJs.AvailableReaction): ApiAvailableReaction {
   const {
     selectAnimation, staticIcon, reaction, title,
-    inactive, aroundAnimation, centerIcon,
+    inactive, aroundAnimation, centerIcon, effectAnimation, activateAnimation,
+    premium,
   } = availableReaction;
 
   return {
     selectAnimation: buildApiDocument(selectAnimation),
+    activateAnimation: buildApiDocument(activateAnimation),
+    effectAnimation: buildApiDocument(effectAnimation),
     staticIcon: buildApiDocument(staticIcon),
     aroundAnimation: aroundAnimation ? buildApiDocument(aroundAnimation) : undefined,
     centerIcon: centerIcon ? buildApiDocument(centerIcon) : undefined,
     reaction,
     title,
     isInactive: inactive,
+    isPremium: premium,
   };
 }
 
@@ -262,7 +272,10 @@ export function buildMessageContent(
     };
   }
 
-  if (mtpMessage.message && !content.sticker && !content.poll && !content.contact && !(content.video?.isRound)) {
+  const hasUnsupportedMedia = mtpMessage.media instanceof GramJs.MessageMediaUnsupported;
+
+  if (mtpMessage.message && !hasUnsupportedMedia
+    && !content.sticker && !content.poll && !content.contact && !(content.video?.isRound)) {
     content = {
       ...content,
       text: buildMessageTextContent(mtpMessage.message, mtpMessage.entities),
@@ -368,7 +381,7 @@ function buildSticker(media: GramJs.TypeMessageMedia): ApiSticker | undefined {
     return undefined;
   }
 
-  return buildStickerFromDocument(media.document);
+  return buildStickerFromDocument(media.document, media.nopremium);
 }
 
 function buildPhoto(media: GramJs.TypeMessageMedia): ApiPhoto | undefined {
@@ -427,7 +440,7 @@ export function buildVideoFromDocument(document: GramJs.Document): ApiVideo | un
     isRound,
     isGif: Boolean(gifAttr),
     thumbnail: buildApiThumbnailFromStripped(thumbs),
-    size,
+    size: size.toJSNumber(),
   };
 }
 
@@ -469,7 +482,8 @@ function buildAudio(media: GramJs.TypeMessageMedia): ApiAudio | undefined {
     id: String(media.document.id),
     fileName: getFilenameFromDocument(media.document, 'audio'),
     thumbnailSizes,
-    ...pick(media.document, ['size', 'mimeType']),
+    size: media.document.size.toJSNumber(),
+    ...pick(media.document, ['mimeType']),
     ...pick(audioAttribute, ['duration', 'performer', 'title']),
   };
 }
@@ -559,7 +573,7 @@ export function buildApiDocument(document: GramJs.TypeDocument): ApiDocument | u
 
   return {
     id: String(id),
-    size,
+    size: size.toJSNumber(),
     mimeType,
     timestamp: date,
     fileName: getFilenameFromDocument(document),
@@ -717,22 +731,10 @@ export function buildInvoice(media: GramJs.MessageMediaInvoice): ApiInvoice {
     description: text, title, photo, test, totalAmount, currency, receiptMsgId,
   } = media;
 
-  const imageAttribute = photo?.attributes
-    .find((a: any): a is GramJs.DocumentAttributeImageSize => a instanceof GramJs.DocumentAttributeImageSize);
-
-  let photoWidth: number | undefined;
-  let photoHeight: number | undefined;
-  if (imageAttribute) {
-    photoWidth = imageAttribute.w;
-    photoHeight = imageAttribute.h;
-  }
-
   return {
     text,
     title,
-    photoUrl: photo?.url,
-    photoWidth,
-    photoHeight,
+    photo: buildApiWebDocument(photo),
     receiptMsgId,
     amount: Number(totalAmount),
     currency,
@@ -742,7 +744,7 @@ export function buildInvoice(media: GramJs.MessageMediaInvoice): ApiInvoice {
 
 export function buildPollResults(pollResults: GramJs.PollResults): ApiPoll['results'] {
   const {
-    results: rawResults, totalVoters, recentVoters, solution, solutionEntities: entities,
+    results: rawResults, totalVoters, recentVoters, solution, solutionEntities: entities, min,
   } = pollResults;
   const results = rawResults && rawResults.map(({
     option, chosen, correct, voters,
@@ -754,6 +756,7 @@ export function buildPollResults(pollResults: GramJs.PollResults): ApiPoll['resu
   }));
 
   return {
+    isMin: min,
     totalVoters,
     recentVoterIds: recentVoters?.map((id) => buildApiPeerId(id, 'user')),
     results,
@@ -814,6 +817,7 @@ function buildAction(
   let type: ApiAction['type'] = 'other';
   let photo: ApiPhoto | undefined;
   let score: number | undefined;
+  let months: number | undefined;
 
   const targetUserIds = 'users' in action
     ? action.users && action.users.map((id) => buildApiPeerId(id, 'user'))
@@ -945,6 +949,19 @@ function buildAction(
   } else if (action instanceof GramJs.MessageActionWebViewDataSent) {
     text = 'Notification.WebAppSentData';
     translationValues.push(action.text);
+  } else if (action instanceof GramJs.MessageActionGiftPremium) {
+    text = isOutgoing ? 'ActionGiftOutbound' : 'ActionGiftInbound';
+    if (isOutgoing) {
+      translationValues.push('%gift_payment_amount%');
+    } else {
+      translationValues.push('%action_origin%', '%gift_payment_amount%');
+    }
+    if (targetPeerId) {
+      targetUserIds.push(targetPeerId);
+    }
+    currency = action.currency;
+    amount = action.amount.toJSNumber();
+    months = action.months;
   } else {
     text = 'ChatList.UnsupportedMessage';
   }
@@ -966,6 +983,7 @@ function buildAction(
     call,
     phoneCall,
     score,
+    months,
   };
 }
 
@@ -1148,6 +1166,7 @@ export function buildLocalMessage(
   text?: string,
   entities?: ApiMessageEntity[],
   replyingTo?: number,
+  replyingToTopId?: number,
   attachment?: ApiAttachment,
   sticker?: ApiSticker,
   gif?: ApiVideo,
@@ -1182,6 +1201,7 @@ export function buildLocalMessage(
     isOutgoing: !isChannel,
     senderId: sendAs?.id || currentUserId,
     ...(replyingTo && { replyToMessageId: replyingTo }),
+    ...(replyingToTopId && { replyToTopMessageId: replyingToTopId }),
     ...(groupedId && {
       groupedId,
       ...(media && (media.photo || media.video) && { isInAlbum: true }),
@@ -1195,6 +1215,9 @@ export function buildLocalForwardedMessage(
   message: ApiMessage,
   serverTimeOffset: number,
   scheduledAt?: number,
+  noAuthors?: boolean,
+  noCaptions?: boolean,
+  isCurrentUserPremium?: boolean,
 ): ApiMessage {
   const localId = getNextLocalMessageId();
   const {
@@ -1210,11 +1233,22 @@ export function buildLocalForwardedMessage(
   const asIncomingInChatWithSelf = (
     toChat.id === currentUserId && (fromChatId !== toChat.id || message.forwardInfo) && !isAudio
   );
+  const shouldHideText = Object.keys(content).length > 1 && content.text && noCaptions;
+  const shouldDropCustomEmoji = !isCurrentUserPremium;
+  const strippedText = content.text?.entities && shouldDropCustomEmoji ? {
+    text: content.text.text,
+    entities: content.text.entities?.filter((entity) => entity.type !== ApiMessageEntityTypes.CustomEmoji),
+  } : content.text;
+
+  const updatedContent = {
+    ...content,
+    text: !shouldHideText ? strippedText : undefined,
+  };
 
   return {
     id: localId,
     chatId: toChat.id,
-    content,
+    content: updatedContent,
     date: scheduledAt || Math.round(Date.now() / 1000) + serverTimeOffset,
     isOutgoing: !asIncomingInChatWithSelf && toChat.type !== 'chatTypeChannel',
     senderId: currentUserId,
@@ -1222,7 +1256,7 @@ export function buildLocalForwardedMessage(
     groupedId,
     isInAlbum,
     // Forward info doesn't get added when users forwards his own messages, also when forwarding audio
-    ...(senderId !== currentUserId && !isAudio && {
+    ...(senderId !== currentUserId && !isAudio && !noAuthors && {
       forwardInfo: {
         date: message.date,
         isChannelPost: false,
@@ -1310,6 +1344,27 @@ function buildUploadingMedia(
   };
 }
 
+export function buildApiWebDocument(document?: GramJs.TypeWebDocument): ApiWebDocument | undefined {
+  if (!document) return undefined;
+
+  const {
+    url, size, mimeType,
+  } = document;
+  const accessHash = document instanceof GramJs.WebDocument ? document.accessHash.toString() : undefined;
+  const sizeAttr = document.attributes.find((attr): attr is GramJs.DocumentAttributeImageSize => (
+    attr instanceof GramJs.DocumentAttributeImageSize
+  ));
+  const dimensions = sizeAttr && { width: sizeAttr.w, height: sizeAttr.h };
+
+  return {
+    url,
+    accessHash,
+    size,
+    mimeType,
+    dimensions,
+  };
+}
+
 function buildNewPoll(poll: ApiNewPoll, localId: number) {
   return {
     poll: {
@@ -1320,15 +1375,51 @@ function buildNewPoll(poll: ApiNewPoll, localId: number) {
   };
 }
 
-function buildApiMessageEntity(entity: GramJs.TypeMessageEntity): ApiMessageEntity {
-  const { className: type, offset, length } = entity;
+export function buildApiMessageEntity(entity: GramJs.TypeMessageEntity): ApiMessageEntity {
+  const {
+    className: type, offset, length,
+  } = entity;
+
+  if (entity instanceof GramJs.MessageEntityMentionName) {
+    return {
+      type: ApiMessageEntityTypes.MentionName,
+      offset,
+      length,
+      userId: buildApiPeerId(entity.userId, 'user'),
+    };
+  }
+
+  if (entity instanceof GramJs.MessageEntityTextUrl) {
+    return {
+      type: ApiMessageEntityTypes.TextUrl,
+      offset,
+      length,
+      url: entity.url,
+    };
+  }
+
+  if (entity instanceof GramJs.MessageEntityPre) {
+    return {
+      type: ApiMessageEntityTypes.Pre,
+      offset,
+      length,
+      language: entity.language,
+    };
+  }
+
+  if (entity instanceof GramJs.MessageEntityCustomEmoji) {
+    return {
+      type: ApiMessageEntityTypes.CustomEmoji,
+      offset,
+      length,
+      documentId: entity.documentId.toString(),
+    };
+  }
+
   return {
-    type,
+    type: type as `${ApiMessageEntityDefault['type']}`,
     offset,
     length,
-    ...(entity instanceof GramJs.MessageEntityMentionName && { userId: buildApiPeerId(entity.userId, 'user') }),
-    ...('url' in entity && { url: entity.url }),
-    ...('language' in entity && { language: entity.language }),
   };
 }
 

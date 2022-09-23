@@ -58,7 +58,8 @@ const PaymentInfo: FC<OwnProps> = ({
   }, [dispatch]);
 
   const handleCvvChange = useCallback((e) => {
-    dispatch({ type: 'changeCvvCode', payload: e.target.value });
+    const newValue = e.target.value.replace(/[^0-9]/g, '');
+    dispatch({ type: 'changeCvvCode', payload: newValue });
   }, [dispatch]);
 
   const handleCountryChange = useCallback((e) => {
@@ -88,10 +89,11 @@ const PaymentInfo: FC<OwnProps> = ({
         />
         { needCardholderName && (
           <InputText
-            label={lang('PaymentCardName')}
+            label={lang('Checkout.NewCard.CardholderNamePlaceholder')}
             onChange={handleCardholderChange}
             value={state.cardholder}
             inputMode="text"
+            tabIndex={0}
             error={formErrors.cardholder}
           />
         )}
@@ -107,7 +109,9 @@ const PaymentInfo: FC<OwnProps> = ({
             value={state.cvv}
             inputMode="numeric"
             maxLength={3}
+            tabIndex={0}
             error={formErrors.cvv}
+            teactExperimentControlled
           />
         </section>
         { needCountry || needZip ? (
@@ -122,6 +126,7 @@ const PaymentInfo: FC<OwnProps> = ({
             hasArrow={Boolean(true)}
             id="billing-country"
             error={formErrors.billingCountry}
+            tabIndex={0}
             ref={selectCountryRef}
           >
             {
@@ -129,6 +134,7 @@ const PaymentInfo: FC<OwnProps> = ({
                 <option
                   value={defaultName}
                   className="county-item"
+                  selected={defaultName === state.billingCountry}
                 >
                   {defaultName || name}
                 </option>
@@ -142,6 +148,8 @@ const PaymentInfo: FC<OwnProps> = ({
             onChange={handleBillingPostCodeChange}
             value={state.billingZip}
             inputMode="text"
+            tabIndex={0}
+            maxLength={12}
             error={formErrors.billingZip}
           />
         )}
@@ -149,6 +157,7 @@ const PaymentInfo: FC<OwnProps> = ({
           <Checkbox
             label={lang('PaymentCardSavePaymentInformation')}
             checked={state.saveCredentials}
+            tabIndex={0}
             onChange={handleChangeSaveCredentials}
           />
         ) }

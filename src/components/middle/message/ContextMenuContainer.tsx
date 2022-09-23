@@ -5,34 +5,41 @@ import React, {
 import { getActions, getGlobal, withGlobal } from '../../../global';
 
 import type { MessageListType } from '../../../global/types';
-import type { ApiAvailableReaction, ApiMessage } from '../../../api/types';
+import type {
+  ApiAvailableReaction, ApiStickerSetInfo, ApiMessage, ApiStickerSet,
+} from '../../../api/types';
 import type { IAlbum, IAnchorPosition } from '../../../types';
 
 import {
   selectActiveDownloadIds,
   selectAllowedMessageActions,
   selectChat,
-  selectCurrentMessageList,
+  selectCurrentMessageList, selectIsCurrentUserPremium,
   selectIsMessageProtected,
+  selectIsPremiumPurchaseBlocked,
+  selectMessageCustomEmojiSets,
+  selectStickerSet,
 } from '../../../global/selectors';
 import {
   isActionMessage, isChatChannel,
   isChatGroup, isOwnMessage, areReactionsEmpty, isUserId, isMessageLocal, getMessageVideo,
 } from '../../../global/helpers';
-import { SERVICE_NOTIFICATIONS_USER_ID } from '../../../config';
+import { SERVICE_NOTIFICATIONS_USER_ID, TME_LINK_PREFIX } from '../../../config';
 import { getDayStartAt } from '../../../util/dateFormat';
 import buildClassName from '../../../util/buildClassName';
 import { REM } from '../../common/helpers/mediaDimensions';
-
 import { copyTextToClipboard } from '../../../util/clipboard';
+
 import useShowTransition from '../../../hooks/useShowTransition';
 import useFlag from '../../../hooks/useFlag';
+import useLang from '../../../hooks/useLang';
 
 import DeleteMessageModal from '../../common/DeleteMessageModal';
 import ReportModal from '../../common/ReportModal';
 import PinMessageModal from '../../common/PinMessageModal';
 import MessageContextMenu from './MessageContextMenu';
 import CalendarModal from '../../common/CalendarModal';
+import ConfirmDialog from '../../ui/ConfirmDialog';
 
 const START_SIZE = 2 * REM;
 
@@ -49,12 +56,15 @@ export type OwnProps = {
 
 type StateProps = {
   availableReactions?: ApiAvailableReaction[];
+  customEmojiSetsInfo?: ApiStickerSetInfo[];
+  customEmojiSets?: ApiStickerSet[];
   noOptions?: boolean;
   canSendNow?: boolean;
   canReschedule?: boolean;
   canReply?: boolean;
   canPin?: boolean;
   canShowReactionsCount?: boolean;
+  canBuyPremium?: boolean;
   canShowReactionList?: boolean;
   canRemoveReaction?: boolean;
   canUnpin?: boolean;
@@ -66,11 +76,14 @@ type StateProps = {
   canUnfaveSticker?: boolean;
   canCopy?: boolean;
   isPrivate?: boolean;
+  isCurrentUserPremium?: boolean;
   hasFullInfo?: boolean;
   canCopyLink?: boolean;
   canSelect?: boolean;
   canDownload?: boolean;
   canSaveGif?: boolean;
+  canRevote?: boolean;
+  canClosePoll?: boolean;
   activeDownloads: number[];
   canShowSeenBy?: boolean;
   enabledReactions?: string[];
@@ -82,6 +95,8 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   messageListType,
   chatUsername,
   message,
+  customEmojiSetsInfo,
+  customEmojiSets,
   album,
   anchor,
   onClose,
@@ -101,7 +116,9 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   canEdit,
   enabledReactions,
   isPrivate,
+  isCurrentUserPremium,
   canForward,
+  canBuyPremium,
   canFaveSticker,
   canUnfaveSticker,
   canCopy,
@@ -109,6 +126,8 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   canSelect,
   canDownload,
   canSaveGif,
+  canRevote,
+  canClosePoll,
   activeDownloads,
   canShowSeenBy,
 }) => {
@@ -132,14 +151,22 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
     loadReactors,
     copyMessagesByIds,
     saveGif,
+    loadStickers,
+    cancelPollVote,
+    closePoll,
   } = getActions();
 
+  const lang = useLang();
   const { transitionClassNames } = useShowTransition(isOpen, onCloseAnimationEnd, undefined, false);
   const [isMenuOpen, setIsMenuOpen] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
   const [isCalendarOpen, openCalendar, closeCalendar] = useFlag();
+  const [isClosePollDialogOpen, openClosePollDialog, closeClosePollDialog] = useFlag();
+
+  // `undefined` indicates that emoji are present and loading
+  const hasCustomEmoji = customEmojiSetsInfo === undefined || Boolean(customEmojiSetsInfo.length);
 
   useEffect(() => {
     if (canShowSeenBy && isOpen) {
@@ -152,6 +179,14 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
       loadReactors({ chatId: message.chatId, messageId: message.id });
     }
   }, [canShowReactionsCount, isOpen, loadReactors, message.chatId, message.id]);
+
+  useEffect(() => {
+    if (customEmojiSetsInfo?.length && customEmojiSets?.length !== customEmojiSetsInfo.length) {
+      customEmojiSetsInfo.forEach((set) => {
+        loadStickers({ stickerSetInfo: set });
+      });
+    }
+  }, [customEmojiSetsInfo, customEmojiSets, loadStickers]);
 
   useEffect(() => {
     if (!hasFullInfo && !isPrivate && isOpen) {
@@ -254,6 +289,16 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
     unfaveSticker({ sticker: message.content.sticker });
   }, [closeMenu, message.content.sticker, unfaveSticker]);
 
+  const handleCancelVote = useCallback(() => {
+    closeMenu();
+    cancelPollVote({ chatId: message.chatId, messageId: message.id });
+  }, [closeMenu, message, cancelPollVote]);
+
+  const handlePollClose = useCallback(() => {
+    closeMenu();
+    closePoll({ chatId: message.chatId, messageId: message.id });
+  }, [closeMenu, message, closePoll]);
+
   const handleSelectMessage = useCallback(() => {
     const params = album?.messages
       ? {
@@ -301,7 +346,7 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
   }, [closeMenu, copyMessagesByIds]);
 
   const handleCopyLink = useCallback(() => {
-    copyTextToClipboard(`https://t.me/${chatUsername || `c/${message.chatId.replace('-', '')}`}/${message.id}`);
+    copyTextToClipboard(`${TME_LINK_PREFIX}${chatUsername || `c/${message.chatId.replace('-', '')}`}/${message.id}`);
     closeMenu();
   }, [chatUsername, closeMenu, message]);
 
@@ -351,6 +396,8 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         availableReactions={availableReactions}
         message={message}
         isPrivate={isPrivate}
+        isCurrentUserPremium={isCurrentUserPremium}
+        canBuyPremium={canBuyPremium}
         isOpen={isMenuOpen}
         enabledReactions={enabledReactions}
         anchor={anchor}
@@ -373,7 +420,11 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         canSelect={canSelect}
         canDownload={canDownload}
         canSaveGif={canSaveGif}
+        canRevote={canRevote}
+        canClosePoll={canClosePoll}
         canShowSeenBy={canShowSeenBy}
+        hasCustomEmoji={hasCustomEmoji}
+        customEmojiSets={customEmojiSets}
         isDownloading={isDownloading}
         seenByRecentUsers={seenByRecentUsers}
         onReply={handleReply}
@@ -394,6 +445,8 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         onCopyNumber={handleCopyNumber}
         onDownload={handleDownloadClick}
         onSaveGif={handleSaveGif}
+        onCancelVote={handleCancelVote}
+        onClosePoll={openClosePollDialog}
         onShowSeenBy={handleOpenSeenByModal}
         onSendReaction={handleSendReaction}
         onShowReactors={handleOpenReactorListModal}
@@ -415,6 +468,13 @@ const ContextMenuContainer: FC<OwnProps & StateProps> = ({
         messageId={message.id}
         chatId={message.chatId}
         onClose={closePinModal}
+      />
+      <ConfirmDialog
+        isOpen={isClosePollDialogOpen}
+        onClose={closeClosePollDialog}
+        text={lang('lng_polls_stop_warning')}
+        confirmLabel={lang('lng_polls_stop_sure')}
+        confirmHandler={handlePollClose}
       />
       {canReschedule && (
         <CalendarModal
@@ -453,6 +513,8 @@ export default memo(withGlobal<OwnProps>(
       canSelect,
       canDownload,
       canSaveGif,
+      canRevote,
+      canClosePoll,
     } = (threadId && selectAllowedMessageActions(global, message, threadId)) || {};
     const isPinned = messageListType === 'pinned';
     const isScheduled = messageListType === 'scheduled';
@@ -474,6 +536,12 @@ export default memo(withGlobal<OwnProps>(
     const canRemoveReaction = isPrivate && message.reactions?.results?.some((l) => l.isChosen);
     const isProtected = selectIsMessageProtected(global, message);
     const canCopyNumber = Boolean(message.content.contact);
+    const isCurrentUserPremium = selectIsCurrentUserPremium(global);
+
+    const customEmojiSetsInfo = selectMessageCustomEmojiSets(global, message);
+    const customEmojiSetsNotFiltered = customEmojiSetsInfo?.map((set) => selectStickerSet(global, set));
+    const customEmojiSets = customEmojiSetsNotFiltered?.every<ApiStickerSet>(Boolean)
+      ? customEmojiSetsNotFiltered : undefined;
 
     return {
       availableReactions: global.availableReactions,
@@ -494,14 +562,20 @@ export default memo(withGlobal<OwnProps>(
       canSelect,
       canDownload: !isProtected && canDownload,
       canSaveGif: !isProtected && canSaveGif,
+      canRevote,
+      canClosePoll: !isScheduled && canClosePoll,
       activeDownloads,
       canShowSeenBy,
       enabledReactions: chat?.isForbidden ? undefined : chat?.fullInfo?.enabledReactions,
       isPrivate,
+      isCurrentUserPremium,
       hasFullInfo: Boolean(chat?.fullInfo),
       canShowReactionsCount,
       canShowReactionList: !isLocal && !isAction && !isScheduled && chat?.id !== SERVICE_NOTIFICATIONS_USER_ID,
       canRemoveReaction,
+      canBuyPremium: !isCurrentUserPremium && !selectIsPremiumPurchaseBlocked(global),
+      customEmojiSetsInfo,
+      customEmojiSets,
     };
   },
 )(ContextMenuContainer));

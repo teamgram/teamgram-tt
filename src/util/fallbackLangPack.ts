@@ -1853,4 +1853,8 @@ export default {
     key: 'Settings.TipsUsername',
     value: 'TeamgramTips',
   },
+  FoldersAllChatsDesc: {
+    key: 'FoldersAllChatsDesc',
+    value: 'All unarchived chats',
+  },
 } as ApiLangPack;

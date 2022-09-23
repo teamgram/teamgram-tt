@@ -39,6 +39,7 @@ type StateProps = {
   canReportMessages?: boolean;
   canDownloadMessages?: boolean;
   hasProtectedMessage?: boolean;
+  isForwardModalOpen?: boolean;
   selectedMessageIds?: number[];
 };
 
@@ -52,6 +53,7 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
   canReportMessages,
   canDownloadMessages,
   hasProtectedMessage,
+  isForwardModalOpen,
   selectedMessageIds,
 }) => {
   const {
@@ -68,14 +70,17 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
 
   useCopySelectedMessages(Boolean(isActive), copySelectedMessages);
   useEffect(() => {
-    return isActive && !isDeleteModalOpen && !isReportModalOpen
+    return isActive && !isDeleteModalOpen && !isReportModalOpen && !isForwardModalOpen
       ? captureKeyboardListeners({
-        onBackspace: openDeleteModal,
-        onDelete: openDeleteModal,
+        onBackspace: canDeleteMessages ? openDeleteModal : undefined,
+        onDelete: canDeleteMessages ? openDeleteModal : undefined,
         onEsc: exitMessageSelectMode,
       })
       : undefined;
-  }, [isActive, isDeleteModalOpen, isReportModalOpen, openDeleteModal, exitMessageSelectMode]);
+  }, [
+    isActive, isDeleteModalOpen, isReportModalOpen, openDeleteModal, exitMessageSelectMode, isForwardModalOpen,
+    canDeleteMessages,
+  ]);
 
   const handleCopy = useCallback(() => {
     copySelectedMessages();
@@ -171,20 +176,23 @@ const MessageSelectToolbar: FC<OwnProps & StateProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global): StateProps => {
     const { type: messageListType, chatId } = selectCurrentMessageList(global) || {};
+    const isSchedule = messageListType === 'scheduled';
     const { canDelete } = selectCanDeleteSelectedMessages(global);
-    const canReport = selectCanReportSelectedMessages(global);
+    const canReport = Boolean(!isSchedule && selectCanReportSelectedMessages(global));
     const canDownload = selectCanDownloadSelectedMessages(global);
     const { messageIds: selectedMessageIds } = global.selectedMessages || {};
     const hasProtectedMessage = chatId ? selectHasProtectedMessage(global, chatId, selectedMessageIds) : false;
+    const isForwardModalOpen = global.forwardMessages.isModalShown;
 
     return {
-      isSchedule: messageListType === 'scheduled',
+      isSchedule,
       selectedMessagesCount: selectSelectedMessagesCount(global),
       canDeleteMessages: canDelete,
       canReportMessages: canReport,
       canDownloadMessages: canDownload,
       selectedMessageIds,
       hasProtectedMessage,
+      isForwardModalOpen,
     };
   },
 )(MessageSelectToolbar));

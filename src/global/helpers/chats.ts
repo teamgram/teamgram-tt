@@ -12,11 +12,12 @@ import {
 import type { NotifyException, NotifySettings } from '../../types';
 import type { LangFn } from '../../hooks/useLang';
 
-import { ARCHIVED_FOLDER_ID, REPLIES_USER_ID } from '../../config';
+import { ARCHIVED_FOLDER_ID, REPLIES_USER_ID, TME_LINK_PREFIX } from '../../config';
 import { orderBy } from '../../util/iteratees';
 import { getUserFirstOrLastName } from './users';
 import { formatDateToString, formatTime } from '../../util/dateFormat';
 import { prepareSearchWordsForNeedle } from '../../util/searchWords';
+import { getVideoAvatarMediaHash } from './media';
 
 const FOREVER_BANNED_DATE = Date.now() / 1000 + 31622400; // 366 days
 
@@ -95,7 +96,7 @@ export function getChatDescription(chat: ApiChat) {
 export function getChatLink(chat: ApiChat) {
   const { username } = chat;
   if (username) {
-    return `https://t.me/${username}`;
+    return `${TME_LINK_PREFIX}${username}`;
   }
 
   const { inviteLink } = chat.fullInfo || {};
@@ -106,8 +107,17 @@ export function getChatLink(chat: ApiChat) {
 export function getChatAvatarHash(
   owner: ApiChat | ApiUser,
   size: 'normal' | 'big' = 'normal',
+  type: 'photo' | 'video' = 'photo',
 ) {
   if (!owner.avatarHash) {
+    return undefined;
+  }
+  const { fullInfo } = owner;
+
+  if (type === 'video') {
+    if (fullInfo?.profilePhoto?.isVideo) {
+      return getVideoAvatarMediaHash(fullInfo.profilePhoto);
+    }
     return undefined;
   }
 
@@ -223,10 +233,6 @@ export function getChatSlowModeOptions(chat?: ApiChat) {
   }
 
   return chat.fullInfo.slowMode;
-}
-
-export function getChatOrder(chat: ApiChat) {
-  return Math.max(chat.joinDate || 0, chat.draftDate || 0, chat.lastMessage?.date || 0);
 }
 
 export function isChatArchived(chat: ApiChat) {

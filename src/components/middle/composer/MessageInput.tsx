@@ -19,7 +19,6 @@ import captureKeyboardListeners from '../../../util/captureKeyboardListeners';
 import useLayoutEffectWithPrevDeps from '../../../hooks/useLayoutEffectWithPrevDeps';
 import useFlag from '../../../hooks/useFlag';
 import { isHeavyAnimating } from '../../../hooks/useHeavyAnimationCheck';
-import useSendMessageAction from '../../../hooks/useSendMessageAction';
 import useLang from '../../../hooks/useLang';
 import parseEmojiOnlyString from '../../common/helpers/parseEmojiOnlyString';
 import { isSelectionInsideInput } from './helpers/selection';
@@ -47,6 +46,7 @@ type OwnProps = {
   onUpdate: (html: string) => void;
   onSuppressedFocus?: () => void;
   onSend: () => void;
+  captionLimit?: number;
 };
 
 type StateProps = {
@@ -57,6 +57,8 @@ type StateProps = {
 
 const MAX_INPUT_HEIGHT = IS_SINGLE_COLUMN_LAYOUT ? 256 : 416;
 const TAB_INDEX_PRIORITY_TIMEOUT = 2000;
+// Heuristics allowing the user to make a triple click
+const SELECTION_RECALCULATE_DELAY_MS = 260;
 const TEXT_FORMATTER_SAFE_AREA_PX = 90;
 // For some reason Safari inserts `<br>` after user removes text from input
 const SAFARI_BR = '<br>';
@@ -77,7 +79,7 @@ function clearSelection() {
 const MessageInput: FC<OwnProps & StateProps> = ({
   id,
   chatId,
-  threadId,
+  captionLimit,
   isAttachmentModalInput,
   editableInputId,
   html,
@@ -101,6 +103,8 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   // eslint-disable-next-line no-null/no-null
   const inputRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
+  const selectionTimeoutRef = useRef<number>(null);
+  // eslint-disable-next-line no-null/no-null
   const cloneRef = useRef<HTMLDivElement>(null);
 
   const lang = useLang();
@@ -108,8 +112,6 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   const [isTextFormatterOpen, openTextFormatter, closeTextFormatter] = useFlag();
   const [textFormatterAnchorPosition, setTextFormatterAnchorPosition] = useState<IAnchorPosition>();
   const [selectedRange, setSelectedRange] = useState<Range>();
-
-  const sendMessageAction = useSendMessageAction(chatId, threadId);
 
   useEffect(() => {
     if (!isAttachmentModalInput) return;
@@ -204,9 +206,17 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     openTextFormatter();
   }
 
+  function processSelectionWithTimeout() {
+    if (selectionTimeoutRef.current) {
+      window.clearTimeout(selectionTimeoutRef.current);
+    }
+    // Small delay to allow browser properly recalculate selection
+    selectionTimeoutRef.current = window.setTimeout(processSelection, SELECTION_RECALCULATE_DELAY_MS);
+  }
+
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     if (e.button !== 2) {
-      e.target.addEventListener('mouseup', processSelection, { once: true });
+      e.target.addEventListener('mouseup', processSelectionWithTimeout, { once: true });
       return;
     }
 
@@ -234,7 +244,10 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
-    if (!html.length && (e.metaKey || e.ctrlKey)) {
+    // https://levelup.gitconnected.com/javascript-events-handlers-keyboard-and-load-events-1b3e46a6b0c3#1960
+    const { isComposing } = e;
+
+    if (!isComposing && !html.length && (e.metaKey || e.ctrlKey)) {
       const targetIndexDelta = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : undefined;
       if (targetIndexDelta) {
         e.preventDefault();
@@ -244,7 +257,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
       }
     }
 
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (!isComposing && e.key === 'Enter' && !e.shiftKey) {
       if (
         !(IS_IOS || IS_ANDROID)
         && (
@@ -257,11 +270,11 @@ const MessageInput: FC<OwnProps & StateProps> = ({
         closeTextFormatter();
         onSend();
       }
-    } else if (e.key === 'ArrowUp' && !html.length && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    } else if (!isComposing && e.key === 'ArrowUp' && !html.length && !e.metaKey && !e.ctrlKey && !e.altKey) {
       e.preventDefault();
       editLastMessage();
     } else {
-      e.target.addEventListener('keyup', processSelection, { once: true });
+      e.target.addEventListener('keyup', processSelectionWithTimeout, { once: true });
     }
   }
 
@@ -269,7 +282,6 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     const { innerHTML, textContent } = e.currentTarget;
 
     onUpdate(innerHTML === SAFARI_BR ? '' : innerHTML);
-    sendMessageAction({ type: 'typing' });
 
     // Reset focus on the input to remove any active styling when input is cleared
     if (
@@ -377,15 +389,23 @@ const MessageInput: FC<OwnProps & StateProps> = ({
         id={editableInputId || EDITABLE_INPUT_ID}
         className={className}
         contentEditable
+        role="textbox"
         dir="auto"
+        tabIndex={0}
         onClick={focusInput}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onMouseDown={handleMouseDown}
         onContextMenu={IS_ANDROID ? stopEvent : undefined}
-        onTouchCancel={IS_ANDROID ? processSelection : undefined}
+        onTouchCancel={IS_ANDROID ? processSelectionWithTimeout : undefined}
         aria-label={placeholder}
       />
+      {captionLimit && (
+        <div className="max-length-indicator" dir="auto">
+          {captionLimit}
+        </div>
+      )}
+
       <div ref={cloneRef} className={buildClassName(className, 'clone')} dir="auto" />
       {!forcedPlaceholder && <span className="placeholder-text" dir="auto">{placeholder}</span>}
       <TextFormatter

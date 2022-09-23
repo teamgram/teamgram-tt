@@ -1,8 +1,10 @@
 import type { FC } from '../../lib/teact/teact';
 import React, { memo, useRef, useEffect } from '../../lib/teact/teact';
 
+import { ALL_FOLDER_ID } from '../../config';
 import { IS_ANDROID, IS_IOS } from '../../util/environment';
 import fastSmoothScrollHorizontal from '../../util/fastSmoothScrollHorizontal';
+
 import usePrevious from '../../hooks/usePrevious';
 import useHorizontalScroll from '../../hooks/useHorizontalScroll';
 import useLang from '../../hooks/useLang';
@@ -12,13 +14,16 @@ import Tab from './Tab';
 import './TabList.scss';
 
 export type TabWithProperties = {
+  id?: number;
   title: string;
   badgeCount?: number;
+  isBlocked?: boolean;
   isBadgeActive?: boolean;
 };
 
 type OwnProps = {
   tabs: readonly TabWithProperties[];
+  areFolders?: boolean;
   activeTab: number;
   big?: boolean;
   onSwitchTab: (index: number) => void;
@@ -29,13 +34,13 @@ const TAB_SCROLL_THRESHOLD_PX = 16;
 const SCROLL_DURATION = IS_IOS ? 450 : IS_ANDROID ? 400 : 300;
 
 const TabList: FC<OwnProps> = ({
-  tabs, activeTab, big, onSwitchTab,
+  tabs, areFolders, activeTab, big, onSwitchTab,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
   const previousActiveTab = usePrevious(activeTab);
 
-  useHorizontalScroll(containerRef.current);
+  useHorizontalScroll(containerRef.current, undefined, true);
 
   // Scroll container to place active tab in the center
   useEffect(() => {
@@ -71,9 +76,11 @@ const TabList: FC<OwnProps> = ({
     >
       {tabs.map((tab, i) => (
         <Tab
-          key={tab.title}
-          title={lang(tab.title)}
+          key={tab.id ?? tab.title}
+          // TODO Remove dependency on usage context
+          title={(!areFolders || tab.id === ALL_FOLDER_ID) ? lang(tab.title) : tab.title}
           isActive={i === activeTab}
+          isBlocked={tab.isBlocked}
           badgeCount={tab.badgeCount}
           isBadgeActive={tab.isBadgeActive}
           previousActiveTab={previousActiveTab}

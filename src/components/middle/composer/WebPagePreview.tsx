@@ -2,7 +2,7 @@ import type { FC } from '../../../lib/teact/teact';
 import React, { memo, useCallback, useEffect } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import type { ApiMessage, ApiWebPage } from '../../../api/types';
+import type { ApiMessage, ApiMessageEntityTextUrl, ApiWebPage } from '../../../api/types';
 import { ApiMessageEntityTypes } from '../../../api/types';
 import type { ISettings } from '../../../types';
 
@@ -54,7 +54,9 @@ const WebPagePreview: FC<OwnProps & StateProps> = ({
   const link = useDebouncedMemo(() => {
     const { text, entities } = parseMessageInput(messageText);
 
-    const linkEntity = entities && entities.find(({ type }) => type === ApiMessageEntityTypes.TextUrl);
+    const linkEntity = entities?.find((entity): entity is ApiMessageEntityTextUrl => (
+      entity.type === ApiMessageEntityTypes.TextUrl
+    ));
     if (linkEntity) {
       return linkEntity.url;
     }
@@ -105,10 +107,20 @@ const WebPagePreview: FC<OwnProps & StateProps> = ({
   return (
     <div className={buildClassName('WebPagePreview', transitionClassNames)}>
       <div>
-        <Button round faded color="translucent" ariaLabel="Clear Webpage Preview" onClick={handleClearWebpagePreview}>
+        <div className="WebPagePreview-left-icon">
+          <i className="icon-link" />
+        </div>
+        <WebPage message={messageStub} inPreview theme={theme} />
+        <Button
+          className="WebPagePreview-clear"
+          round
+          faded
+          color="translucent"
+          ariaLabel="Clear Webpage Preview"
+          onClick={handleClearWebpagePreview}
+        >
           <i className="icon-close" />
         </Button>
-        <WebPage message={messageStub} inPreview theme={theme} />
       </div>
     </div>
   );

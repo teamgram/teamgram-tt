@@ -4,9 +4,10 @@ import React, {
 } from '../../lib/teact/teact';
 import { getActions, getGlobal, withGlobal } from '../../global';
 
-import type { ApiMessage, ApiRestrictionReason } from '../../api/types';
+import type { ApiBotInfo, ApiMessage, ApiRestrictionReason } from '../../api/types';
 import { MAIN_THREAD_ID } from '../../api/types';
 import type { MessageListType } from '../../global/types';
+import type { AnimationLevel } from '../../types';
 import { LoadMoreDirection } from '../../types';
 
 import { ANIMATION_END_DELAY, LOCAL_MESSAGE_MIN_ID, MESSAGE_LIST_SLICE } from '../../config';
@@ -25,35 +26,44 @@ import {
   selectFirstMessageId,
   selectScheduledMessages,
   selectCurrentMessageIds,
+  selectIsCurrentUserPremium,
 } from '../../global/selectors';
 import {
   isChatChannel,
   isUserId,
   isChatWithRepliesBot,
   isChatGroup,
+  getBotCoverMediaHash,
+  getDocumentMediaHash,
+  getVideoDimensions,
+  getPhotoFullDimensions,
 } from '../../global/helpers';
 import { orderBy } from '../../util/iteratees';
+import { DPR } from '../../util/environment';
 import { fastRaf, debounce, onTickEnd } from '../../util/schedulers';
-import useLayoutEffectWithPrevDeps from '../../hooks/useLayoutEffectWithPrevDeps';
-import useEffectWithPrevDeps from '../../hooks/useEffectWithPrevDeps';
 import buildClassName from '../../util/buildClassName';
 import { groupMessages } from './helpers/groupMessages';
 import { preventMessageInputBlur } from './helpers/preventMessageInputBlur';
-import useOnChange from '../../hooks/useOnChange';
-import useStickyDates from './hooks/useStickyDates';
-import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import resetScroll, { patchChromiumScroll } from '../../util/resetScroll';
 import fastSmoothScroll, { isAnimatingScroll } from '../../util/fastSmoothScroll';
 import renderText from '../common/helpers/renderText';
+
+import useOnChange from '../../hooks/useOnChange';
+import useStickyDates from './hooks/useStickyDates';
+import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import useLang from '../../hooks/useLang';
 import useWindowSize from '../../hooks/useWindowSize';
 import useInterval from '../../hooks/useInterval';
 import useNativeCopySelectedMessages from '../../hooks/useNativeCopySelectedMessages';
+import useMedia from '../../hooks/useMedia';
+import useLayoutEffectWithPrevDeps from '../../hooks/useLayoutEffectWithPrevDeps';
+import useEffectWithPrevDeps from '../../hooks/useEffectWithPrevDeps';
 
 import Loading from '../ui/Loading';
 import MessageListContent from './MessageListContent';
 import ContactGreeting from './ContactGreeting';
 import NoMessages from './NoMessages';
+import Skeleton from '../ui/Skeleton';
 
 import './MessageList.scss';
 
@@ -70,6 +80,7 @@ type OwnProps = {
 };
 
 type StateProps = {
+  isCurrentUserPremium?: boolean;
   isChatLoaded?: boolean;
   isChannelChat?: boolean;
   isGroupChat?: boolean;
@@ -85,9 +96,10 @@ type StateProps = {
   restrictionReason?: ApiRestrictionReason;
   focusingId?: number;
   isSelectModeActive?: boolean;
-  animationLevel?: number;
+  animationLevel?: AnimationLevel;
   lastMessage?: ApiMessage;
-  botDescription?: string;
+  isLoadingBotInfo?: boolean;
+  botInfo?: ApiBotInfo;
   threadTopMessageId?: number;
   threadFirstMessageId?: number;
   hasLinkedChat?: boolean;
@@ -95,7 +107,7 @@ type StateProps = {
 };
 
 const MESSAGE_REACTIONS_POLLING_INTERVAL = 15 * 1000;
-const BOTTOM_THRESHOLD = 20;
+const BOTTOM_THRESHOLD = 50;
 const UNREAD_DIVIDER_TOP = 10;
 const UNREAD_DIVIDER_TOP_WITH_TOOLS = 60;
 const SCROLL_DEBOUNCE = 200;
@@ -113,6 +125,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
   hasTools,
   onFabToggle,
   onNotchToggle,
+  isCurrentUserPremium,
   isChatLoaded,
   isChannelChat,
   isGroupChat,
@@ -132,7 +145,8 @@ const MessageList: FC<OwnProps & StateProps> = ({
   focusingId,
   isSelectModeActive,
   lastMessage,
-  botDescription,
+  isLoadingBotInfo,
+  botInfo,
   threadTopMessageId,
   hasLinkedChat,
   lastSyncTime,
@@ -159,6 +173,15 @@ const MessageList: FC<OwnProps & StateProps> = ({
 
   const [containerHeight, setContainerHeight] = useState<number | undefined>();
 
+  const botInfoPhotoUrl = useMedia(botInfo?.photo ? getBotCoverMediaHash(botInfo.photo) : undefined);
+  const botInfoGifUrl = useMedia(botInfo?.gif ? getDocumentMediaHash(botInfo.gif) : undefined);
+  const botInfoDimensions = botInfo?.photo ? getPhotoFullDimensions(botInfo.photo) : botInfo?.gif
+    ? getVideoDimensions(botInfo.gif) : undefined;
+  const botInfoRealDimensions = botInfoDimensions && {
+    width: botInfoDimensions.width / DPR,
+    height: botInfoDimensions.height / DPR,
+  };
+
   const areMessagesLoaded = Boolean(messageIds);
 
   useOnChange(() => {
@@ -176,10 +199,10 @@ const MessageList: FC<OwnProps & StateProps> = ({
   }, [firstUnreadId]);
 
   useOnChange(() => {
-    if (isChannelChat && isReady && lastSyncTime) {
+    if (!isCurrentUserPremium && isChannelChat && isReady && lastSyncTime) {
       loadSponsoredMessages({ chatId });
     }
-  }, [chatId, isReady, isChannelChat, lastSyncTime]);
+  }, [isCurrentUserPremium, chatId, isReady, isChannelChat, lastSyncTime]);
 
   // Updated only once when messages are loaded (as we want the unread divider to keep its position)
   useOnChange(() => {
@@ -382,7 +405,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     let bottomOffset = scrollOffset - (prevContainerHeight || offsetHeight);
     if (wasMessageAdded) {
       // If two new messages come at once (e.g. when bot responds) then the first message will update `scrollOffset`
-      // right away (before animation) which creates inconsistency until the animation completes. To workaround that,
+      // right away (before animation) which creates inconsistency until the animation completes. To work around that,
       // we calculate `isAtBottom` with a "buffer" of the latest message height (this is approximate).
       const lastItemHeight = lastItemElement ? lastItemElement.offsetHeight : 0;
       bottomOffset -= lastItemHeight;
@@ -491,6 +514,8 @@ const MessageList: FC<OwnProps & StateProps> = ({
   const isGroupChatJustCreated = isGroupChat && isCreator
     && messageIds?.length === 1 && messagesById?.[messageIds[0]]?.content.action?.type === 'chatCreate';
 
+  const isBotInfoEmpty = botInfo && !botInfo.description;
+
   const className = buildClassName(
     'MessageList custom-scroll',
     noAvatars && 'no-avatars',
@@ -515,8 +540,50 @@ const MessageList: FC<OwnProps & StateProps> = ({
             {restrictionReason ? restrictionReason.text : `This is a private ${isChannelChat ? 'channel' : 'chat'}`}
           </span>
         </div>
-      ) : botDescription ? (
-        <div className="empty"><span>{renderText(lang(botDescription), ['br', 'emoji', 'links'])}</span></div>
+      ) : botInfo ? (
+        <div className="empty">
+          {isLoadingBotInfo && <span>{lang('Loading')}</span>}
+          {isBotInfoEmpty && <span>{lang('NoMessages')}</span>}
+          {botInfo && (
+            <div
+              className="bot-info"
+              style={botInfoRealDimensions && (
+                `width: ${botInfoRealDimensions.width}px`
+              )}
+            >
+              {botInfoPhotoUrl && (
+                <img
+                  src={botInfoPhotoUrl}
+                  width={botInfoRealDimensions?.width}
+                  height={botInfoRealDimensions?.height}
+                  alt="Bot info"
+                />
+              )}
+              {botInfoGifUrl && (
+                <video
+                  src={botInfoGifUrl}
+                  loop
+                  autoPlay
+                  disablePictureInPicture
+                  muted
+                  playsInline
+                />
+              )}
+              {botInfoDimensions && !botInfoPhotoUrl && !botInfoGifUrl && (
+                <Skeleton
+                  width={botInfoRealDimensions?.width}
+                  height={botInfoRealDimensions?.height}
+                />
+              )}
+              {botInfo.description && (
+                <div className="bot-info-description">
+                  <p className="bot-info-title">{lang('BotInfoTitle')}</p>
+                  {renderText(botInfo.description, ['br', 'emoji', 'links'])}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       ) : shouldRenderGreeting ? (
         <ContactGreeting userId={chatId} />
       ) : messageIds && (!messageGroups || isGroupChatJustCreated) ? (
@@ -528,6 +595,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
         />
       ) : ((messageIds && messageGroups) || lastMessage) ? (
         <MessageListContent
+          isCurrentUserPremium={isCurrentUserPremium}
           chatId={chatId}
           messageIds={messageIds || [lastMessage!.id]}
           messageGroups={messageGroups || groupMessages([lastMessage!])}
@@ -588,16 +656,18 @@ export default memo(withGlobal<OwnProps>(
     );
 
     const chatBot = selectChatBot(global, chatId)!;
-    let botDescription: string | undefined;
+    let isLoadingBotInfo = false;
+    let botInfo;
     if (selectIsChatBotNotStarted(global, chatId)) {
       if (chatBot.fullInfo) {
-        botDescription = chatBot.fullInfo.botInfo?.description || 'NoMessages';
+        botInfo = chatBot.fullInfo.botInfo;
       } else {
-        botDescription = 'Updating bot info...';
+        isLoadingBotInfo = true;
       }
     }
 
     return {
+      isCurrentUserPremium: selectIsCurrentUserPremium(global),
       isChatLoaded: true,
       isRestricted,
       restrictionReason,
@@ -614,7 +684,8 @@ export default memo(withGlobal<OwnProps>(
       threadFirstMessageId: selectFirstMessageId(global, chatId, threadId),
       focusingId,
       isSelectModeActive: selectIsInSelectMode(global),
-      botDescription,
+      isLoadingBotInfo,
+      botInfo,
       threadTopMessageId,
       hasLinkedChat: chat.fullInfo && ('linkedChatId' in chat.fullInfo)
         ? Boolean(chat.fullInfo.linkedChatId)

@@ -29,6 +29,10 @@
     }
   }
 
+  &:last-of-type {
+    padding-bottom: 0.5rem;
+  }
+
   @media (max-width: 600px) {
     &.selected {
       --background-color: var(--color-chat-hover) !important;
@@ -44,7 +48,7 @@
     &.selected:hover {
       --background-color: var(--color-chat-active) !important;
 
-      .VerifiedIcon {
+      .VerifiedIcon, .PremiumIcon {
         --color-fill: #fff;
         --color-checkmark: var(--color-primary)
       }
@@ -171,6 +175,10 @@
         width: 1rem;
         height: 1rem;
         vertical-align: -0.125rem;
+      }
+
+      .text-entity-custom-emoji {
+        --custom-emoji-size: 1.25rem;
       }
 
       .icon-play {
