@@ -644,7 +644,7 @@ function getDC(dcId, downloadDC = false) {
             return {
                 id: 1,
                 // ipAddress: `127.0.0.1`,
-                ipAddress: `47.103.102.219`,
+                ipAddress: `43.155.11.190`,
                 port: 11443,
             };
         // case 1:
