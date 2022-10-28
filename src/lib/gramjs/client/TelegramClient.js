@@ -26,10 +26,7 @@ const { updateTwoFaSettings } = require('./2fa');
 
 const DEFAULT_DC_ID = 1;
 const WEBDOCUMENT_DC_ID = 1;
-// const DEFAULT_IPV4_IP = '127.0.0.1';
-const DEFAULT_IPV4_IP = '43.155.11.190';
-// const DEFAULT_IPV4_IP = 'zws2.web.telegram.org';
-// const DEFAULT_IPV6_IP = '[2001:67c:4e8:f002::a]';
+const DEFAULT_IPV4_IP = 'web.teamgram.net';
 const EXPORTED_SENDER_RECONNECT_TIMEOUT = 1000; // 1 sec
 const EXPORTED_SENDER_RELEASE_TIMEOUT = 30000; // 30 sec
 const WEBDOCUMENT_REQUEST_PART_SIZE = 131072; // 128kb
@@ -69,7 +66,7 @@ class TelegramClient {
         langCode: 'en',
         systemLangCode: 'en',
         baseLogger: 'gramjs',
-        useWSS: false,
+        useWSS: true,
         additionalDcsDisabled: false,
         testServers: false,
     };
@@ -223,7 +220,7 @@ class TelegramClient {
         await this.session.load();
 
         if (!this.session.serverAddress || (this.session.serverAddress.includes(':') !== this._useIPV6)) {
-            this.session.setDC(DEFAULT_DC_ID, DEFAULT_IPV4_IP, this._args.useWSS ? 11443 : 11443);
+            this.session.setDC(DEFAULT_DC_ID, DEFAULT_IPV4_IP, this._args.useWSS ? 443 : 443);
         }
     }
 
