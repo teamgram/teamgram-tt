@@ -21,10 +21,12 @@ export function getPlatform() {
   const iosPlatforms = ['iPhone', 'iPad', 'iPod'];
   let os: 'macOS' | 'iOS' | 'Windows' | 'Android' | 'Linux' | undefined;
 
-  if (macosPlatforms.indexOf(platform) !== -1) {
-    os = 'macOS';
-  } else if (iosPlatforms.indexOf(platform) !== -1) {
+  if (iosPlatforms.indexOf(platform) !== -1
+    // For new IPads with M1 chip and IPadOS platform returns "MacIntel"
+    || (platform === 'MacIntel' && ('maxTouchPoints' in navigator && navigator.maxTouchPoints > 2))) {
     os = 'iOS';
+  } else if (macosPlatforms.indexOf(platform) !== -1) {
+    os = 'macOS';
   } else if (windowsPlatforms.indexOf(platform) !== -1) {
     os = 'Windows';
   } else if (/Android/.test(userAgent)) {
@@ -42,6 +44,8 @@ export const IS_MAC_OS = PLATFORM_ENV === 'macOS';
 export const IS_IOS = PLATFORM_ENV === 'iOS';
 export const IS_ANDROID = PLATFORM_ENV === 'Android';
 export const IS_SAFARI = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+export const IS_YA_BROWSER = navigator.userAgent.includes('YaBrowser');
+
 export const IS_PWA = (
   window.matchMedia('(display-mode: standalone)').matches
   || (window.navigator as any).standalone

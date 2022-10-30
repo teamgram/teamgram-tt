@@ -110,6 +110,7 @@ export function buildStickerSet(set: GramJs.StickerSet): ApiStickerSet {
     count,
     shortName,
     emojis,
+    thumbDocumentId,
   } = set;
 
   return {
@@ -121,7 +122,7 @@ export function buildStickerSet(set: GramJs.StickerSet): ApiStickerSet {
     id: String(id),
     accessHash: String(accessHash),
     title,
-    hasThumbnail: Boolean(thumbs?.length),
+    hasThumbnail: Boolean(thumbs?.length || thumbDocumentId),
     count,
     shortName,
   };
@@ -178,7 +179,7 @@ export function processStickerPackResult(packs: GramJs.StickerPack[]) {
   return packs.reduce((acc, { emoticon, documents }) => {
     acc[emoticon] = documents.map((documentId) => buildStickerFromDocument(
       localDb.documents[String(documentId)],
-    )).filter<ApiSticker>(Boolean as any);
+    )).filter(Boolean);
     return acc;
   }, {} as Record<string, ApiSticker[]>);
 }

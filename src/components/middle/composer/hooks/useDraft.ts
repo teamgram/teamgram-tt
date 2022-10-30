@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from '../../../../lib/teact/teact';
 import { getActions } from '../../../../global';
 
 import type { ApiFormattedText, ApiMessage } from '../../../../api/types';
+import { ApiMessageEntityTypes } from '../../../../api/types';
 
 import { DRAFT_DEBOUNCE, EDITABLE_INPUT_CSS_SELECTOR } from '../../../../config';
 import usePrevious from '../../../../hooks/usePrevious';
@@ -24,18 +25,20 @@ const useDraft = (
   htmlRef: { current: string },
   setHtml: (html: string) => void,
   editedMessage: ApiMessage | undefined,
+  lastSyncTime?: number,
 ) => {
-  const { saveDraft, clearDraft } = getActions();
+  const { saveDraft, clearDraft, loadCustomEmojis } = getActions();
+  const prevDraft = usePrevious(draft);
 
   const updateDraft = useCallback((draftChatId: string, draftThreadId: number) => {
     const currentHtml = htmlRef.current;
-    if (currentHtml === undefined || editedMessage) return;
+    if (currentHtml === undefined || editedMessage || !lastSyncTime) return;
     if (currentHtml.length) {
       saveDraft({ chatId: draftChatId, threadId: draftThreadId, draft: parseMessageInput(currentHtml!) });
     } else {
       clearDraft({ chatId: draftChatId, threadId: draftThreadId });
     }
-  }, [clearDraft, editedMessage, htmlRef, saveDraft]);
+  }, [clearDraft, editedMessage, htmlRef, lastSyncTime, saveDraft]);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const runDebouncedForSaveDraft = useMemo(() => debounce((cb) => cb(), DRAFT_DEBOUNCE, false), [chatId]);
@@ -59,6 +62,9 @@ const useDraft = (
   // Restore draft on chat change
   useEffect(() => {
     if (chatId === prevChatId && threadId === prevThreadId) {
+      if (!draft && prevDraft) {
+        setHtml('');
+      }
       return;
     }
 
@@ -68,6 +74,11 @@ const useDraft = (
 
     setHtml(getTextWithEntitiesAsHtml(draft));
 
+    const customEmojiIds = draft.entities
+      ?.map((entity) => entity.type === ApiMessageEntityTypes.CustomEmoji && entity.documentId)
+      .filter(Boolean) || [];
+    if (customEmojiIds.length) loadCustomEmojis({ ids: customEmojiIds });
+
     if (!IS_TOUCH_ENV) {
       requestAnimationFrame(() => {
         const messageInput = document.querySelector<HTMLDivElement>(EDITABLE_INPUT_CSS_SELECTOR);
@@ -76,7 +87,9 @@ const useDraft = (
         }
       });
     }
-  }, [chatId, threadId, draft, setHtml, updateDraft, prevChatId, prevThreadId, editedMessage]);
+  }, [
+    chatId, threadId, draft, setHtml, updateDraft, prevChatId, prevThreadId, editedMessage, prevDraft, loadCustomEmojis,
+  ]);
 
   const html = htmlRef.current;
   // Update draft when input changes

@@ -11,6 +11,7 @@ import type {
   ApiExportedInvite,
   ApiChatInviteImporter,
   ApiChatSettings,
+  ApiSendAsPeerId,
 } from '../../types';
 import { pick, pickTruthy } from '../../../util/iteratees';
 import {
@@ -18,6 +19,7 @@ import {
 } from './peers';
 import { omitVirtualClassFields } from './helpers';
 import { getServerTime } from '../../../util/serverTime';
+import { buildApiReaction } from './messages';
 
 type PeerEntityApiChatFields = Omit<ApiChat, (
   'id' | 'type' | 'title' |
@@ -293,10 +295,10 @@ export function buildChatMembers(
 ) {
   // Duplicate code because of TS union-type shenanigans
   if (participants instanceof GramJs.ChatParticipants) {
-    return participants.participants.map(buildChatMember).filter<ApiChatMember>(Boolean as any);
+    return participants.participants.map(buildChatMember).filter(Boolean);
   }
   if (participants instanceof GramJs.channels.ChannelParticipants) {
-    return participants.participants.map(buildChatMember).filter<ApiChatMember>(Boolean as any);
+    return participants.participants.map(buildChatMember).filter(Boolean);
   }
 
   return undefined;
@@ -360,9 +362,9 @@ export function buildApiChatFolder(filter: GramJs.DialogFilter): ApiChatFolder {
       'excludeMuted', 'excludeRead', 'excludeArchived',
     ]),
     channels: filter.broadcasts,
-    pinnedChatIds: filter.pinnedPeers.map(getApiChatIdFromMtpPeer).filter<string>(Boolean as any),
-    includedChatIds: filter.includePeers.map(getApiChatIdFromMtpPeer).filter<string>(Boolean as any),
-    excludedChatIds: filter.excludePeers.map(getApiChatIdFromMtpPeer).filter<string>(Boolean as any),
+    pinnedChatIds: filter.pinnedPeers.map(getApiChatIdFromMtpPeer).filter(Boolean),
+    includedChatIds: filter.includePeers.map(getApiChatIdFromMtpPeer).filter(Boolean),
+    excludedChatIds: filter.excludePeers.map(getApiChatIdFromMtpPeer).filter(Boolean),
   };
 }
 
@@ -451,5 +453,25 @@ export function buildApiChatSettings({
     canReportSpam: Boolean(reportSpam),
     canAddContact: Boolean(addContact),
     canBlockContact: Boolean(blockContact),
+  };
+}
+
+export function buildApiChatReactions(availableReactions?: GramJs.TypeChatReactions): string[] | undefined {
+  if (availableReactions instanceof GramJs.ChatReactionsAll) {
+    // TODO Hack before custom reactions are implemented
+    // eslint-disable-next-line max-len
+    return ['👍', '👎', '❤', '🔥', '🥰', '👏', '😁', '🤔', '🤯', '😱', '🤬', '😢', '🎉', '🤩', '🤮', '💩', '🙏', '👌', '🕊', '🤡', '🥱', '🥴', '😍', '🐳', '❤‍🔥', '🌚', '🌭', '💯', '🤣', '⚡', '🍌', '🏆', '💔', '🤨', '😐', '🍓', '🍾', '💋', '🖕', '😈'];
+  }
+  if (availableReactions instanceof GramJs.ChatReactionsSome) {
+    return availableReactions.reactions.map(buildApiReaction).filter(Boolean);
+  }
+
+  return undefined;
+}
+
+export function buildApiSendAsPeerId(sendAs: GramJs.SendAsPeer): ApiSendAsPeerId {
+  return {
+    id: getApiChatIdFromMtpPeer(sendAs.peer),
+    isPremium: sendAs.premiumRequired,
   };
 }

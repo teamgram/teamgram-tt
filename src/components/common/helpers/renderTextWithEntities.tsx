@@ -11,6 +11,7 @@ import buildClassName from '../../../util/buildClassName';
 import renderText from './renderText';
 import { copyTextToClipboard } from '../../../util/clipboard';
 import { getTranslation } from '../../../util/langProvider';
+import { buildCustomEmojiHtmlFromEntity } from '../../middle/composer/helpers/customEmoji';
 
 import MentionLink from '../../middle/message/MentionLink';
 import SafeLink from '../SafeLink';
@@ -253,7 +254,7 @@ function organizeEntity(
   const parsedNestedEntities = entities
     .filter((e, i) => i > index && e.offset >= offset && e.offset < offset + length)
     .map((e) => organizeEntity(e, entities.indexOf(e), entities, organizedEntityIndexes))
-    .filter<IOrganizedEntity>(Boolean as any);
+    .filter(Boolean);
 
   parsedNestedEntities.forEach((parsedEntity) => {
     let isChanged = false;
@@ -309,7 +310,7 @@ function processEntity(
 
     if (entity.type === ApiMessageEntityTypes.CustomEmoji) {
       return (
-        <CustomEmoji documentId={entity.documentId} observeIntersection={observeIntersection}>
+        <CustomEmoji documentId={entity.documentId} observeIntersection={observeIntersection} withGridFix>
           {renderNestedMessagePart()}
         </CustomEmoji>
       );
@@ -419,7 +420,7 @@ function processEntity(
       return <Spoiler messageId={messageId}>{renderNestedMessagePart()}</Spoiler>;
     case ApiMessageEntityTypes.CustomEmoji:
       return (
-        <CustomEmoji documentId={entity.documentId} observeIntersection={observeIntersection}>
+        <CustomEmoji documentId={entity.documentId} observeIntersection={observeIntersection} withGridFix>
           {renderNestedMessagePart()}
         </CustomEmoji>
       );
@@ -480,6 +481,8 @@ function processEntityAsHtml(
         class="spoiler"
         data-entity-type="${ApiMessageEntityTypes.Spoiler}"
         >${renderedContent}</span>`;
+    case ApiMessageEntityTypes.CustomEmoji:
+      return buildCustomEmojiHtmlFromEntity(rawEntityText, entity);
     default:
       return renderedContent;
   }

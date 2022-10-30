@@ -1,3 +1,58 @@
+## 1.55.0 (2022-10-29)
+
+### 👏 **Harder**
+* Sending custom emoji is now supported.
+* You can now access the app even when offline.
+
+### 💪 **Stronger**
+* Fix syncing after editing draft on another device.
+* Fix multiple notification sounds when waking up from background mode.
+* Various fixes for username input.
+* Various fixes for Media Viewer.
+
+## 1.54.0 (2022-10-17)
+
+### 👏 **Harder**
+* Enjoy viewing Emoji Statuses. Setting your own status will be possible in the following update.
+
+### 🤩 **Better**
+* Better accent colors in Message List.
+* When composing a message on Android, you can now open the system context menu with a second tap.
+
+### 🚀 **Faster**
+* Various optimizations for video animations.
+
+### 💪 **Stronger**
+* Various fixes in New Poll dialog.
+* Fixed mouse wheel scroll in Emoji Tooltip.
+* Fixed bot description layout.
+* Fixed deleting folders from Settings.
+
+## 1.53.0 (2022-10-10)
+
+### 👏 **Harder**
+* Introduced Picture-in-Picture mode in Media Viewer.
+* Added new reactions: 🍓 🍾 💋 🖕 😈
+
+### 🤩 **Better**
+* Forwarding to Saved Messages is easier now.
+* Better support for web bot actions.
+* Supported highlighting for Scheme lang.
+
+### 💪 **Stronger**
+* Fixed plural forms in various languages.
+* Fixed missing updates when waking up from sleep mode.
+* Fixed deleting chat history.
+* Fixed terminating session after signing out.
+* Fixed system back button in Media Viewer.
+* Fixed playing sound for silent messages.
+* Fixed PWA mode on Android.
+* Fixed opening links to new bots.
+* Fixed sharing inline bots.
+* Fixed scrolling down when new message is sent from other client.
+* Fixed error when opening chat with read-only restrictions.
+* Various layout fixes.
+
 ## 1.52.0 (2022-09-16)
 
 ### 👏 **Harder**

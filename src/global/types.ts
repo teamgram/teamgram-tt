@@ -327,6 +327,11 @@ export type GlobalState = {
     };
     lastRendered: string[];
     byId: Record<string, ApiSticker>;
+    forEmoji: {
+      emoji?: string;
+      stickers?: ApiSticker[];
+    };
+    featuredIds?: string[];
   };
 
   animatedEmojis?: ApiStickerSet;
@@ -425,6 +430,7 @@ export type GlobalState = {
     volume: number;
     playbackRate: number;
     isMuted: boolean;
+    isHidden?: boolean;
   };
 
   audioPlayer: {
@@ -510,6 +516,7 @@ export type GlobalState = {
 
   profileEdit?: {
     progress: ProfileEditProgress;
+    checkedUsername?: string;
     isUsernameAvailable?: boolean;
   };
 
@@ -803,7 +810,7 @@ export interface ActionPayloads {
   setMediaViewerMuted: {
     isMuted: boolean;
   };
-
+  setMediaViewerHidden: boolean;
   openAudioPlayer: {
     chatId: string;
     threadId?: number;
@@ -877,6 +884,7 @@ export interface ActionPayloads {
   setForwardNoCaptions: boolean;
   exitForwardMode: never;
   changeForwardRecipient: never;
+  forwardToSavedMessages: never;
 
   // GIFs
   loadSavedGifs: never;
@@ -923,6 +931,11 @@ export interface ActionPayloads {
   };
   clearStickersForEmoji: never;
 
+  loadCustomEmojiForEmoji: {
+    emoji: string;
+  };
+  clearCustomEmojiForEmoji: never;
+
   addRecentEmoji: {
     emoji: string;
   };
@@ -938,6 +951,11 @@ export interface ActionPayloads {
     setIds: string[];
   };
   closeCustomEmojiSets: never;
+  addRecentCustomEmoji: {
+    documentId: string;
+  };
+  clearRecentCustomEmoji: never;
+  loadFeaturedEmojiStickers: never;
 
   // Bots
   startBot: {

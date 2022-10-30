@@ -1,18 +1,23 @@
-import type { FC } from '../../../lib/teact/teact';
 import React, {
   memo, useCallback, useEffect, useRef,
 } from '../../../lib/teact/teact';
+
+import type { ApiSticker } from '../../../api/types';
+import type { FC } from '../../../lib/teact/teact';
 
 import buildClassName from '../../../util/buildClassName';
 import findInViewport from '../../../util/findInViewport';
 import isFullyVisible from '../../../util/isFullyVisible';
 import fastSmoothScrollHorizontal from '../../../util/fastSmoothScrollHorizontal';
+
 import useShowTransition from '../../../hooks/useShowTransition';
 import usePrevDuringAnimation from '../../../hooks/usePrevDuringAnimation';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
+import useHorizontalScroll from '../../../hooks/useHorizontalScroll';
 
 import Loading from '../../ui/Loading';
 import EmojiButton from './EmojiButton';
+import CustomEmojiButton from './CustomEmojiButton';
 
 import './EmojiTooltip.scss';
 
@@ -50,39 +55,67 @@ function setItemVisible(index: number, containerRef: Record<string, any>) {
 
 export type OwnProps = {
   isOpen: boolean;
-  onEmojiSelect: (text: string) => void;
-  onClose: NoneToVoidFunction;
-  addRecentEmoji: AnyToVoidFunction;
   emojis: Emoji[];
+  customEmojis: ApiSticker[];
+  onEmojiSelect: (text: string) => void;
+  onCustomEmojiSelect: (emoji: ApiSticker) => void;
+  onClose: NoneToVoidFunction;
+  addRecentEmoji: ({ emoji }: { emoji: string }) => void;
+  addRecentCustomEmoji: ({ documentId }: { documentId: string }) => void;
 };
 
 const EmojiTooltip: FC<OwnProps> = ({
   isOpen,
   emojis,
+  customEmojis,
   onClose,
   onEmojiSelect,
+  onCustomEmojiSelect,
   addRecentEmoji,
+  addRecentCustomEmoji,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
   const { shouldRender, transitionClassNames } = useShowTransition(isOpen, undefined, undefined, false);
-  const listEmojis: Emoji[] = usePrevDuringAnimation(emojis.length ? emojis : undefined, CLOSE_DURATION) || [];
+  const listEmojis: (Emoji | ApiSticker)[] = usePrevDuringAnimation(
+    emojis.length ? [...customEmojis, ...emojis] : undefined, CLOSE_DURATION,
+  ) || [];
+
+  useHorizontalScroll(containerRef.current);
 
   const handleSelectEmoji = useCallback((emoji: Emoji) => {
     onEmojiSelect(emoji.native);
     addRecentEmoji({ emoji: emoji.id });
   }, [addRecentEmoji, onEmojiSelect]);
 
+  const handleCustomEmojiSelect = useCallback((emoji: ApiSticker) => {
+    onCustomEmojiSelect(emoji);
+    addRecentCustomEmoji({ documentId: emoji.id });
+  }, [addRecentCustomEmoji, onCustomEmojiSelect]);
+
+  const handleSelect = useCallback((emoji: Emoji | ApiSticker) => {
+    if ('native' in emoji) {
+      handleSelectEmoji(emoji);
+    } else {
+      handleCustomEmojiSelect(emoji);
+    }
+  }, [handleCustomEmojiSelect, handleSelectEmoji]);
+
   const handleClick = useCallback((native: string, id: string) => {
     onEmojiSelect(native);
     addRecentEmoji({ emoji: id });
   }, [addRecentEmoji, onEmojiSelect]);
 
+  const handleCustomEmojiClick = useCallback((emoji: ApiSticker) => {
+    onCustomEmojiSelect(emoji);
+    addRecentCustomEmoji({ documentId: emoji.id });
+  }, [addRecentCustomEmoji, onCustomEmojiSelect]);
+
   const selectedIndex = useKeyboardNavigation({
     isActive: isOpen,
     isHorizontal: true,
-    items: emojis,
-    onSelect: handleSelectEmoji,
+    items: listEmojis,
+    onSelect: handleSelect,
     onClose,
   });
 
@@ -102,12 +135,21 @@ const EmojiTooltip: FC<OwnProps> = ({
     >
       {shouldRender && listEmojis ? (
         listEmojis.map((emoji, index) => (
-          <EmojiButton
-            key={emoji.id}
-            emoji={emoji}
-            focus={selectedIndex === index}
-            onClick={handleClick}
-          />
+          'native' in emoji ? (
+            <EmojiButton
+              key={emoji.id}
+              emoji={emoji}
+              focus={selectedIndex === index}
+              onClick={handleClick}
+            />
+          ) : (
+            <CustomEmojiButton
+              key={emoji.id}
+              emoji={emoji}
+              focus={selectedIndex === index}
+              onClick={handleCustomEmojiClick}
+            />
+          )
         ))
       ) : shouldRender ? (
         <Loading />

@@ -244,15 +244,15 @@ export function buildFilterFromApiFolder(folder: ApiChatFolder): GramJs.DialogFi
   } = folder;
 
   const pinnedPeers = pinnedChatIds
-    ? pinnedChatIds.map(buildInputPeerFromLocalDb).filter<GramJs.TypeInputPeer>(Boolean as any)
+    ? pinnedChatIds.map(buildInputPeerFromLocalDb).filter(Boolean)
     : [];
 
   const includePeers = includedChatIds
-    ? includedChatIds.map(buildInputPeerFromLocalDb).filter<GramJs.TypeInputPeer>(Boolean as any)
+    ? includedChatIds.map(buildInputPeerFromLocalDb).filter(Boolean)
     : [];
 
   const excludePeers = excludedChatIds
-    ? excludedChatIds.map(buildInputPeerFromLocalDb).filter<GramJs.TypeInputPeer>(Boolean as any)
+    ? excludedChatIds.map(buildInputPeerFromLocalDb).filter(Boolean)
     : [];
 
   return new GramJs.DialogFilter({
@@ -552,4 +552,17 @@ export function buildInputInvoice(invoice: ApiRequestInputInvoice) {
       msgId: invoice.messageId,
     });
   }
+}
+
+export function buildInputReaction(reaction?: string) {
+  if (!reaction) return new GramJs.ReactionEmpty();
+  return new GramJs.ReactionEmoji({
+    emoticon: reaction,
+  });
+}
+
+export function buildInputChatReactions(chatReactions: string[]) {
+  return new GramJs.ChatReactionsSome({
+    reactions: chatReactions.map(buildInputReaction),
+  });
 }

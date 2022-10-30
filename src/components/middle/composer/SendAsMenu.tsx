@@ -1,13 +1,14 @@
-import type { FC } from '../../../lib/teact/teact';
 import React, {
   useCallback, useEffect, useRef, memo,
 } from '../../../lib/teact/teact';
 
+import type { FC } from '../../../lib/teact/teact';
+import type { ApiSendAsPeerId } from '../../../api/types';
+
 import setTooltipItemVisible from '../../../util/setTooltipItemVisible';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
 import { IS_TOUCH_ENV } from '../../../util/environment';
-import renderText from '../../common/helpers/renderText';
-import { getUserFullName, isUserId } from '../../../global/helpers';
+import { isUserId } from '../../../global/helpers';
 import useMouseInside from '../../../hooks/useMouseInside';
 import useLang from '../../../hooks/useLang';
 import buildClassName from '../../../util/buildClassName';
@@ -16,25 +17,28 @@ import { getActions, getGlobal } from '../../../global';
 import ListItem from '../../ui/ListItem';
 import Avatar from '../../common/Avatar';
 import Menu from '../../ui/Menu';
+import FullNameTitle from '../../common/FullNameTitle';
 
 import './SendAsMenu.scss';
 
 export type OwnProps = {
   isOpen: boolean;
-  onClose: () => void;
   chatId?: string;
   selectedSendAsId?: string;
-  sendAsIds?: string[];
+  sendAsPeerIds?: ApiSendAsPeerId[];
+  isCurrentUserPremium?: boolean;
+  onClose: () => void;
 };
 
 const SendAsMenu: FC<OwnProps> = ({
   isOpen,
-  onClose,
   chatId,
   selectedSendAsId,
-  sendAsIds,
+  sendAsPeerIds,
+  isCurrentUserPremium,
+  onClose,
 }) => {
-  const { saveDefaultSendAs } = getActions();
+  const { saveDefaultSendAs, showNotification, openPremiumModal } = getActions();
 
   // No need for expensive global updates on users and chats, so we avoid them
   const usersById = getGlobal().users.byId;
@@ -59,7 +63,7 @@ const SendAsMenu: FC<OwnProps> = ({
 
   const selectedSendAsIndex = useKeyboardNavigation({
     isActive: isOpen,
-    items: sendAsIds,
+    items: sendAsPeerIds,
     onSelect: handleUserSelect,
     shouldSelectOnTab: true,
     shouldSaveSelectionOnUpdateItems: true,
@@ -71,10 +75,10 @@ const SendAsMenu: FC<OwnProps> = ({
   }, [selectedSendAsIndex]);
 
   useEffect(() => {
-    if (sendAsIds && !sendAsIds.length) {
+    if (sendAsPeerIds && !sendAsPeerIds.length) {
       onClose();
     }
-  }, [sendAsIds, onClose]);
+  }, [sendAsPeerIds, onClose]);
 
   return (
     <Menu
@@ -90,18 +94,31 @@ const SendAsMenu: FC<OwnProps> = ({
       noCompact
     >
       <div className="send-as-title" dir="auto">{lang('SendMessageAsTitle')}</div>
-      {usersById && chatsById && sendAsIds?.map((id, index) => {
+      {usersById && chatsById && sendAsPeerIds?.map(({ id, isPremium }, index) => {
         const user = isUserId(id) ? usersById[id] : undefined;
         const chat = !user ? chatsById[id] : undefined;
-        const fullName = user ? getUserFullName(user) : chat?.title;
+        const userOrChat = user || chat;
+
+        const handleClick = () => {
+          if (!isPremium || isCurrentUserPremium) {
+            handleUserSelect(id);
+          } else {
+            showNotification({
+              message: lang('SelectSendAsPeerPremiumHint'),
+              actionText: lang('Open'),
+              action: () => openPremiumModal(),
+            });
+          }
+        };
 
         return (
           <ListItem
             key={id}
             className="SendAsItem chat-item-clickable scroll-item with-avatar"
             // eslint-disable-next-line react/jsx-no-bind
-            onClick={() => handleUserSelect(id)}
+            onClick={handleClick}
             focus={selectedSendAsIndex === index}
+            rightElement={!isCurrentUserPremium && isPremium && <i className="icon-lock-badge send-as-icon-locked" />}
           >
             <Avatar
               size="small"
@@ -110,9 +127,7 @@ const SendAsMenu: FC<OwnProps> = ({
               className={buildClassName(selectedSendAsId === id && 'selected')}
             />
             <div className="info">
-              <div className="title">
-                <h3 dir="auto">{fullName && renderText(fullName)}</h3>
-              </div>
+              {userOrChat && <FullNameTitle peer={userOrChat} noFake />}
               <span className="subtitle">{user
                 ? lang('VoipGroupPersonalAccount')
                 : lang('Subscribers', chat?.membersCount, 'i')}

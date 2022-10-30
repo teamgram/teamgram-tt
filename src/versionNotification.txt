@@ -1,23 +1,11 @@
-**Telegram Web Z was updated to version 1.52**
+**Telegram Web Z was updated to version 1.55**
 
-👏 **Harder**
-• Added support for username.t.me links.
-• ‘Update Telegram’ button now automatically appears when an update is available.
-• Games can now request a share window.
+[👏](customEmoji:5471921242866981303) **Harder**
+• Sending custom emoji is now supported.
+• You can now access the app even when offline.
 
-🤩 **Better**
-• Square images for web page previews are now properly displayed.
-• Auth screen transitions are now smoother.
-• Changelog notifications are only delivered every 3 days.
-
-🚀 **Faster**
-• Interface performance was heavily optimized.
-• Initial app bundle is now even more lightweight.
-
-💪 **Stronger**
-• Fixed several issues causing missing chats.
-• Fixed frozen UI on Android after selecting ‘Nice and Fast’ animation setting.
-• Fixed Play button overlapping with Slide Left button in Media Viewer.
-• Fixed quick reaction button not showing in some cases.
-• Fixed names and profile pictures for deleted accounts.
-• Numerous other layout fixes.
+[💪](customEmoji:5471883477219549006) **Stronger**
+• Fix syncing after editing draft on another device.
+• Fix multiple notification sounds when waking up from background mode.
+• Various fixes for username input.
+• Various fixes for Media Viewer.

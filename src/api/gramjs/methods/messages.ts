@@ -10,11 +10,9 @@ import type {
   ApiOnProgress,
   ApiReportReason,
   ApiSticker,
-  ApiThreadInfo,
   ApiUser,
   ApiVideo,
   OnApiUpdate,
-  ApiSponsoredMessage,
   ApiSendMessageAction,
   ApiContact,
   ApiPoll,
@@ -55,7 +53,7 @@ import {
   buildInputPollFromExisting,
 } from '../gramjsBuilders';
 import localDb from '../localDb';
-import { buildApiChatFromPreview } from '../apiBuilders/chats';
+import { buildApiChatFromPreview, buildApiSendAsPeerId } from '../apiBuilders/chats';
 import { fetchFile } from '../../../util/files';
 import {
   addEntitiesWithPhotosToLocalDb,
@@ -65,7 +63,6 @@ import {
 } from '../helpers';
 import { interpolateArray } from '../../../util/waveform';
 import { requestChatUpdate } from './chats';
-import { getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
 
 const FAST_SEND_TIMEOUT = 1000;
 const INPUT_WAVEFORM_LENGTH = 63;
@@ -120,10 +117,10 @@ export async function fetchMessages({
 
   updateLocalDb(result);
 
-  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
-  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
-  const threadInfos = messages.map(({ threadInfo }) => threadInfo).filter<ApiThreadInfo>(Boolean as any);
+  const messages = result.messages.map(buildApiMessage).filter(Boolean);
+  const users = result.users.map(buildApiUser).filter(Boolean);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
+  const threadInfos = messages.map(({ threadInfo }) => threadInfo).filter(Boolean);
 
   return {
     messages,
@@ -189,7 +186,7 @@ export async function fetchMessage({ chat, messageId }: { chat: ApiChat; message
     addMessageToLocalDb(mtpMessage);
   }
 
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
+  const users = result.users.map(buildApiUser).filter(Boolean);
 
   return { message, users };
 }
@@ -858,7 +855,7 @@ export async function requestThreadInfoUpdate({
       : undefined,
   });
 
-  const chats = topMessageResult.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
+  const chats = topMessageResult.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
   chats.forEach((newChat) => {
     onUpdate({
       '@type': 'updateChat',
@@ -932,9 +929,9 @@ export async function searchMessagesLocal({
 
   updateLocalDb(result);
 
-  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
-  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
+  const users = result.users.map(buildApiUser).filter(Boolean);
+  const messages = result.messages.map(buildApiMessage).filter(Boolean);
 
   let totalCount = messages.length;
   let nextOffsetId: number | undefined;
@@ -1017,9 +1014,9 @@ export async function searchMessagesGlobal({
     messages: result.messages,
   } as GramJs.messages.Messages);
 
-  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
-  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
+  const users = result.users.map(buildApiUser).filter(Boolean);
+  const messages = result.messages.map(buildApiMessage).filter(Boolean);
 
   let totalCount = messages.length;
   let nextRate: number | undefined;
@@ -1110,7 +1107,7 @@ export async function loadPollOptionResults({
     messages: [] as GramJs.Message[],
   } as GramJs.messages.Messages);
 
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
+  const users = result.users.map(buildApiUser).filter(Boolean);
   const votes = result.votes.map((vote) => ({
     userId: vote.userId,
     date: vote.date,
@@ -1223,7 +1220,7 @@ export async function fetchScheduledHistory({ chat }: { chat: ApiChat }) {
 
   updateLocalDb(result);
 
-  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
+  const messages = result.messages.map(buildApiMessage).filter(Boolean);
 
   return {
     messages,
@@ -1275,9 +1272,9 @@ export async function fetchPinnedMessages({ chat }: { chat: ApiChat }) {
 
   updateLocalDb(result);
 
-  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
-  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
+  const users = result.users.map(buildApiUser).filter(Boolean);
+  const messages = result.messages.map(buildApiMessage).filter(Boolean);
 
   return {
     messages,
@@ -1311,13 +1308,13 @@ export async function fetchSendAs({
   addEntitiesWithPhotosToLocalDb(result.users);
   addEntitiesWithPhotosToLocalDb(result.chats);
 
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
-  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
+  const users = result.users.map(buildApiUser).filter(Boolean);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
 
   return {
     users,
     chats,
-    ids: result.peers.map(getApiChatIdFromMtpPeer),
+    sendAs: result.peers.map(buildApiSendAsPeerId),
   };
 }
 
@@ -1343,9 +1340,9 @@ export async function fetchSponsoredMessages({ chat }: { chat: ApiChat }) {
 
   updateLocalDb(result);
 
-  const messages = result.messages.map(buildApiSponsoredMessage).filter<ApiSponsoredMessage>(Boolean as any);
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
-  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
+  const messages = result.messages.map(buildApiSponsoredMessage).filter(Boolean);
+  const users = result.users.map(buildApiUser).filter(Boolean);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
 
   return {
     messages,
@@ -1406,9 +1403,9 @@ export async function fetchUnreadMentions({
 
   updateLocalDb(result);
 
-  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
-  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
+  const messages = result.messages.map(buildApiMessage).filter(Boolean);
+  const users = result.users.map(buildApiUser).filter(Boolean);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
 
   return {
     messages,
@@ -1442,9 +1439,9 @@ export async function fetchUnreadReactions({
 
   updateLocalDb(result);
 
-  const messages = result.messages.map(buildApiMessage).filter<ApiMessage>(Boolean as any);
-  const users = result.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
-  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter<ApiChat>(Boolean as any);
+  const messages = result.messages.map(buildApiMessage).filter(Boolean);
+  const users = result.users.map(buildApiUser).filter(Boolean);
+  const chats = result.chats.map((c) => buildApiChatFromPreview(c)).filter(Boolean);
 
   return {
     messages,

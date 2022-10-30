@@ -24,7 +24,7 @@ import {
   addChats, addUsers, addUserStatuses, replaceThreadParam,
   updateChatListIds, updateChats, updateChat, updateChatListSecondaryInfo,
   updateManagementProgress, leaveChat, replaceUsers, replaceUserStatuses,
-  replaceChats, replaceChatListIds, addChatMembers,
+  replaceChats, replaceChatListIds, addChatMembers, updateUser,
 } from '../../reducers';
 import {
   selectChat, selectUser, selectChatListType, selectIsChatPinned,
@@ -272,7 +272,7 @@ addActionHandler('createChannel', (global, actions, payload) => {
 
   const members = (memberIds as string[])
     .map((id) => selectUser(global, id))
-    .filter<ApiUser>(Boolean as any);
+    .filter(Boolean);
 
   void createChannel(title, members, about, photo);
 });
@@ -372,7 +372,7 @@ addActionHandler('createGroupChat', (global, actions, payload) => {
   const { title, memberIds, photo } = payload!;
   const members = (memberIds as string[])
     .map((id) => selectUser(global, id))
-    .filter<ApiUser>(Boolean as any);
+    .filter(Boolean);
 
   void createGroupChat(title, members, photo);
 });
@@ -1063,7 +1063,7 @@ addActionHandler('loadMoreMembers', async (global) => {
 addActionHandler('addChatMembers', async (global, actions, payload) => {
   const { chatId, memberIds } = payload;
   const chat = selectChat(global, chatId);
-  const users = (memberIds as string[]).map((userId) => selectUser(global, userId)).filter<ApiUser>(Boolean as any);
+  const users = (memberIds as string[]).map((userId) => selectUser(global, userId)).filter(Boolean);
 
   if (!chat || !users.length) {
     return;
@@ -1245,13 +1245,10 @@ async function loadChats(
 
   global = updateChatListSecondaryInfo(global, listType, result);
 
-  Object.keys(result.draftsById).forEach((chatId) => {
+  result.chatIds.forEach((chatId) => {
     global = replaceThreadParam(
       global, chatId, MAIN_THREAD_ID, 'draft', result.draftsById[chatId],
     );
-  });
-
-  Object.keys(result.replyingToById).forEach((chatId) => {
     global = replaceThreadParam(
       global, chatId, MAIN_THREAD_ID, 'replyingToId', result.replyingToById[chatId],
     );
@@ -1535,12 +1532,16 @@ export async function fetchChatByUsername(
     return localChat;
   }
 
-  const chat = await callApi('getChatByUsername', username);
+  const { chat, user } = await callApi('getChatByUsername', username) || {};
   if (!chat) {
     return undefined;
   }
 
   setGlobal(updateChat(getGlobal(), chat.id, chat));
+
+  if (user) {
+    setGlobal(updateUser(getGlobal(), user.id, user));
+  }
 
   return chat;
 }
@@ -1552,12 +1553,16 @@ export async function fetchChatByPhoneNumber(phoneNumber: string) {
     return selectChat(global, localUser.id);
   }
 
-  const chat = await callApi('getChatByPhoneNumber', phoneNumber);
+  const { chat, user } = await callApi('getChatByPhoneNumber', phoneNumber) || {};
   if (!chat) {
     return undefined;
   }
 
   setGlobal(updateChat(getGlobal(), chat.id, chat));
+
+  if (user) {
+    setGlobal(updateUser(getGlobal(), user.id, user));
+  }
 
   return chat;
 }
@@ -1566,6 +1571,7 @@ async function getAttachBotOrNotify(global: GlobalState, username: string) {
   const chat = await fetchChatByUsername(username);
   if (!chat) return undefined;
 
+  global = getGlobal();
   const user = selectUser(global, chat.id);
   if (!user) return undefined;
 
@@ -1591,12 +1597,12 @@ async function openChatByUsername(
 
   // Attach in the current chat
   if (startAttach && !attach) {
-    const user = await getAttachBotOrNotify(global, username);
+    const bot = await getAttachBotOrNotify(global, username);
 
-    if (!currentChat || !user) return;
+    if (!currentChat || !bot) return;
 
     actions.callAttachBot({
-      botId: user.id,
+      botId: bot.id,
       chatId: currentChat.id,
       ...(typeof startAttach === 'string' && { startParam: startAttach }),
     });

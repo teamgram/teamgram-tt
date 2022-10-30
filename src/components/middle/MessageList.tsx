@@ -64,6 +64,7 @@ import MessageListContent from './MessageListContent';
 import ContactGreeting from './ContactGreeting';
 import NoMessages from './NoMessages';
 import Skeleton from '../ui/Skeleton';
+import OptimizedVideo from '../ui/OptimizedVideo';
 
 import './MessageList.scss';
 
@@ -77,6 +78,7 @@ type OwnProps = {
   onNotchToggle: (shouldShow: boolean) => void;
   hasTools?: boolean;
   withBottomShift?: boolean;
+  withDefaultBg: boolean;
 };
 
 type StateProps = {
@@ -151,6 +153,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
   hasLinkedChat,
   lastSyncTime,
   withBottomShift,
+  withDefaultBg,
 }) => {
   const {
     loadViewportMessages, setScrollOffset, loadSponsoredMessages, loadMessageReactions, copyMessagesByIds,
@@ -522,6 +525,7 @@ const MessageList: FC<OwnProps & StateProps> = ({
     !canPost && 'no-composer',
     type === 'pinned' && 'type-pinned',
     withBottomShift && 'with-bottom-shift',
+    withDefaultBg && 'with-default-bg',
     isSelectModeActive && 'select-mode-active',
     isScrolled && 'scrolled',
     !isReady && 'is-animating',
@@ -560,10 +564,10 @@ const MessageList: FC<OwnProps & StateProps> = ({
                 />
               )}
               {botInfoGifUrl && (
-                <video
+                <OptimizedVideo
+                  canPlay
                   src={botInfoGifUrl}
                   loop
-                  autoPlay
                   disablePictureInPicture
                   muted
                   playsInline

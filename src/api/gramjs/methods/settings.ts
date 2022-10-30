@@ -4,11 +4,10 @@ import { Api as GramJs } from '../../../lib/gramjs';
 import type {
   ApiAppConfig,
   ApiChat,
+  ApiError,
   ApiLangString,
   ApiLanguage,
   ApiNotifyException,
-  ApiUser,
-  ApiWallpaper,
 } from '../../types';
 import type { ApiPrivacyKey, InputPrivacyRules, LangCode } from '../../../types';
 
@@ -55,7 +54,12 @@ export function updateProfile({
 }
 
 export function checkUsername(username: string) {
-  return invokeRequest(new GramJs.account.CheckUsername({ username }));
+  return invokeRequest(new GramJs.account.CheckUsername({ username }), undefined, true).catch((error) => {
+    if ((error as ApiError).message === 'USERNAME_INVALID') {
+      return false;
+    }
+    throw error;
+  });
 }
 
 export function updateUsername(username: string) {
@@ -99,7 +103,7 @@ export async function fetchWallpapers() {
   });
 
   return {
-    wallpapers: filteredWallpapers.map(buildApiWallpaper).filter<ApiWallpaper>(Boolean as any),
+    wallpapers: filteredWallpapers.map(buildApiWallpaper).filter(Boolean),
   };
 }
 
@@ -137,8 +141,8 @@ export async function fetchBlockedContacts() {
   updateLocalDb(result);
 
   return {
-    users: result.users.map(buildApiUser).filter<ApiUser>(Boolean as any),
-    chats: result.chats.map((chat) => buildApiChatFromPreview(chat)).filter<ApiChat>(Boolean as any),
+    users: result.users.map(buildApiUser).filter(Boolean),
+    chats: result.chats.map((chat) => buildApiChatFromPreview(chat)).filter(Boolean),
     blockedIds: result.blocked.map((blocked) => getApiChatIdFromMtpPeer(blocked.peerId)),
     totalCount: result instanceof GramJs.contacts.BlockedSlice ? result.count : result.blocked.length,
   };

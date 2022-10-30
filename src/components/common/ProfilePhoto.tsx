@@ -15,12 +15,12 @@ import {
 } from '../../global/helpers';
 import renderText from './helpers/renderText';
 import buildClassName from '../../util/buildClassName';
-import safePlay from '../../util/safePlay';
 import { getFirstLetters } from '../../util/textFormat';
 import useMedia from '../../hooks/useMedia';
 import useLang from '../../hooks/useLang';
 
 import Spinner from '../ui/Spinner';
+import OptimizedVideo from '../ui/OptimizedVideo';
 
 import './ProfilePhoto.scss';
 
@@ -31,7 +31,7 @@ type OwnProps = {
   isSavedMessages?: boolean;
   photo?: ApiPhoto;
   lastSyncTime?: number;
-  notActive?: boolean;
+  canPlayVideo: boolean;
   onClick: NoneToVoidFunction;
 };
 
@@ -41,12 +41,13 @@ const ProfilePhoto: FC<OwnProps> = ({
   photo,
   isFirstPhoto,
   isSavedMessages,
-  notActive,
+  canPlayVideo,
   lastSyncTime,
   onClick,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const videoRef = useRef<HTMLVideoElement>(null);
+
   const lang = useLang();
   const isDeleted = user && isDeletedUser(user);
   const isRepliesChat = chat && isChatWithRepliesBot(chat.id);
@@ -76,14 +77,10 @@ const ProfilePhoto: FC<OwnProps> = ({
   }
 
   useEffect(() => {
-    if (!videoRef.current) return;
-    if (notActive) {
-      videoRef.current.pause();
+    if (videoRef.current && !canPlayVideo) {
       videoRef.current.currentTime = 0;
-    } else {
-      safePlay(videoRef.current);
     }
-  }, [notActive]);
+  }, [canPlayVideo]);
 
   const photoHash = getMediaHash('big', 'photo');
   const photoBlobUrl = useMedia(photoHash, false, ApiMediaFormat.BlobUrl, lastSyncTime);
@@ -102,13 +99,13 @@ const ProfilePhoto: FC<OwnProps> = ({
   } else if (imageSrc) {
     if (videoBlobUrl) {
       content = (
-        <video
+        <OptimizedVideo
+          canPlay={canPlayVideo}
           ref={videoRef}
           src={imageSrc}
           className="avatar-media"
           muted
           disablePictureInPicture
-          autoPlay={!notActive}
           loop
           playsInline
         />

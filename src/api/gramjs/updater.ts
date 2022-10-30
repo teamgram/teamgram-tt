@@ -24,7 +24,7 @@ import {
   buildApiChatFolder,
   buildApiChatSettings,
 } from './apiBuilders/chats';
-import { buildApiUser, buildApiUserStatus } from './apiBuilders/users';
+import { buildApiUser, buildApiUserEmojiStatus, buildApiUserStatus } from './apiBuilders/users';
 import {
   buildMessageFromUpdate,
   isMessageWithMedia,
@@ -39,6 +39,7 @@ import {
   addPhotoToLocalDb,
   resolveMessageApiChatId,
   serializeBytes,
+  log,
 } from './helpers';
 import { buildApiNotifyException, buildPrivacyKey, buildPrivacyRules } from './apiBuilders/misc';
 import { buildApiPhoto } from './apiBuilders/common';
@@ -330,7 +331,7 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       return message && message instanceof GramJs.MessageService && 'photo' in message.action
         ? String(message.action.photo.id)
         : undefined;
-    }).filter<string>(Boolean as any);
+    }).filter(Boolean);
 
     if (existingIds.length) {
       onUpdate({
@@ -737,6 +738,13 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
       userId: buildApiPeerId(update.userId, 'user'),
       status: buildApiUserStatus(update.status),
     });
+  } else if (update instanceof GramJs.UpdateUserEmojiStatus) {
+    const emojiStatus = buildApiUserEmojiStatus(update.emojiStatus);
+    onUpdate({
+      '@type': 'updateUserEmojiStatus',
+      userId: buildApiPeerId(update.userId, 'user'),
+      emojiStatus,
+    });
   } else if (update instanceof GramJs.UpdateUserName) {
     const apiUserId = buildApiPeerId(update.userId, 'user');
     const updatedUser = localDb.users[apiUserId];
@@ -984,7 +992,6 @@ export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
     }
   } else if (DEBUG) {
     const params = typeof update === 'object' && 'className' in update ? update.className : update;
-    // eslint-disable-next-line no-console
-    console.warn('[GramJs/updater] Unexpected update:', params);
+    log('UNEXPECTED UPDATE', params);
   }
 }

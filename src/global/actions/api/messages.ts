@@ -618,7 +618,7 @@ addActionHandler('forwardMessages', (global, action, payload) => {
   const messages = fromChatId && messageIds
     ? messageIds
       .sort((a, b) => a - b)
-      .map((id) => selectChatMessage(global, fromChatId, id)).filter<ApiMessage>(Boolean as any)
+      .map((id) => selectChatMessage(global, fromChatId, id)).filter(Boolean)
     : undefined;
 
   if (!fromChat || !toChat || !messages) {
@@ -1091,7 +1091,7 @@ addActionHandler('loadSendAs', async (global, actions, payload) => {
   const result = await callApi('fetchSendAs', { chat });
   if (!result) {
     setGlobal(updateChat(getGlobal(), chatId, {
-      sendAsIds: [],
+      sendAsPeerIds: [],
     }));
 
     return;
@@ -1100,7 +1100,7 @@ addActionHandler('loadSendAs', async (global, actions, payload) => {
   global = getGlobal();
   global = addUsers(global, buildCollectionByKey(result.users, 'id'));
   global = addChats(global, buildCollectionByKey(result.chats, 'id'));
-  global = updateChat(global, chatId, { sendAsIds: result.ids });
+  global = updateChat(global, chatId, { sendAsPeerIds: result.sendAs });
   setGlobal(global);
 });
 
@@ -1201,24 +1201,12 @@ addActionHandler('markMentionsRead', (global, actions, payload) => {
   const chat = selectCurrentChat(global);
   if (!chat) return;
 
-  if (!chat.unreadMentionsCount) {
-    return;
-  }
-
-  const unreadMentionsCount = chat.unreadMentionsCount - messageIds.length;
   const unreadMentions = (chat.unreadMentions || []).filter((id) => !messageIds.includes(id));
   global = updateChat(global, chat.id, {
     unreadMentions,
   });
 
   setGlobal(global);
-
-  if (!unreadMentions.length && unreadMentionsCount) {
-    actions.fetchUnreadMentions({
-      chatId: chat.id,
-      offsetId: Math.max(...messageIds),
-    });
-  }
 
   actions.markMessagesRead({ messageIds });
 });
@@ -1308,6 +1296,19 @@ addActionHandler('setForwardChatId', async (global, actions, payload) => {
   actions.openChat({ id });
   actions.closeMediaViewer();
   actions.exitMessageSelectMode();
+});
+
+addActionHandler('forwardToSavedMessages', (global, actions) => {
+  setGlobal({
+    ...global,
+    forwardMessages: {
+      ...global.forwardMessages,
+      toChatId: global.currentUserId,
+    },
+  });
+
+  actions.exitMessageSelectMode();
+  actions.forwardMessages({ isSilent: true });
 });
 
 function countSortedIds(ids: number[], from: number, to: number) {

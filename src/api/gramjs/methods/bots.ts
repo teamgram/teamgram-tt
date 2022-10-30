@@ -48,7 +48,7 @@ export async function fetchTopInlineBots() {
     return undefined;
   }
 
-  const users = topPeers.users.map(buildApiUser).filter<ApiUser>(Boolean as any);
+  const users = topPeers.users.map(buildApiUser).filter(Boolean);
   const ids = users.map(({ id }) => id);
 
   return {
@@ -102,7 +102,7 @@ export async function fetchInlineBotResults({
     help: bot.botPlaceholder,
     nextOffset: getInlineBotResultsNextOffset(bot.username, result.nextOffset),
     switchPm: buildBotSwitchPm(result.switchPm),
-    users: result.users.map(buildApiUser).filter<ApiUser>(Boolean as any),
+    users: result.users.map(buildApiUser).filter(Boolean),
     results: processInlineBotResult(String(result.queryId), result.results),
   };
 }
@@ -179,6 +179,7 @@ export async function requestWebView({
     startParam,
     themeParams: theme ? buildInputThemeParams(theme) : undefined,
     fromBotMenu: isFromBotMenu || undefined,
+    platform: 'web',
     ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
   }));
 
@@ -203,6 +204,7 @@ export async function requestSimpleWebView({
     url,
     bot: buildInputPeer(bot.id, bot.accessHash),
     themeParams: theme ? buildInputThemeParams(theme) : undefined,
+    platform: 'web',
   }));
 
   return result?.url;

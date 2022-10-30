@@ -218,9 +218,15 @@
     unicode-bidi: plaintext;
     display: flex;
 
+    .message-title-name {
+      display: flex;
+      align-items: center;
+    }
+
     & > .interactive {
       overflow: hidden;
       text-overflow: ellipsis;
+      unicode-bidi: plaintext;
     }
 
     &.interactive,
@@ -235,6 +241,14 @@
     @for $i from 1 through 8 {
       & > .color-#{$i} {
         color: var(--color-user-#{$i});
+
+        .custom-emoji.custom-color {
+          --emoji-status-color: var(--color-user-#{$i});
+        }
+
+        .PremiumIcon {
+          --color-fill: var(--color-user-#{$i});
+        }
       }
     }
 
@@ -253,6 +267,21 @@
 
     span + .via {
       padding-left: 0.25rem;
+    }
+
+    .custom-emoji {
+      --custom-emoji-size: 1.25rem;
+      margin-left: 0.25rem;
+
+      &.custom-color {
+        opacity: 0.5;
+      }
+    }
+
+    .PremiumIcon {
+      vertical-align: middle;
+      opacity: 0.5;
+      margin-left: 0.25rem;
     }
 
     .admin-title {
@@ -392,7 +421,7 @@
     }
   }
 
-  &:not(.custom-shape) .emoji {
+  &:not(.custom-shape) .emoji:not(.custom-emoji) {
     display: inline-block;
     width: 1.25rem;
     background-size: 1.25rem;
@@ -413,7 +442,7 @@
       background-size: calc(1.25 * var(--message-text-size, 1rem));
     }
 
-    .text-entity-custom-emoji {
+    .custom-emoji {
       --custom-emoji-size: calc(1.25 * var(--message-text-size, 1rem));
     }
   }
@@ -631,6 +660,10 @@
     }
   }
 
+  .message-media-duration {
+    background: var(--pattern-color);
+  }
+
   .text-content {
     margin-bottom: 1rem;
   }
@@ -826,31 +859,6 @@
   &:active,
   &:visited {
     text-decoration: underline !important;
-  }
-}
-
-.text-entity-custom-emoji {
-  display: inline-block;
-  vertical-align: text-bottom;
-  --custom-emoji-size: 1.5rem;
-  width: var(--custom-emoji-size);
-  height: var(--custom-emoji-size);
-
-  & > video, & > img {
-    width: calc(100% + 1px) !important;
-    height: calc(100% + 1px) !important;
-    vertical-align: baseline;
-  }
-
-  & > .AnimatedSticker {
-    width: var(--custom-emoji-size) !important;
-    height: var(--custom-emoji-size) !important;
-    display: flex !important;
-
-    & > canvas {
-      width: var(--custom-emoji-size) !important;
-      height: var(--custom-emoji-size) !important;
-    }
   }
 }
 

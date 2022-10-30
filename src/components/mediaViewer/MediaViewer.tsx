@@ -37,7 +37,7 @@ import { renderMessageText } from '../common/helpers/renderMessageText';
 import useFlag from '../../hooks/useFlag';
 import useForceUpdate from '../../hooks/useForceUpdate';
 import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
-import useHistoryBack from '../../hooks/useHistoryBack';
+import { exitPictureInPictureIfNeeded } from '../../hooks/usePictureInPicture';
 import useLang from '../../hooks/useLang';
 import usePrevious from '../../hooks/usePrevious';
 import { useMediaProps } from './hooks/useMediaProps';
@@ -63,7 +63,9 @@ type StateProps = {
   message?: ApiMessage;
   chatMessages?: Record<number, ApiMessage>;
   collectionIds?: number[];
+  isHidden?: boolean;
   animationLevel: AnimationLevel;
+  shouldSkipHistoryAnimations?: boolean;
 };
 
 const ANIMATION_DURATION = 350;
@@ -80,6 +82,8 @@ const MediaViewer: FC<StateProps> = ({
   chatMessages,
   collectionIds,
   animationLevel,
+  isHidden,
+  shouldSkipHistoryAnimations,
 }) => {
   const {
     openMediaViewer,
@@ -95,7 +99,7 @@ const MediaViewer: FC<StateProps> = ({
   const animationKey = useRef<number>();
   const prevSenderId = usePrevious<string | undefined>(senderId);
   const headerAnimation = animationLevel === 2 ? 'slide-fade' : 'none';
-  const isGhostAnimation = animationLevel === 2;
+  const isGhostAnimation = animationLevel === 2 && !shouldSkipHistoryAnimations;
 
   /* Controls */
   const [isReportModalOpen, openReportModal, closeReportModal] = useFlag();
@@ -119,6 +123,7 @@ const MediaViewer: FC<StateProps> = ({
   });
 
   const canReport = !!avatarPhoto && !isChatWithSelf;
+  const isVisible = !isHidden && isOpen;
 
   /* Navigation */
   const singleMediaId = webPagePhoto || webPageVideo ? mediaId : undefined;
@@ -138,6 +143,12 @@ const MediaViewer: FC<StateProps> = ({
   if (isOpen && (!prevSenderId || prevSenderId !== senderId || !animationKey.current)) {
     animationKey.current = selectedMediaIndex;
   }
+
+  useEffect(() => {
+    if (isVisible) {
+      exitPictureInPictureIfNeeded();
+    }
+  }, [isVisible]);
 
   useEffect(() => {
     if (!IS_SINGLE_COLUMN_LAYOUT) return;
@@ -163,14 +174,17 @@ const MediaViewer: FC<StateProps> = ({
   }, [forceUpdate]);
 
   const prevMessage = usePrevious<ApiMessage | undefined>(message);
+  const prevIsHidden = usePrevious<boolean | undefined>(isHidden);
   const prevOrigin = usePrevious(origin);
+  const prevMediaId = usePrevious(mediaId);
   const prevAvatarOwner = usePrevious<ApiChat | ApiUser | undefined>(avatarOwner);
   const prevBestImageData = usePrevious(bestImageData);
   const textParts = message ? renderMessageText(message) : undefined;
   const hasFooter = Boolean(textParts);
+  const shouldAnimateOpening = prevIsHidden && prevMediaId !== mediaId;
 
   useEffect(() => {
-    if (isGhostAnimation && isOpen && !prevMessage && !prevAvatarOwner) {
+    if (isGhostAnimation && isOpen && (!prevMessage || shouldAnimateOpening) && !prevAvatarOwner) {
       dispatchHeavyAnimationEvent(ANIMATION_DURATION + ANIMATION_END_DELAY);
       animateOpening(hasFooter, origin!, bestImageData!, dimensions, isVideo, message);
     }
@@ -180,16 +194,14 @@ const MediaViewer: FC<StateProps> = ({
       animateClosing(prevOrigin!, prevBestImageData!, prevMessage || undefined);
     }
   }, [
-    isGhostAnimation, isOpen, origin, prevOrigin, message, prevMessage, prevAvatarOwner,
+    isGhostAnimation, isOpen, shouldAnimateOpening, origin, prevOrigin, message, prevMessage, prevAvatarOwner,
     bestImageData, prevBestImageData, dimensions, isVideo, hasFooter,
   ]);
 
-  const close = useCallback(() => {
-    closeMediaViewer();
-  }, [closeMediaViewer]);
+  const handleClose = useCallback(() => closeMediaViewer(), [closeMediaViewer]);
 
   const handleFooterClick = useCallback(() => {
-    close();
+    handleClose();
 
     if (IS_SINGLE_COLUMN_LAYOUT) {
       setTimeout(() => {
@@ -199,7 +211,7 @@ const MediaViewer: FC<StateProps> = ({
     } else {
       focusMessage({ chatId, threadId, mediaId });
     }
-  }, [close, chatId, threadId, focusMessage, toggleChatInfo, mediaId]);
+  }, [handleClose, chatId, threadId, focusMessage, toggleChatInfo, mediaId]);
 
   const handleForward = useCallback(() => {
     openForwardMenu({
@@ -221,8 +233,8 @@ const MediaViewer: FC<StateProps> = ({
   }, [avatarOwner?.id, chatId, openMediaViewer, origin, threadId]);
 
   useEffect(() => (isOpen ? captureEscKeyListener(() => {
-    close();
-  }) : undefined), [close, isOpen]);
+    handleClose();
+  }) : undefined), [handleClose, isOpen]);
 
   useEffect(() => {
     if (isVideo && !isGif) {
@@ -235,7 +247,6 @@ const MediaViewer: FC<StateProps> = ({
     if (!isOpen) {
       return undefined;
     }
-
     windowSize.disableRefresh();
 
     return () => {
@@ -254,11 +265,6 @@ const MediaViewer: FC<StateProps> = ({
 
   const lang = useLang();
 
-  useHistoryBack({
-    isActive: isOpen,
-    onBack: closeMediaViewer,
-  });
-
   function renderSenderInfo() {
     return avatarOwner ? (
       <SenderInfo
@@ -276,7 +282,12 @@ const MediaViewer: FC<StateProps> = ({
   }
 
   return (
-    <ShowTransition id="MediaViewer" isOpen={isOpen}>
+    <ShowTransition
+      id="MediaViewer"
+      isOpen={isOpen}
+      isHidden={isHidden}
+      noCloseTransition={shouldSkipHistoryAnimations}
+    >
       <div className="media-viewer-head" dir={lang.isRtl ? 'rtl' : undefined}>
         {IS_SINGLE_COLUMN_LAYOUT && (
           <Button
@@ -285,7 +296,7 @@ const MediaViewer: FC<StateProps> = ({
             size="smaller"
             color="translucent-white"
             ariaLabel={lang('Close')}
-            onClick={close}
+            onClick={handleClose}
           >
             <i className="icon-close" />
           </Button>
@@ -300,7 +311,7 @@ const MediaViewer: FC<StateProps> = ({
           fileName={fileName}
           canReport={canReport}
           onReport={openReportModal}
-          onCloseMediaViewer={close}
+          onCloseMediaViewer={handleClose}
           onForward={handleForward}
           zoomLevelChange={zoomLevelChange}
           setZoomLevelChange={setZoomLevelChange}
@@ -328,8 +339,9 @@ const MediaViewer: FC<StateProps> = ({
         zoomLevelChange={zoomLevelChange}
         isVideo={isVideo}
         animationLevel={animationLevel}
-        onClose={close}
+        onClose={handleClose}
         selectMedia={selectMedia}
+        isHidden={isHidden}
         onFooterClick={handleFooterClick}
       />
     </ShowTransition>
@@ -344,21 +356,24 @@ export default memo(withGlobal(
       mediaId,
       avatarOwnerId,
       origin,
+      isHidden,
     } = global.mediaViewer;
     const {
       animationLevel,
     } = global.settings.byKey;
 
+    const { shouldSkipHistoryAnimations } = global;
+
     let isChatWithSelf = !!chatId && selectIsChatWithSelf(global, chatId);
 
     if (origin === MediaViewerOrigin.SearchResult) {
       if (!(chatId && mediaId)) {
-        return { animationLevel };
+        return { animationLevel, shouldSkipHistoryAnimations };
       }
 
       const message = selectChatMessage(global, chatId, mediaId);
       if (!message) {
-        return { animationLevel };
+        return { animationLevel, shouldSkipHistoryAnimations };
       }
 
       return {
@@ -369,6 +384,8 @@ export default memo(withGlobal(
         origin,
         message,
         animationLevel,
+        isHidden,
+        shouldSkipHistoryAnimations,
       };
     }
 
@@ -383,11 +400,13 @@ export default memo(withGlobal(
         isChatWithSelf,
         animationLevel,
         origin,
+        shouldSkipHistoryAnimations,
+        isHidden,
       };
     }
 
     if (!(chatId && threadId && mediaId)) {
-      return { animationLevel };
+      return { animationLevel, shouldSkipHistoryAnimations };
     }
 
     let message: ApiMessage | undefined;
@@ -398,7 +417,7 @@ export default memo(withGlobal(
     }
 
     if (!message) {
-      return { animationLevel };
+      return { animationLevel, shouldSkipHistoryAnimations };
     }
 
     let chatMessages: Record<number, ApiMessage> | undefined;
@@ -429,6 +448,8 @@ export default memo(withGlobal(
       chatMessages,
       collectionIds,
       animationLevel,
+      isHidden,
+      shouldSkipHistoryAnimations,
     };
   },
 )(MediaViewer));

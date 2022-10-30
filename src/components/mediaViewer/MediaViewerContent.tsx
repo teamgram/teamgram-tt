@@ -49,6 +49,7 @@ type StateProps = {
   isProtected?: boolean;
   volume: number;
   isMuted: boolean;
+  isHidden?: boolean;
   playbackRate: number;
 };
 
@@ -68,6 +69,7 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
     volume,
     playbackRate,
     isMuted,
+    isHidden,
     onClose,
     onFooterClick,
     setControlsVisible,
@@ -128,6 +130,7 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
             noPlay={!isActive}
             onClose={onClose}
             isMuted
+            shouldCloseOnClick
             volume={0}
             playbackRate={1}
           />
@@ -170,6 +173,7 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
           noPlay={!isActive}
           onClose={onClose}
           isMuted={isMuted}
+          isHidden={isHidden}
           isProtected={isProtected}
           volume={volume}
           playbackRate={playbackRate}
@@ -202,6 +206,7 @@ export default memo(withGlobal<OwnProps>(
       volume,
       isMuted,
       playbackRate,
+      isHidden,
     } = global.mediaViewer;
 
     if (origin === MediaViewerOrigin.SearchResult) {
@@ -223,6 +228,7 @@ export default memo(withGlobal<OwnProps>(
         isProtected: selectIsMessageProtected(global, message),
         volume,
         isMuted,
+        isHidden,
         playbackRate,
       };
     }
@@ -237,6 +243,7 @@ export default memo(withGlobal<OwnProps>(
         origin,
         volume,
         isMuted,
+        isHidden,
         playbackRate,
       };
     }
@@ -266,6 +273,7 @@ export default memo(withGlobal<OwnProps>(
       isProtected: selectIsMessageProtected(global, message),
       volume,
       isMuted,
+      isHidden,
       playbackRate,
     };
   },

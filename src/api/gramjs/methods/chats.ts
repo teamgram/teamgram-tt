@@ -28,6 +28,7 @@ import {
   buildApiChatFolderFromSuggested,
   buildApiChatBotCommands,
   buildApiChatSettings,
+  buildApiChatReactions,
 } from '../apiBuilders/chats';
 import { buildApiMessage, buildMessageDraft } from '../apiBuilders/messages';
 import { buildApiUser, buildApiUsersAndStatuses } from '../apiBuilders/users';
@@ -40,6 +41,7 @@ import {
   isMessageWithMedia,
   buildChatBannedRights,
   buildChatAdminRights,
+  buildInputChatReactions,
 } from '../gramjsBuilders';
 import { addEntitiesWithPhotosToLocalDb, addMessageToLocalDb, addPhotoToLocalDb } from '../helpers';
 import { buildApiPeerId, getApiChatIdFromMtpPeer } from '../apiBuilders/peers';
@@ -102,7 +104,7 @@ export async function fetchChats({
   const lastMessagesByChatId = buildCollectionByKey(
     (resultPinned ? resultPinned.messages : []).concat(result.messages)
       .map(buildApiMessage)
-      .filter<ApiMessage>(Boolean as any),
+      .filter(Boolean),
     'chatId',
   );
   const peersByKey: Record<string, GramJs.TypeChat | GramJs.TypeUser> = {
@@ -222,7 +224,7 @@ export async function searchChats({ query }: { query: string }) {
   const localPeerIds = result.myResults.map(getApiChatIdFromMtpPeer);
   const allChats = result.chats.concat(result.users)
     .map((user) => buildApiChatFromPreview(user))
-    .filter<ApiChat>(Boolean as any);
+    .filter(Boolean);
   const allUsers = result.users.map(buildApiUser).filter((user) => Boolean(user) && !user.isSelf) as ApiUser[];
 
   return {
@@ -397,7 +399,7 @@ async function getFullChatInfo(chatId: string): Promise<FullChatData | undefined
         inviteLink: exportedInvite.link,
       }),
       groupCallId: call?.id.toString(),
-      enabledReactions: availableReactions,
+      enabledReactions: buildApiChatReactions(availableReactions),
       requestsPending,
       recentRequesterIds: recentRequesters?.map((userId) => buildApiPeerId(userId, 'user')),
     },
@@ -514,7 +516,7 @@ async function getFullChannelInfo(
       groupCallId: call ? String(call.id) : undefined,
       linkedChatId: linkedChatId ? buildApiPeerId(linkedChatId, 'chat') : undefined,
       botCommands,
-      enabledReactions: availableReactions,
+      enabledReactions: buildApiChatReactions(availableReactions),
       sendAsId: defaultSendAs ? getApiChatIdFromMtpPeer(defaultSendAs) : undefined,
       requestsPending,
       recentRequesterIds: recentRequesters?.map((userId) => buildApiPeerId(userId, 'user')),
@@ -899,7 +901,10 @@ function processResolvedPeer(result?: GramJs.contacts.TypeResolvedPeer) {
 
   updateLocalDb(result);
 
-  return chat;
+  return {
+    chat,
+    user: buildApiUser(users[0]),
+  };
 }
 
 export function togglePreHistoryHidden({
@@ -1262,7 +1267,7 @@ export function setChatEnabledReactions({
 }) {
   return invokeRequest(new GramJs.messages.SetChatAvailableReactions({
     peer: buildInputPeer(chat.id, chat.accessHash),
-    availableReactions: enabledReactions,
+    availableReactions: buildInputChatReactions(enabledReactions),
   }), true);
 }
 

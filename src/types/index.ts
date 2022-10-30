@@ -78,6 +78,7 @@ export interface ISettings extends NotifySettings, Record<string, any> {
   canAutoPlayGifs: boolean;
   canAutoPlayVideos: boolean;
   shouldSuggestStickers: boolean;
+  shouldSuggestCustomEmoji: boolean;
   shouldLoopStickers: boolean;
   hasPassword?: boolean;
   languages?: ApiLanguage[];
@@ -313,6 +314,7 @@ export enum ManagementProgress {
 export interface ManagementState {
   isActive: boolean;
   nextScreen?: ManagementScreens;
+  checkedUsername?: string;
   isUsernameAvailable?: boolean;
   error?: string;
   invites?: ApiExportedInvite[];

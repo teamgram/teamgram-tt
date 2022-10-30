@@ -2,7 +2,7 @@ import type { MouseEvent as ReactMouseEvent, ReactNode } from 'react';
 import React, {
   memo, useCallback, useEffect, useMemo, useRef,
 } from '../../lib/teact/teact';
-import { getActions } from '../../global';
+import { getActions, getGlobal } from '../../global';
 
 import type { ApiBotInlineMediaResult, ApiSticker } from '../../api/types';
 import { ApiMediaFormat } from '../../api/types';
@@ -11,6 +11,8 @@ import buildClassName from '../../util/buildClassName';
 import { preventMessageInputBlurWithBubbling } from '../middle/helpers/preventMessageInputBlur';
 import safePlay from '../../util/safePlay';
 import { IS_TOUCH_ENV, IS_WEBM_SUPPORTED } from '../../util/environment';
+import { selectIsAlwaysHighPriorityEmoji } from '../../global/selectors';
+import { getStickerPreviewHash } from '../../global/helpers';
 
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 import { useIsIntersecting } from '../../hooks/useIntersectionObserver';
@@ -26,6 +28,7 @@ import AnimatedSticker from './AnimatedSticker';
 import Button from '../ui/Button';
 import Menu from '../ui/Menu';
 import MenuItem from '../ui/MenuItem';
+import OptimizedVideo from '../ui/OptimizedVideo';
 
 import './StickerButton.scss';
 
@@ -75,7 +78,7 @@ const StickerButton = <T extends number | ApiSticker | ApiBotInlineMediaResult |
   const isIntersecting = useIsIntersecting(ref, observeIntersection);
 
   const thumbDataUri = useThumbnail(sticker);
-  const previewBlobUrl = useMedia(`${localMediaHash}?size=m`, !isIntersecting, ApiMediaFormat.BlobUrl);
+  const previewBlobUrl = useMedia(getStickerPreviewHash(sticker.id), !isIntersecting, ApiMediaFormat.BlobUrl);
 
   const shouldPlay = isIntersecting && !noAnimate;
   const lottieData = useMedia(sticker.isLottie && localMediaHash, !shouldPlay);
@@ -269,10 +272,10 @@ const StickerButton = <T extends number | ApiSticker | ApiBotInlineMediaResult |
         <img src={previewBlobUrl} className={previewTransitionClassNames} />
       )}
       {isVideo && (
-        <video
+        <OptimizedVideo
+          canPlay={canVideoPlay}
           className={previewTransitionClassNames}
           src={videoBlobUrl}
-          autoPlay={canVideoPlay}
           loop
           playsInline
           disablePictureInPicture
@@ -284,7 +287,7 @@ const StickerButton = <T extends number | ApiSticker | ApiBotInlineMediaResult |
           tgsUrl={lottieData}
           play
           size={size}
-          isLowPriority
+          isLowPriority={!selectIsAlwaysHighPriorityEmoji(getGlobal(), sticker.stickerSetInfo)}
           onLoad={markLoaded}
         />
       )}

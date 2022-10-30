@@ -1,6 +1,7 @@
 import type { GlobalState } from '../types';
 import type { ApiStickerSetInfo, ApiSticker, ApiStickerSet } from '../../api/types';
 
+import { RESTRICTED_EMOJI_SET_ID } from '../../config';
 import { selectIsCurrentUserPremium } from './users';
 
 export function selectIsStickerFavorite(global: GlobalState, sticker: ApiSticker) {
@@ -69,7 +70,27 @@ export function selectCustomEmojiForEmoji(global: GlobalState, emoji: string) {
   return isCurrentUserPremium ? customEmojiForEmoji : customEmojiForEmoji.filter(({ isFree }) => isFree);
 }
 
-export function selectIsSetPremium(stickerSet: ApiStickerSet) {
+// Slow, not to be used in `withGlobal`
+export function selectCustomEmojiForEmojis(global: GlobalState, emojis: string[]) {
+  const isCurrentUserPremium = selectIsCurrentUserPremium(global);
+  const addedCustomSets = global.customEmojis.added.setIds;
+  let customEmojiForEmoji: ApiSticker[] = [];
+
+  // Added sets
+  addedCustomSets?.forEach((id) => {
+    const packs = global.stickers.setsById[id].packs;
+    if (!packs) {
+      return;
+    }
+    const customEmojis = Object.entries(packs).filter(([emoji]) => (
+      emojis.includes(emoji) || emojis.includes(cleanEmoji(emoji))
+    )).flatMap(([, stickers]) => stickers);
+    customEmojiForEmoji = customEmojiForEmoji.concat(customEmojis);
+  });
+  return isCurrentUserPremium ? customEmojiForEmoji : customEmojiForEmoji.filter(({ isFree }) => isFree);
+}
+
+export function selectIsSetPremium(stickerSet: Pick<ApiStickerSet, 'stickers' | 'isEmoji'>) {
   return stickerSet.isEmoji && stickerSet.stickers?.some((sticker) => !sticker.isFree);
 }
 
@@ -116,4 +137,12 @@ export function selectLocalAnimatedEmojiEffect(emoji: string) {
 
 export function selectLocalAnimatedEmojiEffectByName(name: string) {
   return name === 'Cumshot' ? '🍆' : undefined;
+}
+
+export function selectIsDefaultEmojiStatusPack(global: GlobalState, pack: ApiStickerSetInfo) {
+  return 'id' in pack && pack.id === global.appConfig?.defaultEmojiStatusesStickerSetId;
+}
+
+export function selectIsAlwaysHighPriorityEmoji(global: GlobalState, pack: ApiStickerSetInfo) {
+  return selectIsDefaultEmojiStatusPack(global, pack) || ('id' in pack && pack.id === RESTRICTED_EMOJI_SET_ID);
 }

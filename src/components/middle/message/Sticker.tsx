@@ -5,9 +5,8 @@ import type { ApiMessage } from '../../../api/types';
 import { ApiMediaFormat } from '../../../api/types';
 
 import { getStickerDimensions } from '../../common/helpers/mediaDimensions';
-import { getMessageMediaFormat, getMessageMediaHash } from '../../../global/helpers';
+import { getMessageMediaFormat, getMessageMediaHash, getStickerPreviewHash } from '../../../global/helpers';
 import buildClassName from '../../../util/buildClassName';
-import safePlay from '../../../util/safePlay';
 import { IS_WEBM_SUPPORTED } from '../../../util/environment';
 import { getActions } from '../../../global';
 
@@ -20,6 +19,7 @@ import useThumbnail from '../../../hooks/useThumbnail';
 import useLang from '../../../hooks/useLang';
 
 import AnimatedSticker from '../../common/AnimatedSticker';
+import OptimizedVideo from '../../ui/OptimizedVideo';
 
 import './Sticker.scss';
 
@@ -63,7 +63,7 @@ const Sticker: FC<OwnProps> = ({
   const mediaHashEffect = `sticker${sticker.id}?size=f`;
 
   const previewMediaHash = isVideo && !canDisplayVideo && (
-    sticker.isPreloadedGlobally ? `sticker${sticker.id}?size=m` : getMessageMediaHash(message, 'pictogram'));
+    sticker.isPreloadedGlobally ? getStickerPreviewHash(sticker.id) : getMessageMediaHash(message, 'pictogram'));
   const previewBlobUrl = useMedia(previewMediaHash);
   const thumbDataUri = useThumbnail(sticker);
   const previewUrl = previewBlobUrl || thumbDataUri;
@@ -100,17 +100,6 @@ const Sticker: FC<OwnProps> = ({
     stopPlayingEffect();
     onStopEffect?.();
   }, [onStopEffect, stopPlayingEffect]);
-
-  useEffect(() => {
-    if (!isVideo || !ref.current) return;
-    const video = ref.current.querySelector('video');
-    if (!video) return;
-    if (shouldPlay) {
-      safePlay(video);
-    } else {
-      video.pause();
-    }
-  }, [isVideo, shouldPlay]);
 
   useEffect(() => {
     if (hasEffect && shouldPlay && shouldPlayEffect) {
@@ -164,11 +153,11 @@ const Sticker: FC<OwnProps> = ({
         />
       )}
       {isVideo && canDisplayVideo && isMediaReady && (
-        <video
+        <OptimizedVideo
+          canPlay={shouldPlay}
           src={mediaData as string}
           width={width}
           height={height}
-          autoPlay={shouldPlay}
           playsInline
           disablePictureInPicture
           loop={shouldLoop}

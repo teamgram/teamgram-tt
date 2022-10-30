@@ -96,18 +96,17 @@ const expirationTime = 12 * 60 * 60 * 1000; // 12 hours
 // Notification id is removed from soundPlayed cache after 3 seconds
 const soundPlayedDelay = 3 * 1000;
 const soundPlayedIds = new Set<string>();
+const notificationSound = new Audio('./notification.mp3');
+notificationSound.setAttribute('mozaudiochannel', 'notification');
 
 export async function playNotifySound(id?: string, volume?: number) {
   if (id !== undefined && soundPlayedIds.has(id)) return;
   const { notificationSoundVolume } = selectNotifySettings(getGlobal());
   const currentVolume = volume ? volume / 10 : notificationSoundVolume / 10;
   if (currentVolume === 0) return;
-
-  const audio = new Audio('./notification.mp3');
-  audio.volume = currentVolume;
-  audio.setAttribute('mozaudiochannel', 'notification');
+  notificationSound.volume = currentVolume;
   if (id !== undefined) {
-    audio.addEventListener('ended', () => {
+    notificationSound.addEventListener('ended', () => {
       soundPlayedIds.add(id);
     }, { once: true });
 
@@ -117,7 +116,7 @@ export async function playNotifySound(id?: string, volume?: number) {
   }
 
   try {
-    await audio.play();
+    await notificationSound.play();
   } catch (error) {
     if (DEBUG) {
       // eslint-disable-next-line no-console
@@ -289,7 +288,7 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
 
   const actionTargetUsers = actionTargetUserIds
     ? actionTargetUserIds.map((userId) => selectUser(global, userId))
-      .filter<ApiUser>(Boolean as any)
+      .filter(Boolean)
     : undefined;
   const privateChatUserId = getPrivateChatUserId(chat);
   const privateChatUser = privateChatUserId ? selectUser(global, privateChatUserId) : undefined;
@@ -322,10 +321,13 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
     body = 'New message';
   }
 
-  return {
-    title: isScreenLocked ? APP_NAME : getChatTitle(getTranslation, chat, privateChatUser),
-    body,
-  };
+  let title = isScreenLocked ? APP_NAME : getChatTitle(getTranslation, chat, privateChatUser);
+
+  if (message.isSilent) {
+    title += ' 🔕';
+  }
+
+  return { title, body };
 }
 
 async function getAvatar(chat: ApiChat | ApiUser) {
@@ -381,10 +383,11 @@ export async function notifyAboutMessage({
   if (!checkIfShouldNotify(chat)) return;
   const areNotificationsSupported = checkIfNotificationsSupported();
   if (!hasWebNotifications || !areNotificationsSupported) {
-    // Do not play notification sound for reactions if web notifications are disabled
-    if (isReaction) return;
-    // Only play sound if web notifications are disabled
-    playNotifySoundDebounced(String(message.id) || chat.id);
+    if (!message.isSilent && !isReaction) {
+      // Only play sound if web notifications are disabled
+      playNotifySoundDebounced(String(message.id) || chat.id);
+    }
+
     return;
   }
   if (!areNotificationsSupported) return;
@@ -414,6 +417,7 @@ export async function notifyAboutMessage({
           chatId: chat.id,
           messageId: message.id,
           shouldReplaceHistory: true,
+          isSilent: message.isSilent,
           reaction: activeReaction?.reaction,
         },
       });
@@ -447,8 +451,8 @@ export async function notifyAboutMessage({
 
     // Play sound when notification is displayed
     notification.onshow = () => {
-      // TODO Remove when reaction badges are implemented
-      if (isReaction) return;
+      // TODO Update when reaction badges are implemented
+      if (isReaction || message.isSilent) return;
       playNotifySoundDebounced(String(message.id) || chat.id);
     };
   }
