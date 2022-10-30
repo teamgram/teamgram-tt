@@ -19,7 +19,7 @@ export const BETA_CHANGELOG_URL = 'https://telegra.ph/WebZ-Beta-04-01';
 export const DEBUG_ALERT_MSG = 'Shoot!\nSomething went wrong, please see the error details in Dev Tools Console.';
 export const DEBUG_GRAMJS = false;
 
-export const PAGE_TITLE = 'Telegram';
+export const PAGE_TITLE = 'Teamgram';
 export const INACTIVE_MARKER = ' [Inactive]';
 
 export const DEBUG_PAYMENT_SMART_GLOCAL = false;
@@ -192,7 +192,7 @@ export const CONTENT_TYPES_WITH_PREVIEW = new Set([
   ...SUPPORTED_VIDEO_CONTENT_TYPES,
 ]);
 
-export const CONTENT_NOT_SUPPORTED = 'The message is not supported on this version of Telegram.';
+export const CONTENT_NOT_SUPPORTED = 'The message is not supported on this version of Teamgram.';
 
 // eslint-disable-next-line max-len
 export const RE_LINK_TEMPLATE = '((ftp|https?):\\/\\/)?((www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,63})\\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)';

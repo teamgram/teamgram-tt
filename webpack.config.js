@@ -144,7 +144,7 @@ module.exports = (_env, { mode = 'production' }) => {
         './MockClient.ts'
       )] : []),
       new HtmlWebpackPlugin({
-        appName: APP_ENV === 'production' ? 'Telegram Web' : 'Telegram Web Beta',
+        appName: APP_ENV === 'production' ? 'Teamgram Web' : 'Teamgram Web Beta',
         appleIcon: APP_ENV === 'production' ? 'apple-touch-icon' : 'apple-touch-icon-dev',
         mainIcon: APP_ENV === 'production' ? 'icon-192x192' : 'icon-dev-192x192',
         manifest: APP_ENV === 'production' ? 'site.webmanifest' : 'site_dev.webmanifest',
