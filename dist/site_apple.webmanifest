@@ -1,7 +1,7 @@
 {
-    "name": "Teamgram Web",
-    "short_name": "Teamgram Web",
-    "description": "Teamgram is a cloud-based mobile and desktop messaging app with a focus on security and speed.",
+    "name": "Telegram Web",
+    "short_name": "Telegram Web",
+    "description": "Telegram is a cloud-based mobile and desktop messaging app with a focus on security and speed.",
     "start_url": "./",
     "gcm_sender_id": "122867383838",
     "icons": [
