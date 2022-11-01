@@ -14,6 +14,7 @@ import {
   APP_NAME, APP_VERSION,
   BETA_CHANGELOG_URL,
   DEBUG,
+  FEEDBACK_URL,
   IS_BETA,
   IS_TEST,
   PRODUCTION_HOSTNAME,
@@ -288,6 +289,12 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
             onClick={handleOpenTipsChat}
           >
             {lang('TelegramFeatures')}
+          </MenuItem>
+          <MenuItem
+            icon="bug"
+            href={FEEDBACK_URL}
+          >
+            Report Bug
           </MenuItem>
           {IS_BETA && (
             <MenuItem
