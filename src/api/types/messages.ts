@@ -187,6 +187,13 @@ export interface ApiInvoice {
   isTest?: boolean;
   isRecurring?: boolean;
   recurringTermsUrl?: string;
+  maxTipAmount?: number;
+  suggestedTipAmounts?: number[];
+}
+
+export interface ApiPaymentCredentials {
+  id: string;
+  title: string;
 }
 
 interface ApiGeoPoint {
@@ -401,6 +408,7 @@ export interface ApiMessage {
   isProtected?: boolean;
   transcriptionId?: string;
   isTranscriptionError?: boolean;
+  emojiOnlyCount?: number;
   reactors?: {
     nextOffset?: string;
     count: number;

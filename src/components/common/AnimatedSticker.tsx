@@ -12,9 +12,11 @@ import buildStyle from '../../util/buildStyle';
 import useHeavyAnimationCheck from '../../hooks/useHeavyAnimationCheck';
 import useBackgroundMode from '../../hooks/useBackgroundMode';
 import useOnChange from '../../hooks/useOnChange';
+import generateIdFor from '../../util/generateIdFor';
 
 export type OwnProps = {
   ref?: RefObject<HTMLDivElement>;
+  id?: string;
   className?: string;
   style?: string;
   tgsUrl?: string;
@@ -40,6 +42,7 @@ let RLottie: RLottieClass;
 
 // Time for the main interface to completely load
 const LOTTIE_LOAD_DELAY = 3000;
+const ID_STORE = {};
 
 async function ensureLottie() {
   if (!lottiePromise) {
@@ -54,6 +57,7 @@ setTimeout(ensureLottie, LOTTIE_LOAD_DELAY);
 
 const AnimatedSticker: FC<OwnProps> = ({
   ref,
+  id,
   className,
   style,
   tgsUrl,
@@ -97,8 +101,10 @@ const AnimatedSticker: FC<OwnProps> = ({
         return;
       }
 
-      const newAnimation = new RLottie(
+      const newAnimation = RLottie.init(
         containerRef.current,
+        onLoad,
+        id || generateIdFor(ID_STORE, true),
         tgsUrl,
         {
           noLoop,
@@ -107,7 +113,6 @@ const AnimatedSticker: FC<OwnProps> = ({
           isLowPriority,
         },
         color,
-        onLoad,
         onEnded,
         onLoop,
       );
@@ -130,7 +135,7 @@ const AnimatedSticker: FC<OwnProps> = ({
         });
       });
     }
-  }, [color, animation, tgsUrl, isLowPriority, noLoop, onLoad, quality, size, speed, onEnded, onLoop]);
+  }, [color, animation, tgsUrl, isLowPriority, noLoop, onLoad, quality, size, speed, onEnded, onLoop, id]);
 
   useEffect(() => {
     if (!animation) return;
@@ -139,9 +144,11 @@ const AnimatedSticker: FC<OwnProps> = ({
   }, [color, animation]);
 
   useEffect(() => {
+    const container = containerRef.current!;
+
     return () => {
       if (animation) {
-        animation.destroy();
+        animation.removeContainer(container);
       }
     };
   }, [animation]);
@@ -151,7 +158,7 @@ const AnimatedSticker: FC<OwnProps> = ({
       if (playSegmentRef.current) {
         animation.playSegment(playSegmentRef.current);
       } else {
-        animation.play(shouldRestart);
+        animation.play(shouldRestart, containerRef.current!);
       }
     }
   }, [animation]);
@@ -161,7 +168,7 @@ const AnimatedSticker: FC<OwnProps> = ({
       return;
     }
 
-    animation.pause();
+    animation.pause(containerRef.current!);
   }, [animation]);
 
   const freezeAnimation = useCallback(() => {
@@ -229,7 +236,7 @@ const AnimatedSticker: FC<OwnProps> = ({
   }, [playAnimation, animation, tgsUrl]);
 
   useHeavyAnimationCheck(freezeAnimation, unfreezeAnimation, forceOnHeavyAnimation);
-  // Pausing frame may not happen in background
+  // Pausing frame may not happen in background,
   // so we need to make sure it happens right after focusing,
   // then we can play again.
   useBackgroundMode(freezeAnimation, unfreezeAnimationOnRaf);

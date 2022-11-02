@@ -6,80 +6,76 @@ import { getGlobal } from '../../global';
 import type { FC, TeactNode } from '../../lib/teact/teact';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 
-import { IS_WEBM_SUPPORTED } from '../../util/environment';
-import renderText from './helpers/renderText';
 import { getPropertyHexColor } from '../../util/themeStyle';
 import { hexToRgb } from '../../util/switchTheme';
 import buildClassName from '../../util/buildClassName';
-import { getStickerPreviewHash } from '../../global/helpers';
-import { selectIsAlwaysHighPriorityEmoji, selectIsDefaultEmojiStatusPack } from '../../global/selectors';
 import safePlay from '../../util/safePlay';
+import { selectIsDefaultEmojiStatusPack } from '../../global/selectors';
 
-import useMedia from '../../hooks/useMedia';
 import useEnsureCustomEmoji from '../../hooks/useEnsureCustomEmoji';
-import { useIsIntersecting } from '../../hooks/useIntersectionObserver';
-import useThumbnail from '../../hooks/useThumbnail';
 import useCustomEmoji from './hooks/useCustomEmoji';
-import useMediaTransition from '../../hooks/useMediaTransition';
 
-import AnimatedSticker from './AnimatedSticker';
-import OptimizedVideo from '../ui/OptimizedVideo';
+import StickerView from './StickerView';
 
 import styles from './CustomEmoji.module.scss';
+import svgPlaceholder from '../../assets/square.svg';
 
 type OwnProps = {
+  ref?: React.RefObject<HTMLDivElement>;
   documentId: string;
   children?: TeactNode;
   size?: number;
   className?: string;
   loopLimit?: number;
+  style?: string;
+  withSharedAnimation?: boolean;
   withGridFix?: boolean;
-  withPreview?: boolean;
+  shouldPreloadPreview?: boolean;
+  forceOnHeavyAnimation?: boolean;
   observeIntersection?: ObserveFn;
+  observeIntersectionForPlaying?: ObserveFn;
   onClick?: NoneToVoidFunction;
 };
 
 const STICKER_SIZE = 24;
 
 const CustomEmoji: FC<OwnProps> = ({
+  ref,
   documentId,
-  children,
   size = STICKER_SIZE,
   className,
   loopLimit,
+  style,
   withGridFix,
-  withPreview,
+  shouldPreloadPreview,
+  forceOnHeavyAnimation,
+  withSharedAnimation,
   observeIntersection,
+  observeIntersectionForPlaying,
   onClick,
 }) => {
   // eslint-disable-next-line no-null/no-null
-  const ref = useRef<HTMLDivElement>(null);
+  let containerRef = useRef<HTMLDivElement>(null);
+  if (ref) {
+    containerRef = ref;
+  }
+
   // An alternative to `withGlobal` to avoid adding numerous global containers
   const customEmoji = useCustomEmoji(documentId);
-  const isUnsupportedVideo = customEmoji?.isVideo && !IS_WEBM_SUPPORTED;
-  const mediaHash = customEmoji && `sticker${customEmoji.id}`;
-  const mediaData = useMedia(mediaHash);
-
-  const shouldLoadPreview = !mediaData && (withPreview || isUnsupportedVideo);
-  const previewMediaHash = shouldLoadPreview && customEmoji && getStickerPreviewHash(customEmoji.id);
-  const previewMediaData = useMedia(previewMediaHash);
-  const thumbDataUri = useThumbnail(customEmoji);
-
-  const shouldDisplayPreview = Boolean(mediaData ? isUnsupportedVideo : previewMediaData);
-  const transitionClassNames = useMediaTransition(shouldDisplayPreview ? previewMediaData : mediaData);
+  useEnsureCustomEmoji(documentId);
 
   const loopCountRef = useRef(0);
   const [shouldLoop, setShouldLoop] = useState(true);
-  const [customColor, setCustomColor] = useState<[number, number, number] | undefined>();
 
+  const [customColor, setCustomColor] = useState<[number, number, number] | undefined>();
   const hasCustomColor = customEmoji && selectIsDefaultEmojiStatusPack(getGlobal(), customEmoji.stickerSetInfo);
 
   useEffect(() => {
-    if (!hasCustomColor || !ref.current) {
+    if (!hasCustomColor || !containerRef.current) {
       setCustomColor(undefined);
       return;
     }
-    const hexColor = getPropertyHexColor(getComputedStyle(ref.current), '--emoji-status-color');
+    const hexColor = getPropertyHexColor(getComputedStyle(containerRef.current), '--emoji-status-color');
     if (!hexColor) {
       setCustomColor(undefined);
       return;
@@ -87,10 +83,6 @@ const CustomEmoji: FC<OwnProps> = ({
     const customColorRgb = hexToRgb(hexColor);
     setCustomColor([customColorRgb.r, customColorRgb.g, customColorRgb.b]);
   }, [hasCustomColor]);
-
-  const isIntersecting = useIsIntersecting(ref, observeIntersection);
-
-  useEnsureCustomEmoji(documentId);
 
   const handleVideoEnded = useCallback((e) => {
     if (!loopLimit) return;
@@ -117,56 +109,9 @@ const CustomEmoji: FC<OwnProps> = ({
     }
   }, [loopLimit]);
 
-  function renderContent() {
-    if (!customEmoji || (!thumbDataUri && !mediaData)) {
-      return (children && renderText(children, ['emoji']));
-    }
-
-    if (!mediaData && !previewMediaData) {
-      return (
-        <img className={styles.media} src={thumbDataUri} alt={customEmoji.emoji} />
-      );
-    }
-
-    if (shouldDisplayPreview || isUnsupportedVideo || (!customEmoji.isVideo && !customEmoji.isLottie)) {
-      return (
-        <img className={styles.media} src={previewMediaData || mediaData} alt={customEmoji.emoji} />
-      );
-    }
-
-    if (customEmoji.isVideo) {
-      return (
-        <OptimizedVideo
-          canPlay={isIntersecting && shouldLoop}
-          className={styles.media}
-          src={mediaData}
-          playsInline
-          muted
-          loop={!loopLimit}
-          disablePictureInPicture
-          onEnded={handleVideoEnded}
-        />
-      );
-    }
-
-    return (
-      <AnimatedSticker
-        size={size}
-        key={mediaData}
-        className={styles.sticker}
-        tgsUrl={mediaData}
-        play={isIntersecting}
-        color={customColor}
-        noLoop={!shouldLoop}
-        isLowPriority={!selectIsAlwaysHighPriorityEmoji(getGlobal(), customEmoji.stickerSetInfo)}
-        onLoop={handleStickerLoop}
-      />
-    );
-  }
-
   return (
     <div
-      ref={ref}
+      ref={containerRef}
       className={buildClassName(
         styles.root,
         className,
@@ -174,11 +119,32 @@ const CustomEmoji: FC<OwnProps> = ({
         'emoji',
         hasCustomColor && 'custom-color',
         withGridFix && styles.withGridFix,
-        ...transitionClassNames,
       )}
       onClick={onClick}
+      style={style}
     >
-      {renderContent()}
+      {!customEmoji ? (
+        <img className={styles.thumb} src={svgPlaceholder} alt="Emoji" />
+      ) : (
+        <StickerView
+          containerRef={containerRef}
+          sticker={customEmoji}
+          isSmall
+          size={size}
+          customColor={customColor}
+          thumbClassName={styles.thumb}
+          fullMediaClassName={styles.media}
+          shouldLoop={shouldLoop}
+          loopLimit={loopLimit}
+          shouldPreloadPreview={shouldPreloadPreview}
+          observeIntersection={observeIntersection}
+          forceOnHeavyAnimation={forceOnHeavyAnimation}
+          observeIntersectionForPlaying={observeIntersectionForPlaying}
+          withSharedAnimation={withSharedAnimation}
+          onVideoEnded={handleVideoEnded}
+          onAnimatedStickerLoop={handleStickerLoop}
+        />
+      )}
     </div>
   );
 };

@@ -1,26 +1,40 @@
 import type { ApiMessageEntityCustomEmoji, ApiSticker } from '../../../../api/types';
+
+import { EMOJI_SIZES } from '../../../../config';
+import { REM } from '../../../common/helpers/mediaDimensions';
 import { getCustomEmojiPreviewMediaData } from '../../../../util/customEmojiManager';
+
+import placeholderSrc from '../../../../assets/square.svg';
 
 export const INPUT_CUSTOM_EMOJI_SELECTOR = 'img[data-document-id]';
 
 export function buildCustomEmojiHtml(emoji: ApiSticker) {
   const mediaData = getCustomEmojiPreviewMediaData(emoji.id);
-  const src = mediaData && `src="${mediaData}"`;
+
   return `<img
-  class="custom-emoji emoji emoji-small"
-  draggable="false"
-  alt="${emoji.emoji}"
-  data-document-id="${emoji.id}"
-  ${src} />`;
+    class="custom-emoji emoji emoji-small${!mediaData ? ' placeholder' : ''}"
+    draggable="false"
+    alt="${emoji.emoji}"
+    data-document-id="${emoji.id}"
+    src="${mediaData || placeholderSrc}"
+  />`;
 }
 
 export function buildCustomEmojiHtmlFromEntity(rawText: string, entity: ApiMessageEntityCustomEmoji) {
   const mediaData = getCustomEmojiPreviewMediaData(entity.documentId);
-  const src = mediaData && `src="${mediaData}"`;
+
   return `<img
-  class="custom-emoji emoji emoji-small"
-  draggable="false"
-  alt="${rawText}"
-  data-document-id="${entity.documentId}"
-  ${src} />`;
+    class="custom-emoji emoji emoji-small${!mediaData ? ' placeholder' : ''}"
+    draggable="false"
+    alt="${rawText}"
+    data-document-id="${entity.documentId}"
+    src="${mediaData || placeholderSrc}"
+  />`;
+}
+
+export function getCustomEmojiSize(maxEmojisInLine: number): number | undefined {
+  if (maxEmojisInLine > EMOJI_SIZES) return undefined;
+
+  const size = (6 - (maxEmojisInLine * 0.625)) * REM; // Should be the same as in _message-content.scss
+  return size;
 }

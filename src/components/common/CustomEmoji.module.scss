@@ -3,15 +3,13 @@
   vertical-align: text-bottom;
   width: var(--custom-emoji-size);
   height: var(--custom-emoji-size);
+  position: relative;
 
-  &.with-grid-fix .media {
+  border-radius: 0 !important;
+
+  &.with-grid-fix .media, &.with-grid-fix .thumb {
     width: calc(100% + 1px) !important;
     height: calc(100% + 1px) !important;
-    vertical-align: baseline;
-  }
-
-  :global(.emoji-small) {
-    vertical-align: baseline !important; // Fix for fallback on Windows, when custom emoji not ready
   }
 
   &:global(.custom-color) {
@@ -19,18 +17,19 @@
   }
 }
 
-.media {
+.thumb {
   width: 100%;
   height: 100%;
 }
 
-.sticker {
+.media {
   width: var(--custom-emoji-size) !important;
   height: var(--custom-emoji-size) !important;
-  display: flex !important;
+
+  border-radius: 0 !important;
 
   :global(canvas) {
-    width: var(--custom-emoji-size) !important;
-    height: var(--custom-emoji-size) !important;
+    width: 100% !important;
+    height: 100% !important;
   }
 }
