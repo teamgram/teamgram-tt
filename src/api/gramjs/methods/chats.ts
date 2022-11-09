@@ -1069,10 +1069,11 @@ export function setDiscussionGroup({
   channel: ApiChat;
   chat?: ApiChat;
 }) {
-  return invokeRequest(new GramJs.channels.SetDiscussionGroup({
-    broadcast: buildInputPeer(channel.id, channel.accessHash),
-    group: chat ? buildInputPeer(chat.id, chat.accessHash) : new GramJs.InputChannelEmpty(),
-  }), true);
+  const request = new GramJs.channels.SetDiscussionGroup({
+    broadcast: buildInputEntity(channel.id, channel.accessHash) as GramJs.InputChannel,
+    group: chat ? buildInputEntity(chat.id, chat.accessHash) as GramJs.InputChannel : new GramJs.InputChannelEmpty(),
+  });
+  return invokeRequest(request, true);
 }
 
 export async function migrateChat(chat: ApiChat) {
