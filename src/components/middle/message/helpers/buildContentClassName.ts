@@ -36,12 +36,12 @@ export function buildContentClassName(
   } = getMessageContent(message);
 
   const classNames = ['message-content'];
-  const isMedia = photo || video || location;
+  const isMedia = photo || video || location || invoice?.extendedMedia;
   const hasText = text || location?.type === 'venue' || isGeoLiveActive;
   const isMediaWithNoText = isMedia && !hasText;
   const isViaBot = Boolean(message.viaBotId);
 
-  if (message.emojiOnlyCount) {
+  if (!isMedia && message.emojiOnlyCount) {
     classNames.push('emoji-only');
     if (message.emojiOnlyCount <= EMOJI_SIZES) {
       classNames.push(`emoji-only-${message.emojiOnlyCount}`);
@@ -87,7 +87,7 @@ export function buildContentClassName(
     }
   }
 
-  if (invoice) {
+  if (invoice && !invoice.extendedMedia) {
     classNames.push('invoice');
   }
 
@@ -122,7 +122,7 @@ export function buildContentClassName(
       classNames.push('has-background');
     }
 
-    if (hasReply || asForwarded || !isMediaWithNoText || isViaBot || forceSenderName) {
+    if (hasReply || asForwarded || !isMediaWithNoText || forceSenderName) {
       classNames.push('has-solid-background');
     }
 
