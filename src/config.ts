@@ -4,7 +4,7 @@ export const APP_NAME = process.env.APP_NAME || 'Teamgram WebZ';
 export const APP_VERSION = process.env.APP_VERSION!;
 export const RELEASE_DATETIME = process.env.RELEASE_DATETIME;
 
-export const PRODUCTION_HOSTNAME = 'web.telegram.org';
+export const PRODUCTION_HOSTNAME = 'web.teamgram.net';
 
 export const DEBUG = process.env.APP_ENV !== 'production';
 export const DEBUG_MORE = false;
@@ -14,7 +14,7 @@ export const IS_TEST = process.env.APP_ENV === 'test';
 export const IS_PERF = process.env.APP_ENV === 'perf';
 export const IS_BETA = process.env.APP_ENV === 'staging';
 
-export const BETA_CHANGELOG_URL = 'https://telegra.ph/WebZ-Beta-04-01';
+export const BETA_CHANGELOG_URL = 'https://www2.teamgram.net/WebZ-Beta-04-01';
 
 export const DEBUG_ALERT_MSG = 'Shoot!\nSomething went wrong, please see the error details in Dev Tools Console.';
 export const DEBUG_GRAMJS = false;
@@ -199,10 +199,10 @@ export const CONTENT_NOT_SUPPORTED = 'The message is not supported on this versi
 // eslint-disable-next-line max-len
 export const RE_LINK_TEMPLATE = '((ftp|https?):\\/\\/)?((www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,63})\\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)';
 export const RE_MENTION_TEMPLATE = '(@[\\w\\d_-]+)';
-export const RE_TG_LINK = /^tg:(\/\/)?/;
-export const RE_TME_LINK = /^(https?:\/\/)?([-a-zA-Z0-9@:%_+~#=]{1,32}\.)?t\.me/;
-export const RE_TELEGRAM_LINK = /^(https?:\/\/)?telegram\.org\//;
-export const TME_LINK_PREFIX = 'https://t.me/';
+export const RE_TG_LINK = /^tg2:(\/\/)?/;
+export const RE_TME_LINK = /^(https?:\/\/)?([-a-zA-Z0-9@:%_+~#=]{1,32}\.)?teamgram\.me/;
+export const RE_TELEGRAM_LINK = /^(https?:\/\/)?teamgram\.net\//;
+export const TME_LINK_PREFIX = 'https://teamgram.me/';
 
 // eslint-disable-next-line max-len
 export const COUNTRIES_WITH_12H_TIME_FORMAT = new Set(['AU', 'BD', 'CA', 'CO', 'EG', 'HN', 'IE', 'IN', 'JO', 'MX', 'MY', 'NI', 'NZ', 'PH', 'PK', 'SA', 'SV', 'US']);

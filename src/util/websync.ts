@@ -5,6 +5,7 @@ import { hasStoredSession } from './sessions';
 const WEBSYNC_URLS = [
   't.me',
   'telegram.me',
+  'teamgram.me',
 ].map((domain) => `//${domain}/_websync_?`);
 const WEBSYNC_VERSION = `${APP_VERSION} Z`;
 const WEBSYNC_KEY = 'tgme_sync';

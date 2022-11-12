@@ -16,8 +16,8 @@ import {
   DEBUG,
   FEEDBACK_URL,
   IS_BETA,
-  IS_TEST,
-  PRODUCTION_HOSTNAME,
+  // IS_TEST,
+  // PRODUCTION_HOSTNAME,
 } from '../../../config';
 import { IS_PWA, IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import buildClassName from '../../../util/buildClassName';
@@ -72,8 +72,8 @@ type StateProps =
   }
   & Pick<GlobalState, 'connectionState' | 'isSyncing' | 'canInstall'>;
 
-const LEGACY_VERSION_URL = 'https://web.telegram.org/?legacy=1';
-const WEBK_VERSION_URL = 'https://web.telegram.org/k/';
+const LEGACY_VERSION_URL = 'https://web.teamgram.net/?legacy=1';
+const WEBK_VERSION_URL = 'https://web.teamgram.net/k/';
 
 const LeftMainHeader: FC<OwnProps & StateProps> = ({
   content,
@@ -155,7 +155,7 @@ const LeftMainHeader: FC<OwnProps & StateProps> = ({
     ...(IS_PWA && { 'Mod+L': handleLockScreenHotkey }),
   });
 
-  const withOtherVersions = window.location.hostname === PRODUCTION_HOSTNAME || IS_TEST;
+  const withOtherVersions = false; // window.location.hostname === PRODUCTION_HOSTNAME || IS_TEST;
 
   const MainButton: FC<{ onTrigger: () => void; isOpen?: boolean }> = useMemo(() => {
     return ({ onTrigger, isOpen }) => (
