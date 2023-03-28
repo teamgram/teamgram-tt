@@ -111,6 +111,7 @@ function dispatchUserAndChatUpdates(entities: (GramJs.TypeUser | GramJs.TypeChat
 }
 
 export function updater(update: Update, originRequest?: GramJs.AnyRequest) {
+  log('UPDATE', update);
   if (update instanceof connection.UpdateServerTimeOffset) {
     serverTimeOffset = update.timeOffset;
   } else if (update instanceof connection.UpdateConnectionState) {
