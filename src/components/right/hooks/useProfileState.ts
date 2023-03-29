@@ -33,7 +33,7 @@ export default function useProfileState(
         }, PROGRAMMATIC_SCROLL_TIMEOUT_MS);
       }
     }
-  }, [tabType, onProfileStateChange]);
+  }, [tabType, onProfileStateChange, containerRef]);
 
   // Scroll to top
   useEffectWithPrevDeps(([prevProfileState]) => {
@@ -65,7 +65,7 @@ export default function useProfileState(
     }, PROGRAMMATIC_SCROLL_TIMEOUT_MS);
 
     onProfileStateChange(profileState);
-  }, [profileState]);
+  }, [profileState, containerRef, onProfileStateChange]);
 
   const determineProfileState = useCallback(() => {
     const container = containerRef.current;

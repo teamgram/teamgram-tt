@@ -19,7 +19,7 @@ import {
 } from '../../../config';
 import {
   onRequestPhoneNumber, onRequestCode, onRequestPassword, onRequestRegistration,
-  onAuthError, onAuthReady, onCurrentUserUpdate, onRequestQrCode,
+  onAuthError, onAuthReady, onCurrentUserUpdate, onRequestQrCode, onWebAuthTokenFailed,
 } from './auth';
 import { updater } from '../updater';
 import { setMessageBuilderCurrentUserId } from '../apiBuilders/messages';
@@ -51,7 +51,8 @@ export async function init(_onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) 
   onUpdate = _onUpdate;
 
   const {
-    userAgent, platform, sessionData, isTest, isMovSupported, isWebmSupported, maxBufferSize,
+    userAgent, platform, sessionData, isTest, isMovSupported, isWebmSupported, maxBufferSize, webAuthToken, dcId,
+    mockScenario,
   } = initialArgs;
   const session = new sessions.CallbackSession(sessionData, onSessionUpdate);
 
@@ -75,6 +76,7 @@ export async function init(_onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) 
       useWSS: true,
       additionalDcsDisabled: IS_TEST,
       testServers: isTest,
+      dcId,
     } as any,
   );
 
@@ -101,6 +103,9 @@ export async function init(_onUpdate: OnApiUpdate, initialArgs: ApiInitialArgs) 
         onError: onAuthError,
         initialMethod: platform === 'iOS' || platform === 'Android' ? 'phoneNumber' : 'qrCode',
         shouldThrowIfUnauthorized: Boolean(sessionData),
+        webAuthToken,
+        webAuthTokenFailed: onWebAuthTokenFailed,
+        mockScenario,
       });
     } catch (err: any) {
       // eslint-disable-next-line no-console
@@ -140,12 +145,12 @@ export function setIsPremium({ isPremium }: { isPremium: boolean }) {
   client.setIsPremium(isPremium);
 }
 
-export async function destroy(noLogOut = false) {
+export async function destroy(noLogOut = false, noClearLocalDb = false) {
   if (!noLogOut) {
     await invokeRequest(new GramJs.auth.LogOut());
   }
 
-  clearLocalDb();
+  if (!noClearLocalDb) clearLocalDb();
 
   await client.destroy();
 }
@@ -170,11 +175,6 @@ function handleGramJsUpdate(update: any) {
     isConnected = update.state === connection.UpdateConnectionState.connected;
   } else if (update instanceof GramJs.UpdatesTooLong) {
     void handleTerminatedSession();
-  } else if (update instanceof connection.UpdateServerTimeOffset) {
-    onUpdate({
-      '@type': 'updateServerTimeOffset',
-      serverTimeOffset: update.timeOffset,
-    });
   } else if (update instanceof GramJs.UpdateConfig) {
     // eslint-disable-next-line no-underscore-dangle
     const currentUser = (update as GramJs.UpdateConfig & { _entities?: (GramJs.TypeUser | GramJs.TypeChat)[] })
@@ -192,6 +192,7 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
   shouldThrow?: boolean,
   shouldIgnoreUpdates?: undefined,
   dcId?: number,
+  shouldIgnoreErrors?: boolean,
 ): Promise<true | undefined>;
 
 export async function invokeRequest<T extends GramJs.AnyRequest>(
@@ -200,6 +201,7 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
   shouldThrow?: boolean,
   shouldIgnoreUpdates?: boolean,
   dcId?: number,
+  shouldIgnoreErrors?: boolean,
 ): Promise<T['__response'] | undefined>;
 
 export async function invokeRequest<T extends GramJs.AnyRequest>(
@@ -208,6 +210,7 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
   shouldThrow = false,
   shouldIgnoreUpdates = false,
   dcId?: number,
+  shouldIgnoreErrors = false,
 ) {
   if (!isConnected) {
     if (DEBUG) {
@@ -225,17 +228,20 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
     const result = await client.invoke(request, dcId);
 
     if (DEBUG) {
-      log('INVOKE RESPONSE', request.className, result);
+      log('RESPONSE', request.className, result);
     }
 
     if (!shouldIgnoreUpdates) {
-      handleUpdatesFromRequest(request, result);
+      handleUpdates(result);
     }
 
     return shouldReturnTrue ? result && true : result;
   } catch (err: any) {
+    if (shouldIgnoreErrors) return undefined;
     if (DEBUG) {
       log('INVOKE ERROR', request.className);
+      // eslint-disable-next-line no-console
+      console.debug('invokeRequest failed with payload', request);
       // eslint-disable-next-line no-console
       console.error(err);
     }
@@ -250,7 +256,7 @@ export async function invokeRequest<T extends GramJs.AnyRequest>(
   }
 }
 
-function handleUpdatesFromRequest<T extends GramJs.AnyRequest>(request: T, result: T['__response']) {
+export function handleUpdates(result: {}) {
   let manyUpdates;
   let singleUpdate;
 
@@ -273,32 +279,34 @@ function handleUpdatesFromRequest<T extends GramJs.AnyRequest>(request: T, resul
     injectUpdateEntities(manyUpdates);
 
     manyUpdates.updates.forEach((update) => {
-      updater(update, request);
+      updater(update);
     });
   } else if (singleUpdate) {
-    updater(singleUpdate, request);
+    updater(singleUpdate);
   }
 }
 
-export function downloadMedia(
+export async function downloadMedia(
   args: { url: string; mediaFormat: ApiMediaFormat; start?: number; end?: number; isHtmlAllowed?: boolean },
   onProgress?: ApiOnProgress,
 ) {
-  return downloadMediaWithClient(args, client, isConnected, onProgress).catch(async (err) => {
+  try {
+    return (await downloadMediaWithClient(args, client, isConnected, onProgress));
+  } catch (err: any) {
     if (err.message.startsWith('FILE_REFERENCE')) {
       const isFileReferenceRepaired = await repairFileReference({ url: args.url });
-      if (!isFileReferenceRepaired) {
-        if (DEBUG) {
-          // eslint-disable-next-line no-console
-          console.error('Failed to repair file reference', args.url);
-        }
-        return undefined;
+      if (isFileReferenceRepaired) {
+        return downloadMediaWithClient(args, client, isConnected, onProgress);
       }
 
-      return downloadMediaWithClient(args, client, isConnected, onProgress);
+      if (DEBUG) {
+        // eslint-disable-next-line no-console
+        console.error('Failed to repair file reference', args.url);
+      }
     }
-    return undefined;
-  });
+
+    throw err;
+  }
 }
 
 export function uploadFile(file: File, onProgress?: ApiOnProgress) {

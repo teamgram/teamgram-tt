@@ -6,6 +6,7 @@ import { getActions, withGlobal } from '../../../global';
 import type { ApiExportedInvite } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
+import { selectTabState } from '../../../global/selectors';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
 import { formatFullDate, formatTime } from '../../../util/dateFormat';
@@ -17,7 +18,7 @@ import InputText from '../../ui/InputText';
 import RadioGroup from '../../ui/RadioGroup';
 import Button from '../../ui/Button';
 import FloatingActionButton from '../../ui/FloatingActionButton';
-import useOnChange from '../../../hooks/useOnChange';
+import useSyncEffect from '../../../hooks/useSyncEffect';
 import CalendarModal from '../../common/CalendarModal';
 
 const DEFAULT_USAGE_LIMITS = [1, 10, 100];
@@ -37,14 +38,12 @@ type OwnProps = {
 
 type StateProps = {
   editingInvite?: ApiExportedInvite;
-  serverTimeOffset: number;
 };
 
 const ManageInvite: FC<OwnProps & StateProps> = ({
   chatId,
   editingInvite,
   isActive,
-  serverTimeOffset,
   onClose,
   onScreenSelect,
 }) => {
@@ -65,13 +64,13 @@ const ManageInvite: FC<OwnProps & StateProps> = ({
     onBack: onClose,
   });
 
-  useOnChange(([oldEditingInvite]) => {
+  useSyncEffect(([oldEditingInvite]) => {
     if (oldEditingInvite === editingInvite) return;
     if (!editingInvite) {
       setTitle('');
       setSelectedExpireOption('unlimited');
       setSelectedUsageOption('0');
-      setCustomExpireDate(getServerTime(serverTimeOffset) * 1000 + DEFAULT_CUSTOM_EXPIRE_DATE);
+      setCustomExpireDate(getServerTime() * 1000 + DEFAULT_CUSTOM_EXPIRE_DATE);
       setCustomUsageLimit(10);
       setIsRequestNeeded(false);
     } else {
@@ -84,7 +83,7 @@ const ManageInvite: FC<OwnProps & StateProps> = ({
         setCustomUsageLimit(usageLimit);
       }
       if (expireDate) {
-        const minSafeDate = getServerTime(serverTimeOffset) + DEFAULT_CUSTOM_EXPIRE_DATE;
+        const minSafeDate = getServerTime() + DEFAULT_CUSTOM_EXPIRE_DATE;
         setSelectedExpireOption('custom');
         setCustomExpireDate(Math.max(expireDate, minSafeDate) * 1000);
       }
@@ -92,7 +91,7 @@ const ManageInvite: FC<OwnProps & StateProps> = ({
         setIsRequestNeeded(true);
       }
     }
-  }, [editingInvite, serverTimeOffset]);
+  }, [editingInvite]);
 
   const handleIsRequestChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     setIsRequestNeeded(e.target.checked);
@@ -113,16 +112,16 @@ const ManageInvite: FC<OwnProps & StateProps> = ({
 
   const handleSaveClick = useCallback(() => {
     setIsSubmitBlocked(true);
-    const usageLimit = selectedUsageOption === 'custom' ? customUsageLimit : selectedUsageOption;
+    const usageLimit = selectedUsageOption === 'custom' ? customUsageLimit : Number(selectedUsageOption);
     let expireDate;
     switch (selectedExpireOption) {
       case 'custom':
-        expireDate = getServerTime(serverTimeOffset) + (customExpireDate - Date.now()) / 1000;
+        expireDate = getServerTime() + (customExpireDate - Date.now()) / 1000;
         break;
       case 'hour':
       case 'day':
       case 'week':
-        expireDate = getServerTime(serverTimeOffset) + DEFAULT_EXPIRE_DATE[selectedExpireOption] / 1000;
+        expireDate = getServerTime() + DEFAULT_EXPIRE_DATE[selectedExpireOption] / 1000;
         break;
       case 'unlimited':
         expireDate = 0;
@@ -153,7 +152,6 @@ const ManageInvite: FC<OwnProps & StateProps> = ({
   }, [
     chatId, customExpireDate, customUsageLimit, editExportedChatInvite, editingInvite,
     exportChatInvite, isRequestNeeded, selectedExpireOption, selectedUsageOption, title, onScreenSelect,
-    serverTimeOffset,
   ]);
 
   return (
@@ -268,11 +266,10 @@ const ManageInvite: FC<OwnProps & StateProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   (global, { chatId }): StateProps => {
-    const { editingInvite } = global.management.byChatId[chatId];
+    const { editingInvite } = selectTabState(global).management.byChatId[chatId];
 
     return {
       editingInvite,
-      serverTimeOffset: global.serverTimeOffset,
     };
   },
 )(ManageInvite));

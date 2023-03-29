@@ -4,7 +4,7 @@ import React, {
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import type { ApiChatBannedRights } from '../../api/types';
+import type { ApiChat, ApiChatBannedRights } from '../../api/types';
 import { MAIN_THREAD_ID } from '../../api/types';
 import type {
   MessageListType,
@@ -24,29 +24,37 @@ import {
   LIGHT_THEME_BG_COLOR,
   ANIMATION_LEVEL_MIN,
   SUPPORTED_IMAGE_CONTENT_TYPES,
+  GENERAL_TOPIC_ID,
+  TMP_CHAT_ID,
 } from '../../config';
-import {
-  IS_SINGLE_COLUMN_LAYOUT,
-  IS_TABLET_COLUMN_LAYOUT,
-  IS_TOUCH_ENV,
-  MASK_IMAGE_DISABLED,
-} from '../../util/environment';
+import { MASK_IMAGE_DISABLED } from '../../util/windowEnvironment';
 import { DropAreaState } from './composer/DropArea';
 import {
   selectChat,
   selectChatBot,
   selectCurrentMessageList,
+  selectTabState,
   selectCurrentTextSearch,
   selectIsChatBotNotStarted,
   selectIsInSelectMode,
   selectIsRightColumnShown,
   selectIsUserBlocked,
   selectPinnedIds,
+  selectReplyingToId,
   selectTheme,
+  selectThreadInfo,
+  selectChatMessage,
 } from '../../global/selectors';
 import {
-  getCanPostInChat, getMessageSendingRestrictionReason, isChatChannel, isChatSuperGroup, isUserId,
+  getCanPostInChat,
+  getMessageSendingRestrictionReason,
+  getForumComposerPlaceholder,
+  isChatChannel,
+  isChatGroup,
+  isChatSuperGroup,
+  isUserId,
 } from '../../global/helpers';
+import calculateMiddleFooterTransforms from './helpers/calculateMiddleFooterTransforms';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
 import buildClassName from '../../util/buildClassName';
 import useCustomBackground from '../../hooks/useCustomBackground';
@@ -56,8 +64,8 @@ import useLang from '../../hooks/useLang';
 import useHistoryBack from '../../hooks/useHistoryBack';
 import usePrevious from '../../hooks/usePrevious';
 import useForceUpdate from '../../hooks/useForceUpdate';
-import useOnChange from '../../hooks/useOnChange';
-import calculateMiddleFooterTransforms from './helpers/calculateMiddleFooterTransforms';
+import useSyncEffect from '../../hooks/useSyncEffect';
+import useAppLayout from '../../hooks/useAppLayout';
 
 import Transition from '../ui/Transition';
 import MiddleHeader from './MiddleHeader';
@@ -72,21 +80,29 @@ import SeenByModal from '../common/SeenByModal.async';
 import EmojiInteractionAnimation from './EmojiInteractionAnimation.async';
 import ReactorListModal from './ReactorListModal.async';
 import GiftPremiumModal from '../main/premium/GiftPremiumModal.async';
+import MessageLanguageModal from './MessageLanguageModal.async';
 
 import './MiddleColumn.scss';
 import styles from './MiddleColumn.module.scss';
+
+interface OwnProps {
+  isMobile?: boolean;
+}
 
 type StateProps = {
   chatId?: string;
   threadId?: number;
   messageListType?: MessageListType;
+  chat?: ApiChat;
+  replyingToId?: number;
   isPrivate?: boolean;
   isPinnedMessageList?: boolean;
   isScheduledMessageList?: boolean;
   canPost?: boolean;
   currentUserBannedRights?: ApiChatBannedRights;
   defaultBannedRights?: ApiChatBannedRights;
-  hasPinnedOrAudioPlayer?: boolean;
+  hasPinned?: boolean;
+  hasAudioPlayer?: boolean;
   pinnedMessagesCount?: number;
   theme: ThemeKey;
   customBackground?: string;
@@ -95,11 +111,12 @@ type StateProps = {
   isLeftColumnShown?: boolean;
   isRightColumnShown?: boolean;
   isBackgroundBlurred?: boolean;
-  isMobileSearchActive?: boolean;
+  hasCurrentTextSearch?: boolean;
   isSelectModeActive?: boolean;
   isSeenByModalOpen: boolean;
   isReactorListModalOpen: boolean;
   isGiftPremiumModalOpen?: boolean;
+  isMessageLanguageModalOpen?: boolean;
   animationLevel: AnimationLevel;
   shouldSkipHistoryAnimations?: boolean;
   currentTransitionKey: number;
@@ -108,28 +125,31 @@ type StateProps = {
   canSubscribe?: boolean;
   canStartBot?: boolean;
   canRestartBot?: boolean;
+  shouldLoadFullChat?: boolean;
   activeEmojiInteractions?: ActiveEmojiInteraction[];
   shouldJoinToSend?: boolean;
   shouldSendJoinRequest?: boolean;
   lastSyncTime?: number;
 };
 
-const CLOSE_ANIMATION_DURATION = IS_SINGLE_COLUMN_LAYOUT ? 450 + ANIMATION_END_DELAY : undefined;
-
 function isImage(item: DataTransferItem) {
   return item.kind === 'file' && item.type && SUPPORTED_IMAGE_CONTENT_TYPES.has(item.type);
 }
 
-const MiddleColumn: FC<StateProps> = ({
+const MiddleColumn: FC<OwnProps & StateProps> = ({
   chatId,
   threadId,
   messageListType,
+  isMobile,
+  chat,
+  replyingToId,
   isPrivate,
   isPinnedMessageList,
   canPost,
   currentUserBannedRights,
   defaultBannedRights,
-  hasPinnedOrAudioPlayer,
+  hasPinned,
+  hasAudioPlayer,
   pinnedMessagesCount,
   customBackground,
   theme,
@@ -138,11 +158,12 @@ const MiddleColumn: FC<StateProps> = ({
   isLeftColumnShown,
   isRightColumnShown,
   isBackgroundBlurred,
-  isMobileSearchActive,
+  hasCurrentTextSearch,
   isSelectModeActive,
   isSeenByModalOpen,
   isReactorListModalOpen,
   isGiftPremiumModalOpen,
+  isMessageLanguageModalOpen,
   animationLevel,
   shouldSkipHistoryAnimations,
   currentTransitionKey,
@@ -154,6 +175,7 @@ const MiddleColumn: FC<StateProps> = ({
   activeEmojiInteractions,
   shouldJoinToSend,
   shouldSendJoinRequest,
+  shouldLoadFullChat,
   lastSyncTime,
 }) => {
   const {
@@ -168,9 +190,11 @@ const MiddleColumn: FC<StateProps> = ({
     sendBotCommand,
     restartBot,
     showNotification,
+    loadFullChat,
   } = getActions();
 
   const { width: windowWidth } = useWindowSize();
+  const { isTablet } = useAppLayout();
 
   const lang = useLang();
   const [dropAreaState, setDropAreaState] = useState(DropAreaState.None);
@@ -178,7 +202,9 @@ const MiddleColumn: FC<StateProps> = ({
   const [isNotchShown, setIsNotchShown] = useState<boolean | undefined>();
   const [isUnpinModalOpen, setIsUnpinModalOpen] = useState(false);
 
-  const hasTools = hasPinnedOrAudioPlayer && (
+  const isMobileSearchActive = isMobile && hasCurrentTextSearch;
+  const closeAnimationDuration = isMobile ? 450 + ANIMATION_END_DELAY : undefined;
+  const hasTools = hasPinned && (
     windowWidth < MOBILE_SCREEN_MAX_WIDTH
     || (
       isRightColumnShown && windowWidth > MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN
@@ -186,22 +212,23 @@ const MiddleColumn: FC<StateProps> = ({
     ) || (
       windowWidth >= MIN_SCREEN_WIDTH_FOR_STATIC_LEFT_COLUMN
       && windowWidth < SAFE_SCREEN_WIDTH_FOR_CHAT_INFO
+      && hasAudioPlayer
     )
   );
 
-  const renderingChatId = usePrevDuringAnimation(chatId, CLOSE_ANIMATION_DURATION);
-  const renderingThreadId = usePrevDuringAnimation(threadId, CLOSE_ANIMATION_DURATION);
-  const renderingMessageListType = usePrevDuringAnimation(messageListType, CLOSE_ANIMATION_DURATION);
-  const renderingCanSubscribe = usePrevDuringAnimation(canSubscribe, CLOSE_ANIMATION_DURATION);
-  const renderingCanStartBot = usePrevDuringAnimation(canStartBot, CLOSE_ANIMATION_DURATION);
-  const renderingCanRestartBot = usePrevDuringAnimation(canRestartBot, CLOSE_ANIMATION_DURATION);
-  const renderingCanPost = usePrevDuringAnimation(canPost, CLOSE_ANIMATION_DURATION)
-    && !renderingCanRestartBot && !renderingCanStartBot && !renderingCanSubscribe;
-  const renderingHasTools = usePrevDuringAnimation(hasTools, CLOSE_ANIMATION_DURATION);
-  const renderingIsFabShown = usePrevDuringAnimation(isFabShown, CLOSE_ANIMATION_DURATION);
-  const renderingIsChannel = usePrevDuringAnimation(isChannel, CLOSE_ANIMATION_DURATION);
-  const renderingShouldJoinToSend = usePrevDuringAnimation(shouldJoinToSend, CLOSE_ANIMATION_DURATION);
-  const renderingShouldSendJoinRequest = usePrevDuringAnimation(shouldSendJoinRequest, CLOSE_ANIMATION_DURATION);
+  const renderingChatId = usePrevDuringAnimation(chatId, closeAnimationDuration);
+  const renderingThreadId = usePrevDuringAnimation(threadId, closeAnimationDuration);
+  const renderingMessageListType = usePrevDuringAnimation(messageListType, closeAnimationDuration);
+  const renderingCanSubscribe = usePrevDuringAnimation(canSubscribe, closeAnimationDuration);
+  const renderingCanStartBot = usePrevDuringAnimation(canStartBot, closeAnimationDuration);
+  const renderingCanRestartBot = usePrevDuringAnimation(canRestartBot, closeAnimationDuration);
+  const renderingCanPost = usePrevDuringAnimation(canPost, closeAnimationDuration)
+    && !renderingCanRestartBot && !renderingCanStartBot && !renderingCanSubscribe && chatId !== TMP_CHAT_ID;
+  const renderingHasTools = usePrevDuringAnimation(hasTools, closeAnimationDuration);
+  const renderingIsFabShown = usePrevDuringAnimation(isFabShown, closeAnimationDuration) && chatId !== TMP_CHAT_ID;
+  const renderingIsChannel = usePrevDuringAnimation(isChannel, closeAnimationDuration);
+  const renderingShouldJoinToSend = usePrevDuringAnimation(shouldJoinToSend, closeAnimationDuration);
+  const renderingShouldSendJoinRequest = usePrevDuringAnimation(shouldSendJoinRequest, closeAnimationDuration);
 
   const prevTransitionKey = usePrevious(currentTransitionKey);
 
@@ -214,6 +241,7 @@ const MiddleColumn: FC<StateProps> = ({
     currentTransitionKey,
     prevTransitionKey,
     chatId,
+    isMobile,
   );
 
   useEffect(() => {
@@ -224,21 +252,20 @@ const MiddleColumn: FC<StateProps> = ({
       : undefined;
   }, [chatId, openChat]);
 
-  useOnChange(() => {
+  useSyncEffect(() => {
     setDropAreaState(DropAreaState.None);
-    setIsFabShown(undefined);
     setIsNotchShown(undefined);
   }, [chatId]);
 
   // Fix for mobile virtual keyboard
   useEffect(() => {
-    const { visualViewport } = window as any;
+    const { visualViewport } = window;
     if (!visualViewport) {
       return undefined;
     }
 
     const handleResize = () => {
-      if (window.visualViewport.height !== document.documentElement.clientHeight) {
+      if (visualViewport.height !== document.documentElement.clientHeight) {
         document.body.classList.add('keyboard-visible');
       } else {
         document.body.classList.remove('keyboard-visible');
@@ -254,21 +281,23 @@ const MiddleColumn: FC<StateProps> = ({
 
   useEffect(() => {
     if (isPrivate) {
-      loadUser({ userId: chatId });
+      loadUser({ userId: chatId! });
     }
   }, [chatId, isPrivate, loadUser]);
 
   useEffect(() => {
     if (!areChatSettingsLoaded && lastSyncTime) {
-      loadChatSettings({ chatId });
+      loadChatSettings({ chatId: chatId! });
     }
   }, [chatId, isPrivate, areChatSettingsLoaded, lastSyncTime, loadChatSettings]);
 
-  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    if (IS_TOUCH_ENV) {
-      return;
+  useEffect(() => {
+    if (chatId && shouldLoadFullChat && isReady) {
+      loadFullChat({ chatId });
     }
+  }, [shouldLoadFullChat, chatId, isReady, loadFullChat]);
 
+  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     const { items } = e.dataTransfer || {};
     const shouldDrawQuick = items && items.length > 0 && Array.from(items)
       // Filter unnecessary element for drag and drop images in Firefox (https://github.com/Ajaxy/telegram-tt/issues/49)
@@ -293,17 +322,17 @@ const MiddleColumn: FC<StateProps> = ({
   }, []);
 
   const handleUnpinAllMessages = useCallback(() => {
-    unpinAllMessages({ chatId });
+    unpinAllMessages({ chatId: chatId!, threadId: threadId! });
     closeUnpinModal();
     openPreviousChat();
-  }, [unpinAllMessages, chatId, closeUnpinModal, openPreviousChat]);
+  }, [unpinAllMessages, chatId, threadId, closeUnpinModal, openPreviousChat]);
 
   const handleTabletFocus = useCallback(() => {
     openChat({ id: chatId });
   }, [openChat, chatId]);
 
   const handleSubscribeClick = useCallback(() => {
-    joinChannel({ chatId });
+    joinChannel({ chatId: chatId! });
     if (renderingShouldSendJoinRequest) {
       showNotification({
         message: isChannel ? lang('RequestToJoinChannelSentDescription') : lang('RequestToJoinGroupSentDescription'),
@@ -343,6 +372,9 @@ const MiddleColumn: FC<StateProps> = ({
   const messageSendingRestrictionReason = getMessageSendingRestrictionReason(
     lang, currentUserBannedRights, defaultBannedRights,
   );
+  const forumComposerPlaceholder = getForumComposerPlaceholder(lang, chat, threadId, Boolean(replyingToId));
+
+  const composerRestrictionMessage = messageSendingRestrictionReason || forumComposerPlaceholder;
 
   // CSS Variables calculation doesn't work properly with transforms, so we calculate transform values in JS
   const {
@@ -372,10 +404,11 @@ const MiddleColumn: FC<StateProps> = ({
 
   const isMessagingDisabled = Boolean(
     !isPinnedMessageList && !renderingCanPost && !renderingCanRestartBot && !renderingCanStartBot
-    && !renderingCanSubscribe && messageSendingRestrictionReason,
+    && !renderingCanSubscribe && composerRestrictionMessage,
   );
   const withMessageListBottomShift = Boolean(
-    renderingCanRestartBot || renderingCanSubscribe || renderingCanStartBot || isPinnedMessageList,
+    renderingCanRestartBot || renderingCanSubscribe || renderingShouldSendJoinRequest || renderingCanStartBot
+    || isPinnedMessageList,
   );
   const withExtraShift = Boolean(isMessagingDisabled || isSelectModeActive || isPinnedMessageList);
 
@@ -395,7 +428,7 @@ const MiddleColumn: FC<StateProps> = ({
         --theme-background-color:
           ${backgroundColor || (theme === 'dark' ? DARK_THEME_BG_COLOR : LIGHT_THEME_BG_COLOR)};
       `}
-      onClick={(IS_TABLET_COLUMN_LAYOUT && isLeftColumnShown) ? handleTabletFocus : undefined}
+      onClick={(isTablet && isLeftColumnShown) ? handleTabletFocus : undefined}
     >
       <div
         className={bgClassName}
@@ -410,6 +443,7 @@ const MiddleColumn: FC<StateProps> = ({
               threadId={renderingThreadId}
               messageListType={renderingMessageListType}
               isReady={isReady}
+              isMobile={isMobile}
             />
             <Transition
               name={shouldSkipHistoryAnimations ? 'none' : animationLevel === ANIMATION_LEVEL_MAX ? 'slide' : 'fade'}
@@ -440,6 +474,7 @@ const MiddleColumn: FC<StateProps> = ({
                     dropAreaState={dropAreaState}
                     onDropHide={handleHideDropArea}
                     isReady={isReady}
+                    isMobile={isMobile}
                   />
                 )}
                 {isPinnedMessageList && (
@@ -460,12 +495,12 @@ const MiddleColumn: FC<StateProps> = ({
                   <div className={messagingDisabledClassName}>
                     <div className="messaging-disabled-inner">
                       <span>
-                        {messageSendingRestrictionReason}
+                        {composerRestrictionMessage}
                       </span>
                     </div>
                   </div>
                 )}
-                {IS_SINGLE_COLUMN_LAYOUT
+                {isMobile
                   && (renderingCanSubscribe || (renderingShouldJoinToSend && !renderingShouldSendJoinRequest)) && (
                   <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
                     <Button
@@ -479,7 +514,7 @@ const MiddleColumn: FC<StateProps> = ({
                     </Button>
                   </div>
                 )}
-                {IS_SINGLE_COLUMN_LAYOUT && renderingShouldSendJoinRequest && (
+                {isMobile && renderingShouldSendJoinRequest && (
                   <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
                     <Button
                       size="tiny"
@@ -492,7 +527,7 @@ const MiddleColumn: FC<StateProps> = ({
                     </Button>
                   </div>
                 )}
-                {IS_SINGLE_COLUMN_LAYOUT && renderingCanStartBot && (
+                {isMobile && renderingCanStartBot && (
                   <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
                     <Button
                       size="tiny"
@@ -505,7 +540,7 @@ const MiddleColumn: FC<StateProps> = ({
                     </Button>
                   </div>
                 )}
-                {IS_SINGLE_COLUMN_LAYOUT && renderingCanRestartBot && (
+                {isMobile && renderingCanRestartBot && (
                   <div className="middle-column-footer-button-container" dir={lang.isRtl ? 'rtl' : undefined}>
                     <Button
                       size="tiny"
@@ -525,6 +560,7 @@ const MiddleColumn: FC<StateProps> = ({
                 />
                 <SeenByModal isOpen={isSeenByModalOpen} />
                 <ReactorListModal isOpen={isReactorListModalOpen} />
+                <MessageLanguageModal isOpen={isMessageLanguageModalOpen} />
               </div>
             </Transition>
 
@@ -534,7 +570,7 @@ const MiddleColumn: FC<StateProps> = ({
               withExtraShift={withExtraShift}
             />
           </div>
-          {IS_SINGLE_COLUMN_LAYOUT && <MobileSearch isActive={Boolean(isMobileSearchActive)} />}
+          {isMobile && <MobileSearch isActive={Boolean(isMobileSearchActive)} />}
         </>
       )}
       {chatId && (
@@ -560,18 +596,20 @@ const MiddleColumn: FC<StateProps> = ({
   );
 };
 
-export default memo(withGlobal(
-  (global): StateProps => {
+export default memo(withGlobal<OwnProps>(
+  (global, { isMobile }): StateProps => {
     const theme = selectTheme(global);
     const {
       isBlurred: isBackgroundBlurred, background: customBackground, backgroundColor, patternColor,
     } = global.settings.themes[theme] || {};
 
-    const { messageLists } = global.messages;
-    const currentMessageList = selectCurrentMessageList(global);
     const {
-      isLeftColumnShown, chats: { listIds }, activeEmojiInteractions, lastSyncTime,
-    } = global;
+      messageLists, isLeftColumnShown, activeEmojiInteractions,
+      seenByModal, giftPremiumModal, reactorModal, audioPlayer, shouldSkipHistoryAnimations,
+      messageLanguageModal,
+    } = selectTabState(global);
+    const currentMessageList = selectCurrentMessageList(global);
+    const { chats: { listIds }, lastSyncTime } = global;
 
     const state: StateProps = {
       theme,
@@ -579,13 +617,14 @@ export default memo(withGlobal(
       backgroundColor,
       patternColor,
       isLeftColumnShown,
-      isRightColumnShown: selectIsRightColumnShown(global),
+      isRightColumnShown: selectIsRightColumnShown(global, isMobile),
       isBackgroundBlurred,
-      isMobileSearchActive: Boolean(IS_SINGLE_COLUMN_LAYOUT && selectCurrentTextSearch(global)),
+      hasCurrentTextSearch: Boolean(selectCurrentTextSearch(global)),
       isSelectModeActive: selectIsInSelectMode(global),
-      isSeenByModalOpen: Boolean(global.seenByModal),
-      isReactorListModalOpen: Boolean(global.reactorModal),
-      isGiftPremiumModalOpen: global.giftPremiumModal?.isOpen,
+      isSeenByModalOpen: Boolean(seenByModal),
+      isReactorListModalOpen: Boolean(reactorModal),
+      isGiftPremiumModalOpen: giftPremiumModal?.isOpen,
+      isMessageLanguageModalOpen: Boolean(messageLanguageModal),
       animationLevel: global.settings.byKey.animationLevel,
       currentTransitionKey: Math.max(0, messageLists.length - 1),
       activeEmojiInteractions,
@@ -600,10 +639,12 @@ export default memo(withGlobal(
     const isPrivate = isUserId(chatId);
     const chat = selectChat(global, chatId);
     const bot = selectChatBot(global, chatId);
-    const pinnedIds = selectPinnedIds(global, chatId);
-    const { chatId: audioChatId, messageId: audioMessageId } = global.audioPlayer;
+    const pinnedIds = selectPinnedIds(global, chatId, threadId);
+    const { chatId: audioChatId, messageId: audioMessageId } = audioPlayer;
 
-    const canPost = chat && getCanPostInChat(chat, threadId);
+    const threadInfo = selectThreadInfo(global, chatId, threadId);
+    const isComments = Boolean(threadInfo?.originChannelId);
+    const canPost = chat && getCanPostInChat(chat, threadId, isComments);
     const isBotNotStarted = selectIsChatBotNotStarted(global, chatId);
     const isPinnedMessageList = messageListType === 'pinned';
     const isScheduledMessageList = messageListType === 'scheduled';
@@ -616,35 +657,47 @@ export default memo(withGlobal(
     const shouldSendJoinRequest = Boolean(chat?.isNotJoined && chat.isJoinRequest);
     const canRestartBot = Boolean(bot && selectIsUserBlocked(global, bot.id));
     const canStartBot = !canRestartBot && isBotNotStarted;
+    const shouldLoadFullChat = Boolean(chat && isChatGroup(chat) && !chat.fullInfo && lastSyncTime);
+    const replyingToId = selectReplyingToId(global, chatId, threadId);
+    const shouldBlockSendInForum = chat?.isForum
+      ? threadId === MAIN_THREAD_ID && !replyingToId && (chat.topics?.[GENERAL_TOPIC_ID]?.isClosed)
+      : false;
+    const audioMessage = audioChatId && audioMessageId
+      ? selectChatMessage(global, audioChatId, audioMessageId)
+      : undefined;
 
     return {
       ...state,
       chatId,
       threadId,
       messageListType,
+      chat,
+      replyingToId,
       isPrivate,
       areChatSettingsLoaded: Boolean(chat?.settings),
       canPost: !isPinnedMessageList
         && (!chat || canPost)
         && !isBotNotStarted
-        && !(shouldJoinToSend && chat?.isNotJoined),
+        && !(shouldJoinToSend && chat?.isNotJoined)
+        && !shouldBlockSendInForum,
       isPinnedMessageList,
       isScheduledMessageList,
       currentUserBannedRights: chat?.currentUserBannedRights,
       defaultBannedRights: chat?.defaultBannedRights,
-      hasPinnedOrAudioPlayer: (
-        threadId !== MAIN_THREAD_ID
+      hasPinned: (
+        (threadId !== MAIN_THREAD_ID && !chat?.isForum)
         || Boolean(!isPinnedMessageList && pinnedIds?.length)
-        || Boolean(audioChatId && audioMessageId)
       ),
+      hasAudioPlayer: Boolean(audioMessage),
       pinnedMessagesCount: pinnedIds ? pinnedIds.length : 0,
-      shouldSkipHistoryAnimations: global.shouldSkipHistoryAnimations,
+      shouldSkipHistoryAnimations,
       isChannel,
       canSubscribe,
       canStartBot,
       canRestartBot,
       shouldJoinToSend,
       shouldSendJoinRequest,
+      shouldLoadFullChat,
     };
   },
 )(MiddleColumn));
@@ -654,8 +707,9 @@ function useIsReady(
   currentTransitionKey?: number,
   prevTransitionKey?: number,
   chatId?: string,
+  isMobile?: boolean,
 ) {
-  const [isReady, setIsReady] = useState(!IS_SINGLE_COLUMN_LAYOUT);
+  const [isReady, setIsReady] = useState(!isMobile);
   const forceUpdate = useForceUpdate();
 
   const willSwitchMessageList = prevTransitionKey !== undefined && prevTransitionKey !== currentTransitionKey;
@@ -667,7 +721,7 @@ function useIsReady(
     }
   }
 
-  useOnChange(() => {
+  useSyncEffect(() => {
     if (!withAnimations) {
       setIsReady(true);
     }

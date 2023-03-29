@@ -1,14 +1,17 @@
+import type { RequiredGlobalActions } from '../../index';
 import { addActionHandler, getGlobal, setGlobal } from '../../index';
 
 import type {
   ApiChat,
   ApiMessage, ApiPollResult, ApiReactions, ApiThreadInfo,
 } from '../../../api/types';
-import type { ActiveEmojiInteraction, GlobalActions, GlobalState } from '../../types';
+import type {
+  ActiveEmojiInteraction, ActionReturnType, GlobalState, RequiredGlobalState,
+} from '../../types';
 import { MAIN_THREAD_ID } from '../../../api/types';
 
 import { SERVICE_NOTIFICATIONS_USER_ID } from '../../../config';
-import { unique } from '../../../util/iteratees';
+import { pickTruthy, unique } from '../../../util/iteratees';
 import { areDeepEqual } from '../../../util/areDeepEqual';
 import { notifyAboutMessage } from '../../../util/notifications';
 import {
@@ -22,6 +25,10 @@ import {
   updateScheduledMessage,
   deleteChatScheduledMessages,
   updateThreadUnreadFromForwardedMessage,
+  updateTopic,
+  deleteTopic,
+  updateMessageTranslations,
+  clearMessageTranslation,
 } from '../../reducers';
 import {
   selectChatMessage,
@@ -35,27 +42,29 @@ import {
   selectThreadByMessage,
   selectPinnedIds,
   selectScheduledMessage,
-  selectScheduledMessages,
+  selectChatScheduledMessages,
   selectIsMessageInCurrentMessageList,
   selectScheduledIds,
   selectCurrentMessageList,
   selectViewportIds,
   selectFirstUnreadId,
   selectChat,
-  selectIsChatWithBot,
   selectIsServiceChatReady,
-  selectLocalAnimatedEmojiEffect,
-  selectLocalAnimatedEmoji,
+  selectThreadIdFromMessage,
+  selectTopicFromMessage,
+  selectTabState,
 } from '../../selectors';
 import {
   getMessageContent, isUserId, isMessageLocal, getMessageText, checkIfHasUnreadReactions,
 } from '../../helpers';
 import { onTickEnd } from '../../../util/schedulers';
 import { updateUnreadReactions } from '../../reducers/reactions';
+import { updateTabState } from '../../reducers/tabs';
+import { getCurrentTabId } from '../../../util/establishMultitabRole';
 
 const ANIMATION_DELAY = 350;
 
-addActionHandler('apiUpdate', (global, actions, update) => {
+addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
   switch (update['@type']) {
     case 'newMessage': {
       const {
@@ -64,51 +73,63 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       global = updateWithLocalMedia(global, chatId, id, message);
       global = updateListedAndViewportIds(global, actions, message as ApiMessage);
 
-      if (message.threadInfo) {
+      if (message.repliesThreadInfo) {
         global = updateThreadInfo(
           global,
-          message.threadInfo.chatId,
-          message.threadInfo.threadId,
-          message.threadInfo,
+          message.repliesThreadInfo.chatId,
+          message.repliesThreadInfo.threadId,
+          message.repliesThreadInfo,
         );
       }
 
       const newMessage = selectChatMessage(global, chatId, id)!;
-
-      const isLocal = isMessageLocal(message as ApiMessage);
-      if (selectIsMessageInCurrentMessageList(global, chatId, message as ApiMessage)) {
-        if (isLocal && message.isOutgoing && !(message.content?.action)) {
-          const currentMessageList = selectCurrentMessageList(global);
-          if (currentMessageList) {
-            // We do not use `actions.focusLastMessage` as it may be set with a delay (see below)
-            actions.focusMessage({
-              chatId,
-              threadId: currentMessageList.threadId,
-              messageId: message.id,
-              noHighlight: true,
-              isResizingContainer: true,
-            });
-          }
-        }
-
-        const { threadInfo } = selectThreadByMessage(global, chatId, message as ApiMessage) || {};
-        if (threadInfo) {
-          actions.requestThreadInfoUpdate({ chatId, threadId: threadInfo.threadId });
-        }
-
-        // @perf Wait until scroll animation finishes or simply rely on delivery status update (which is itself delayed)
-        if (!isLocal) {
-          setTimeout(() => {
-            let delayedGlobal = getGlobal();
-            if (shouldForceReply) {
-              delayedGlobal = replaceThreadParam(delayedGlobal, chatId, MAIN_THREAD_ID, 'replyingToId', id);
-            }
-            setGlobal(updateChatLastMessage(delayedGlobal, chatId, newMessage));
-          }, ANIMATION_DELAY);
-        }
-      } else {
-        global = updateChatLastMessage(global, chatId, newMessage);
+      const chat = selectChat(global, chatId);
+      if (chat?.isForum
+        && newMessage.isTopicReply
+        && !selectTopicFromMessage(global, newMessage)
+        && newMessage.replyToMessageId) {
+        actions.loadTopicById({ chatId, topicId: newMessage.replyToMessageId });
       }
+
+      Object.values(global.byTabId).forEach(({ id: tabId }) => {
+        const isLocal = isMessageLocal(message as ApiMessage);
+        if (selectIsMessageInCurrentMessageList(global, chatId, message as ApiMessage, tabId)) {
+          if (isLocal && message.isOutgoing && !(message.content?.action)) {
+            const currentMessageList = selectCurrentMessageList(global, tabId);
+            if (currentMessageList) {
+              // We do not use `actions.focusLastMessage` as it may be set with a delay (see below)
+              actions.focusMessage({
+                chatId,
+                threadId: currentMessageList.threadId,
+                messageId: message.id!,
+                noHighlight: true,
+                isResizingContainer: true,
+                tabId,
+              });
+            }
+          }
+
+          const { threadInfo } = selectThreadByMessage(global, message as ApiMessage) || {};
+          if (threadInfo && !isLocal) {
+            actions.requestThreadInfoUpdate({ chatId, threadId: threadInfo.threadId });
+          }
+
+          // @perf Wait until scroll animation finishes or simply rely on delivery status update
+          // (which is itself delayed)
+          if (!isLocal) {
+            setTimeout(() => {
+              global = getGlobal();
+              if (shouldForceReply) {
+                global = replaceThreadParam(global, chatId, MAIN_THREAD_ID, 'replyingToId', id);
+              }
+              global = updateChatLastMessage(global, chatId, newMessage);
+              setGlobal(global);
+            }, ANIMATION_DELAY);
+          }
+        } else {
+          global = updateChatLastMessage(global, chatId, newMessage);
+        }
+      });
 
       setGlobal(global);
 
@@ -121,26 +142,26 @@ addActionHandler('apiUpdate', (global, actions, update) => {
     }
 
     case 'updateStartEmojiInteraction': {
-      const { chatId: currentChatId } = selectCurrentMessageList(global) || {};
+      Object.values(global.byTabId).forEach(({ id: tabId }) => {
+        const { chatId: currentChatId } = selectCurrentMessageList(global, tabId) || {};
 
-      if (currentChatId !== update.id) return;
-      const message = selectChatMessage(global, currentChatId, update.messageId);
+        if (currentChatId !== update.id) return;
+        const message = selectChatMessage(global, currentChatId, update.messageId);
 
-      if (!message) return;
+        if (!message) return;
 
-      // Workaround for a weird behavior when interaction is received after watching reaction
-      if (getMessageText(message) !== update.emoji) return;
+        // Workaround for a weird behavior when interaction is received after watching reaction
+        if (getMessageText(message) !== update.emoji) return;
 
-      const localEmoji = selectLocalAnimatedEmoji(global, update.emoji);
-
-      global = {
-        ...global,
-        activeEmojiInteractions: [...(global.activeEmojiInteractions || []), {
-          id: global.activeEmojiInteractions?.length || 0,
-          animatedEffect: localEmoji ? selectLocalAnimatedEmojiEffect(localEmoji) : update.emoji,
-          messageId: update.messageId,
-        } as ActiveEmojiInteraction],
-      };
+        const tabState = selectTabState(global, tabId);
+        global = updateTabState(global, {
+          activeEmojiInteractions: [...(tabState.activeEmojiInteractions || []), {
+            id: tabState.activeEmojiInteractions?.length || 0,
+            animatedEffect: update.emoji,
+            messageId: update.messageId,
+          } as ActiveEmojiInteraction],
+        }, tabId);
+      });
 
       setGlobal(global);
 
@@ -152,8 +173,14 @@ addActionHandler('apiUpdate', (global, actions, update) => {
 
       global = updateWithLocalMedia(global, chatId, id, message, true);
 
-      const scheduledIds = selectScheduledIds(global, chatId) || [];
+      const scheduledIds = selectScheduledIds(global, chatId, MAIN_THREAD_ID) || [];
       global = replaceThreadParam(global, chatId, MAIN_THREAD_ID, 'scheduledIds', unique([...scheduledIds, id]));
+
+      const threadId = selectThreadIdFromMessage(global, message);
+      if (threadId !== MAIN_THREAD_ID) {
+        const threadScheduledIds = selectScheduledIds(global, chatId, threadId) || [];
+        global = replaceThreadParam(global, chatId, threadId, 'scheduledIds', unique([...threadScheduledIds, id]));
+      }
 
       setGlobal(global);
 
@@ -164,43 +191,33 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       const { chatId, id, message } = update;
 
       const currentMessage = selectChatMessage(global, chatId, id);
-
       const chat = selectChat(global, chatId);
 
       global = updateWithLocalMedia(global, chatId, id, message);
 
       const newMessage = selectChatMessage(global, chatId, id)!;
-      if (message.threadInfo) {
+      if (message.repliesThreadInfo) {
         global = updateThreadInfo(
           global,
-          message.threadInfo.chatId,
-          message.threadInfo.threadId,
-          message.threadInfo,
+          message.repliesThreadInfo.chatId,
+          message.repliesThreadInfo.threadId,
+          message.repliesThreadInfo,
         );
       }
+
       if (currentMessage) {
         global = updateChatLastMessage(global, chatId, newMessage);
       }
 
       if (message.reactions && chat) {
-        global = updateReactions(global, chatId, id, message.reactions, chat, message.isOutgoing, currentMessage);
+        global = updateReactions(global, chatId, id, message.reactions, chat, newMessage.isOutgoing, currentMessage);
+      }
+
+      if (message.content?.text?.text !== currentMessage?.content?.text?.text) {
+        global = clearMessageTranslation(global, chatId, id);
       }
 
       setGlobal(global);
-
-      // Scroll down if bot message height is changed with an updated inline keyboard.
-      // A drawback: this will scroll down even if the previous scroll was not at bottom.
-      if (
-        currentMessage
-        && chat
-        && !message.isOutgoing
-        && chat.lastMessage?.id === message.id
-        && selectIsChatWithBot(global, chat)
-        && selectIsMessageInCurrentMessageList(global, chatId, message as ApiMessage)
-        && selectIsViewportNewest(global, chatId, message.threadInfo?.threadId || MAIN_THREAD_ID)
-      ) {
-        actions.focusLastMessage();
-      }
 
       break;
     }
@@ -214,8 +231,14 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       }
 
       global = updateWithLocalMedia(global, chatId, id, message, true);
-      const ids = Object.keys(selectScheduledMessages(global, chatId) || {}).map(Number).sort((a, b) => b - a);
+      const ids = Object.keys(selectChatScheduledMessages(global, chatId) || {}).map(Number).sort((a, b) => b - a);
       global = replaceThreadParam(global, chatId, MAIN_THREAD_ID, 'scheduledIds', ids);
+
+      const threadId = selectThreadIdFromMessage(global, currentMessage);
+      if (threadId !== MAIN_THREAD_ID) {
+        const threadScheduledIds = selectScheduledIds(global, chatId, threadId) || [];
+        global = replaceThreadParam(global, chatId, threadId, 'scheduledIds', threadScheduledIds.sort((a, b) => b - a));
+      }
       setGlobal(global);
 
       break;
@@ -244,11 +267,18 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       const newMessage = selectChatMessage(global, chatId, message.id)!;
       global = updateChatLastMessage(global, chatId, newMessage);
 
-      const thread = selectThreadByMessage(global, chatId, message);
+      const thread = selectThreadByMessage(global, message);
       // For some reason Telegram requires to manually mark outgoing thread messages read
-      if (thread?.threadInfo) {
-        actions.markMessageListRead({ maxId: message.id });
+      Object.values(global.byTabId).forEach(({ id: tabId }) => {
+        const { chatId: currentChatId, threadId: currentThreadId } = selectCurrentMessageList(global, tabId) || {};
+        if (currentChatId !== chatId
+          || (thread?.threadInfo?.threadId || MAIN_THREAD_ID) !== currentThreadId) {
+          return;
+        }
 
+        actions.markMessageListRead({ maxId: message.id, tabId });
+      });
+      if (thread?.threadInfo) {
         global = replaceThreadParam(global, chatId, thread.threadInfo.threadId, 'threadInfo', {
           ...thread.threadInfo,
           lastMessageId: message.id,
@@ -263,8 +293,14 @@ addActionHandler('apiUpdate', (global, actions, update) => {
 
     case 'updateScheduledMessageSendSucceeded': {
       const { chatId, localId, message } = update;
-      const scheduledIds = selectScheduledIds(global, chatId) || [];
+      const scheduledIds = selectScheduledIds(global, chatId, MAIN_THREAD_ID) || [];
       global = replaceThreadParam(global, chatId, MAIN_THREAD_ID, 'scheduledIds', [...scheduledIds, message.id]);
+
+      const threadId = selectThreadIdFromMessage(global, message);
+      if (threadId !== MAIN_THREAD_ID) {
+        const threadScheduledIds = selectScheduledIds(global, chatId, threadId) || [];
+        global = replaceThreadParam(global, chatId, threadId, 'scheduledIds', [...threadScheduledIds, message.id]);
+      }
 
       const currentMessage = selectScheduledMessage(global, chatId, localId);
 
@@ -282,12 +318,26 @@ addActionHandler('apiUpdate', (global, actions, update) => {
     case 'updatePinnedIds': {
       const { chatId, isPinned, messageIds } = update;
 
-      const currentPinnedIds = selectPinnedIds(global, chatId) || [];
-      const newPinnedIds = isPinned
-        ? [...currentPinnedIds, ...messageIds].sort((a, b) => b - a)
-        : currentPinnedIds.filter((id) => !messageIds.includes(id));
+      const messages = pickTruthy(selectChatMessages(global, chatId), messageIds);
+      const updatePerThread: Record<number, number[]> = {
+        [MAIN_THREAD_ID]: messageIds,
+      };
+      Object.values(messages).forEach((message) => {
+        const threadId = selectThreadIdFromMessage(global, message);
+        if (threadId === MAIN_THREAD_ID) return;
+        const currentUpdatedInThread = updatePerThread[threadId] || [];
+        currentUpdatedInThread.push(message.id);
+        updatePerThread[threadId] = currentUpdatedInThread;
+      });
 
-      setGlobal(replaceThreadParam(global, chatId, MAIN_THREAD_ID, 'pinnedIds', newPinnedIds));
+      Object.entries(updatePerThread).forEach(([threadId, ids]) => {
+        const pinnedIds = selectPinnedIds(global, chatId, MAIN_THREAD_ID) || [];
+        const newPinnedIds = isPinned
+          ? unique(pinnedIds.concat(ids)).sort((a, b) => b - a)
+          : pinnedIds.filter((id) => !ids.includes(id));
+        global = replaceThreadParam(global, chatId, Number(threadId), 'pinnedIds', newPinnedIds);
+      });
+      setGlobal(global);
 
       break;
     }
@@ -298,19 +348,35 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       } = update;
 
       const currentThreadInfo = selectThreadInfo(global, chatId, threadId);
-      const newTheadInfo = {
+      const newThreadInfo = {
         ...currentThreadInfo,
         ...threadInfo,
       };
 
-      if (!newTheadInfo.threadId) {
+      if (!newThreadInfo.threadId) {
         return;
       }
 
-      global = updateThreadInfo(global, chatId, threadId, newTheadInfo as ApiThreadInfo);
+      global = updateThreadInfo(global, chatId, threadId, newThreadInfo as ApiThreadInfo);
 
       if (firstMessageId) {
         global = replaceThreadParam(global, chatId, threadId, 'firstMessageId', firstMessageId);
+      }
+
+      const chat = selectChat(global, chatId);
+      if (chat?.isForum && threadInfo.lastReadInboxMessageId !== currentThreadInfo?.lastReadInboxMessageId) {
+        actions.loadTopicById({ chatId, topicId: threadId });
+      }
+
+      // Update reply thread last read message id if already read in main thread
+      if (threadInfo.topMessageId === threadId && !chat?.isForum) {
+        const lastReadInboxMessageId = chat?.lastReadInboxMessageId;
+        const lastReadInboxMessageIdInThread = newThreadInfo.lastReadInboxMessageId || lastReadInboxMessageId;
+        if (lastReadInboxMessageId && lastReadInboxMessageIdInThread) {
+          global = updateThreadInfo(global, chatId, threadId, {
+            lastReadInboxMessageId: Math.max(lastReadInboxMessageIdInThread, lastReadInboxMessageId),
+          });
+        }
       }
 
       setGlobal(global);
@@ -325,7 +391,7 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       if (messagesById && !isUserId(chatId)) {
         global = deleteChatMessages(global, chatId, Object.keys(messagesById).map(Number));
         setGlobal(global);
-        actions.loadFullChat({ chatId, force: true });
+        actions.loadFullChat({ chatId, force: true, tabId: getCurrentTabId() });
       }
 
       break;
@@ -334,7 +400,7 @@ addActionHandler('apiUpdate', (global, actions, update) => {
     case 'deleteMessages': {
       const { ids, chatId } = update;
 
-      deleteMessages(chatId, ids, actions, global);
+      deleteMessages(global, chatId, ids, actions);
       break;
     }
 
@@ -349,18 +415,20 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       const { chatId } = update;
       const chatMessages = global.messages.byChatId[chatId];
       if (chatId === SERVICE_NOTIFICATIONS_USER_ID) {
-        setGlobal({
+        global = {
           ...global,
           serviceNotifications: global.serviceNotifications.map((notification) => ({
             ...notification,
             isDeleted: true,
           })),
-        });
+        };
+        setGlobal(global);
       }
 
       if (chatMessages) {
         const ids = Object.keys(chatMessages.byId).map(Number);
-        deleteMessages(chatId, ids, actions, getGlobal());
+        global = getGlobal();
+        deleteMessages(global, chatId, ids, actions);
       } else {
         actions.requestChatUpdate({ chatId });
       }
@@ -419,7 +487,7 @@ addActionHandler('apiUpdate', (global, actions, update) => {
         }
         const updatedPoll = { ...message.content.poll, ...pollUpdate, results: newResults };
 
-        setGlobal(updateChatMessage(
+        global = updateChatMessage(
           global,
           message.chatId,
           message.id,
@@ -429,7 +497,8 @@ addActionHandler('apiUpdate', (global, actions, update) => {
               poll: updatedPoll,
             },
           },
-        ));
+        );
+        setGlobal(global);
       }
       break;
     }
@@ -467,7 +536,7 @@ addActionHandler('apiUpdate', (global, actions, update) => {
         }
       });
 
-      setGlobal(updateChatMessage(
+      global = updateChatMessage(
         global,
         message.chatId,
         message.id,
@@ -485,7 +554,8 @@ addActionHandler('apiUpdate', (global, actions, update) => {
             },
           },
         },
-      ));
+      );
+      setGlobal(global);
 
       break;
     }
@@ -507,7 +577,8 @@ addActionHandler('apiUpdate', (global, actions, update) => {
 
       if (!chat || !message) return;
 
-      setGlobal(updateReactions(global, chatId, id, reactions, chat, message.isOutgoing, message));
+      global = updateReactions(global, chatId, id, reactions, chat, message.isOutgoing, message);
+      setGlobal(global);
       break;
     }
 
@@ -522,7 +593,7 @@ addActionHandler('apiUpdate', (global, actions, update) => {
 
       if (preview) {
         if (!message.content.invoice) return;
-        setGlobal(updateChatMessage(global, chatId, id, {
+        global = updateChatMessage(global, chatId, id, {
           content: {
             ...message.content,
             invoice: {
@@ -530,13 +601,15 @@ addActionHandler('apiUpdate', (global, actions, update) => {
               extendedMedia: preview,
             },
           },
-        }));
+        });
+        setGlobal(global);
       } else if (media) {
-        setGlobal(updateChatMessage(global, chatId, id, {
+        global = updateChatMessage(global, chatId, id, {
           content: {
             ...media,
           },
-        }));
+        });
+        setGlobal(global);
       }
 
       break;
@@ -545,7 +618,7 @@ addActionHandler('apiUpdate', (global, actions, update) => {
     case 'updateTranscribedAudio': {
       const { transcriptionId, text, isPending } = update;
 
-      setGlobal({
+      global = {
         ...global,
         transcriptions: {
           ...global.transcriptions,
@@ -556,21 +629,47 @@ addActionHandler('apiUpdate', (global, actions, update) => {
             isPending,
           },
         },
-      });
+      };
+      setGlobal(global);
+      break;
+    }
+
+    case 'updateMessageSendFailed': {
+      const { chatId, localId, error } = update;
+
+      if (error.match(/CHAT_SEND_.+?FORBIDDEN/)) {
+        Object.values(global.byTabId).forEach(({ id: tabId }) => {
+          actions.showAllowedMessageTypesNotification({ chatId, tabId });
+        });
+      }
+
+      global = updateChatMessage(global, chatId, localId, { sendingState: 'messageSendingStateFailed' });
+      setGlobal(global);
+      break;
+    }
+
+    case 'updateMessageTranslations': {
+      const {
+        chatId, messageIds, toLanguageCode, translations,
+      } = update;
+
+      global = updateMessageTranslations(global, chatId, messageIds, toLanguageCode, translations);
+
+      setGlobal(global);
       break;
     }
   }
 });
 
-function updateReactions(
-  global: GlobalState,
+function updateReactions<T extends GlobalState>(
+  global: T,
   chatId: string,
   id: number,
   reactions: ApiReactions,
   chat: ApiChat,
   isOutgoing?: boolean,
   message?: ApiMessage,
-) {
+): T {
   const currentReactions = message?.reactions;
 
   // `updateMessageReactions` happens with an interval, so we try to avoid redundant global state updates
@@ -615,37 +714,42 @@ function updateReactions(
 }
 
 function updateWithLocalMedia(
-  global: GlobalState, chatId: string, id: number, message: Partial<ApiMessage>, isScheduled = false,
+  global: RequiredGlobalState, chatId: string, id: number, messageUpdate: Partial<ApiMessage>, isScheduled = false,
 ) {
-  // Preserve locally uploaded media.
   const currentMessage = isScheduled
     ? selectScheduledMessage(global, chatId, id)
     : selectChatMessage(global, chatId, id);
-  if (currentMessage && message.content) {
+
+  // Preserve locally uploaded media.
+  if (currentMessage && messageUpdate.content) {
     const {
       photo, video, sticker, document,
     } = getMessageContent(currentMessage);
-    if (photo && message.content.photo) {
-      message.content.photo.blobUrl = photo.blobUrl;
-      message.content.photo.thumbnail = photo.thumbnail;
-    } else if (video && message.content.video) {
-      message.content.video.blobUrl = video.blobUrl;
-    } else if (sticker && message.content.sticker) {
-      message.content.sticker.isPreloadedGlobally = sticker.isPreloadedGlobally;
-    } else if (document && message.content.document) {
-      message.content.document.previewBlobUrl = document.previewBlobUrl;
+    if (photo && messageUpdate.content.photo) {
+      messageUpdate.content.photo.blobUrl = photo.blobUrl;
+      messageUpdate.content.photo.thumbnail = photo.thumbnail;
+    } else if (video && messageUpdate.content.video) {
+      messageUpdate.content.video.blobUrl = video.blobUrl;
+    } else if (sticker && messageUpdate.content.sticker) {
+      messageUpdate.content.sticker.isPreloadedGlobally = sticker.isPreloadedGlobally;
+    } else if (document && messageUpdate.content.document) {
+      messageUpdate.content.document.previewBlobUrl = document.previewBlobUrl;
     }
   }
 
+  const newMessage = currentMessage ? { ...currentMessage, ...messageUpdate } : messageUpdate;
+
   return isScheduled
-    ? updateScheduledMessage(global, chatId, id, message)
-    : updateChatMessage(global, chatId, id, message);
+    ? updateScheduledMessage(global, chatId, id, newMessage)
+    : updateChatMessage(global, chatId, id, newMessage);
 }
 
-function updateThreadUnread(global: GlobalState, actions: GlobalActions, message: ApiMessage, isDeleting?: boolean) {
+function updateThreadUnread<T extends GlobalState>(
+  global: T, actions: RequiredGlobalActions, message: ApiMessage, isDeleting?: boolean,
+) {
   const { chatId } = message;
 
-  const { threadInfo } = selectThreadByMessage(global, chatId, message) || {};
+  const { threadInfo } = selectThreadByMessage(global, message) || {};
 
   if (!threadInfo && message.replyToMessageId) {
     const originMessage = selectChatMessage(global, chatId, message.replyToMessageId);
@@ -666,10 +770,12 @@ function updateThreadUnread(global: GlobalState, actions: GlobalActions, message
   return global;
 }
 
-function updateListedAndViewportIds(global: GlobalState, actions: GlobalActions, message: ApiMessage) {
+function updateListedAndViewportIds<T extends GlobalState>(
+  global: T, actions: RequiredGlobalActions, message: ApiMessage,
+) {
   const { id, chatId } = message;
 
-  const { threadInfo, firstMessageId } = selectThreadByMessage(global, chatId, message) || {};
+  const { threadInfo, firstMessageId } = selectThreadByMessage(global, message) || {};
 
   const chat = selectChat(global, chatId);
   const isUnreadChatNotLoaded = chat?.unreadCount && !selectListedIds(global, chatId, MAIN_THREAD_ID);
@@ -680,20 +786,27 @@ function updateListedAndViewportIds(global: GlobalState, actions: GlobalActions,
     if (firstMessageId || !isMessageLocal(message)) {
       global = updateListedIds(global, chatId, threadInfo.threadId, [id]);
 
-      if (selectIsViewportNewest(global, chatId, threadInfo.threadId)) {
-        global = addViewportId(global, chatId, threadInfo.threadId, id);
+      Object.values(global.byTabId).forEach(({ id: tabId }) => {
+        if (selectIsViewportNewest(global, chatId, threadInfo.threadId, tabId)) {
+          global = addViewportId(global, chatId, threadInfo.threadId, id, tabId);
 
-        if (!firstMessageId) {
-          global = replaceThreadParam(global, chatId, threadInfo.threadId, 'firstMessageId', message.id);
+          if (!firstMessageId) {
+            global = replaceThreadParam(global, chatId, threadInfo.threadId, 'firstMessageId', message.id);
+          }
         }
-      }
+      });
     }
 
     global = replaceThreadParam(global, chatId, threadInfo.threadId, 'threadInfo', {
       ...threadInfo,
       lastMessageId: message.id,
-      messagesCount: threadInfo.messagesCount + 1,
     });
+
+    if (!isMessageLocal(message)) {
+      global = updateThreadInfo(global, chatId, threadInfo.threadId, {
+        messagesCount: (threadInfo.messagesCount || 0) + 1,
+      });
+    }
   }
 
   if (isUnreadChatNotLoaded) {
@@ -702,28 +815,38 @@ function updateListedAndViewportIds(global: GlobalState, actions: GlobalActions,
 
   global = updateListedIds(global, chatId, MAIN_THREAD_ID, [id]);
 
-  if (selectIsViewportNewest(global, chatId, MAIN_THREAD_ID)) {
-    // Always keep the first unread message in the viewport list
-    const firstUnreadId = selectFirstUnreadId(global, chatId, MAIN_THREAD_ID);
-    const candidateGlobal = addViewportId(global, chatId, MAIN_THREAD_ID, id);
-    const newViewportIds = selectViewportIds(candidateGlobal, chatId, MAIN_THREAD_ID);
+  Object.values(global.byTabId).forEach(({ id: tabId }) => {
+    if (selectIsViewportNewest(global, chatId, MAIN_THREAD_ID, tabId)) {
+      // Always keep the first unread message in the viewport list
+      const firstUnreadId = selectFirstUnreadId(global, chatId, MAIN_THREAD_ID, tabId);
+      const candidateGlobal = addViewportId(global, chatId, MAIN_THREAD_ID, id, tabId);
+      const newViewportIds = selectViewportIds(candidateGlobal, chatId, MAIN_THREAD_ID, tabId);
 
-    if (!firstUnreadId || newViewportIds!.includes(firstUnreadId)) {
-      global = candidateGlobal;
+      if (!firstUnreadId || newViewportIds!.includes(firstUnreadId)) {
+        global = candidateGlobal;
+      }
     }
-  }
+  });
 
   return global;
 }
 
-function updateChatLastMessage(
-  global: GlobalState,
+function updateChatLastMessage<T extends GlobalState>(
+  global: T,
   chatId: string,
   message: ApiMessage,
   force = false,
 ) {
   const { chats } = global;
-  const currentLastMessage = chats.byId[chatId]?.lastMessage;
+  const chat = chats.byId[chatId];
+  const currentLastMessage = chat?.lastMessage;
+
+  const topic = chat?.isForum ? selectTopicFromMessage(global, message) : undefined;
+  if (topic) {
+    global = updateTopic(global, chatId, topic.id, {
+      lastMessageId: message.id,
+    });
+  }
 
   if (currentLastMessage && !force) {
     const isSameOrNewer = (
@@ -735,10 +858,12 @@ function updateChatLastMessage(
     }
   }
 
-  return updateChat(global, chatId, { lastMessage: message });
+  global = updateChat(global, chatId, { lastMessage: message });
+
+  return global;
 }
 
-function findLastMessage(global: GlobalState, chatId: string) {
+function findLastMessage<T extends GlobalState>(global: T, chatId: string) {
   const byId = selectChatMessages(global, chatId);
   const listedIds = selectListedIds(global, chatId, MAIN_THREAD_ID);
 
@@ -757,18 +882,29 @@ function findLastMessage(global: GlobalState, chatId: string) {
   return undefined;
 }
 
-function deleteMessages(chatId: string | undefined, ids: number[], actions: GlobalActions, global: GlobalState) {
+function deleteMessages<T extends GlobalState>(
+  global: T, chatId: string | undefined, ids: number[], actions: RequiredGlobalActions,
+) {
   // Channel update
 
   if (chatId) {
+    const chat = selectChat(global, chatId);
+    if (!chat) return;
+
     ids.forEach((id) => {
       global = updateChatMessage(global, chatId, id, {
         isDeleting: true,
       });
 
+      global = clearMessageTranslation(global, chatId, id);
+
       const newLastMessage = findLastMessage(global, chatId);
       if (newLastMessage) {
         global = updateChatLastMessage(global, chatId, newLastMessage, true);
+      }
+
+      if (chat.topics?.[id]) {
+        global = deleteTopic(global, chatId, id);
       }
     });
 
@@ -784,16 +920,18 @@ function deleteMessages(chatId: string | undefined, ids: number[], actions: Glob
 
       global = updateThreadUnread(global, actions, message, true);
 
-      const { threadInfo } = selectThreadByMessage(global, chatId, message) || {};
-      if (threadInfo) {
-        threadIdsToUpdate.push(threadInfo.threadId);
+      const threadId = selectThreadIdFromMessage(global, message);
+      if (threadId) {
+        threadIdsToUpdate.push(threadId);
       }
     });
 
     setGlobal(global);
 
     setTimeout(() => {
-      setGlobal(deleteChatMessages(getGlobal(), chatId, ids));
+      global = getGlobal();
+      global = deleteChatMessages(global, chatId, ids);
+      setGlobal(global);
 
       unique(threadIdsToUpdate).forEach((threadId) => {
         actions.requestThreadInfoUpdate({ chatId, threadId });
@@ -822,7 +960,9 @@ function deleteMessages(chatId: string | undefined, ids: number[], actions: Glob
       }
 
       setTimeout(() => {
-        setGlobal(deleteChatMessages(getGlobal(), commonBoxChatId, [id]));
+        global = getGlobal();
+        global = deleteChatMessages(global, commonBoxChatId, [id]);
+        setGlobal(global);
       }, ANIMATION_DELAY);
     }
   });
@@ -834,8 +974,8 @@ function deleteMessages(chatId: string | undefined, ids: number[], actions: Glob
   });
 }
 
-function deleteScheduledMessages(
-  chatId: string | undefined, ids: number[], actions: GlobalActions, global: GlobalState,
+function deleteScheduledMessages<T extends GlobalState>(
+  chatId: string | undefined, ids: number[], actions: RequiredGlobalActions, global: T,
 ) {
   if (!chatId) {
     return;
@@ -850,8 +990,9 @@ function deleteScheduledMessages(
   setGlobal(global);
 
   setTimeout(() => {
-    global = deleteChatScheduledMessages(getGlobal(), chatId, ids);
-    const scheduledMessages = selectScheduledMessages(global, chatId);
+    global = getGlobal();
+    global = deleteChatScheduledMessages(global, chatId, ids);
+    const scheduledMessages = selectChatScheduledMessages(global, chatId);
     global = replaceThreadParam(
       global, chatId, MAIN_THREAD_ID, 'scheduledIds', Object.keys(scheduledMessages || {}).map(Number),
     );

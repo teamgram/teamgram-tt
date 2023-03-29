@@ -1,5 +1,5 @@
 import React, {
-  memo, useCallback, useEffect, useRef, useState,
+  memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
@@ -15,14 +15,14 @@ import PremiumFeatureModal, {
 import { TME_LINK_PREFIX } from '../../../config';
 import { formatCurrency } from '../../../util/formatCurrency';
 import buildClassName from '../../../util/buildClassName';
-import { selectIsCurrentUserPremium, selectUser } from '../../../global/selectors';
+import { selectTabState, selectIsCurrentUserPremium, selectUser } from '../../../global/selectors';
 import { renderTextWithEntities } from '../../common/helpers/renderTextWithEntities';
 import { selectPremiumLimit } from '../../../global/selectors/limits';
 import renderText from '../../common/helpers/renderText';
 import { getUserFullName } from '../../../global/helpers';
 
 import useLang from '../../../hooks/useLang';
-import useOnChange from '../../../hooks/useOnChange';
+import useSyncEffect from '../../../hooks/useSyncEffect';
 
 import Modal from '../../ui/Modal';
 import Button from '../../ui/Button';
@@ -41,6 +41,7 @@ import PremiumChats from '../../../assets/premium/PremiumChats.svg';
 import PremiumBadge from '../../../assets/premium/PremiumBadge.svg';
 import PremiumVideo from '../../../assets/premium/PremiumVideo.svg';
 import PremiumEmoji from '../../../assets/premium/PremiumEmoji.svg';
+import PremiumStatus from '../../../assets/premium/PremiumStatus.svg';
 
 import styles from './PremiumMainModal.module.scss';
 
@@ -48,7 +49,7 @@ const LIMIT_ACCOUNTS = 4;
 
 const PREMIUM_FEATURE_COLOR_ICONS: Record<string, string> = {
   double_limits: PremiumLimits,
-  unique_reactions: PremiumReactions,
+  infinite_reactions: PremiumReactions,
   premium_stickers: PremiumStickers,
   animated_emoji: PremiumEmoji,
   no_ads: PremiumAds,
@@ -58,6 +59,7 @@ const PREMIUM_FEATURE_COLOR_ICONS: Record<string, string> = {
   more_upload: PremiumFile,
   advanced_chat_management: PremiumChats,
   animated_userpics: PremiumVideo,
+  emoji_status: PremiumStatus,
 };
 
 export type OwnProps = {
@@ -170,11 +172,16 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
     }
   }, [isSuccess, showConfetti]);
 
-  useOnChange(([prevIsPremium]) => {
+  useSyncEffect(([prevIsPremium]) => {
     if (prevIsPremium === isPremium) return;
 
     showConfetti();
-  }, [isPremium]);
+  }, [isPremium, showConfetti]);
+
+  const filteredSections = useMemo(() => {
+    if (!premiumPromoOrder) return PREMIUM_FEATURE_SECTIONS;
+    return premiumPromoOrder.filter((section) => PREMIUM_FEATURE_SECTIONS.includes(section));
+  }, [premiumPromoOrder]);
 
   if (!promo) return undefined;
 
@@ -254,8 +261,7 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
             </div>
 
             <div className={buildClassName(styles.list, isPremium && styles.noButton)}>
-              {(premiumPromoOrder || PREMIUM_FEATURE_SECTIONS).map((section, index) => {
-                if (!PREMIUM_FEATURE_SECTIONS.includes(section)) return undefined;
+              {filteredSections.map((section, index) => {
                 return (
                   <PremiumFeatureItem
                     key={section}
@@ -309,16 +315,19 @@ const PremiumMainModal: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>((global): StateProps => {
+  const {
+    premiumModal,
+  } = selectTabState(global);
   return {
     currentUserId: global.currentUserId,
-    promo: global.premiumModal?.promo,
-    isClosing: global.premiumModal?.isClosing,
-    isSuccess: global.premiumModal?.isSuccess,
-    isGift: global.premiumModal?.isGift,
-    monthsAmount: global.premiumModal?.monthsAmount,
-    fromUser: global.premiumModal?.fromUserId ? selectUser(global, global.premiumModal.fromUserId) : undefined,
-    toUser: global.premiumModal?.toUserId ? selectUser(global, global.premiumModal.toUserId) : undefined,
-    initialSection: global.premiumModal?.initialSection,
+    promo: premiumModal?.promo,
+    isClosing: premiumModal?.isClosing,
+    isSuccess: premiumModal?.isSuccess,
+    isGift: premiumModal?.isGift,
+    monthsAmount: premiumModal?.monthsAmount,
+    fromUser: premiumModal?.fromUserId ? selectUser(global, premiumModal.fromUserId) : undefined,
+    toUser: premiumModal?.toUserId ? selectUser(global, premiumModal.toUserId) : undefined,
+    initialSection: premiumModal?.initialSection,
     isPremium: selectIsCurrentUserPremium(global),
     limitChannels: selectPremiumLimit(global, 'channels'),
     limitFolders: selectPremiumLimit(global, 'dialogFilters'),

@@ -1,8 +1,11 @@
 import { addActionHandler, setGlobal } from '../../index';
 
-import { addNotifyException, updateChat, updateNotifySettings } from '../../reducers';
+import {
+  addNotifyException, updateChat, updateTopic, updateNotifySettings,
+} from '../../reducers';
+import type { ActionReturnType } from '../../types';
 
-addActionHandler('apiUpdate', (global, actions, update) => {
+addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
   switch (update['@type']) {
     case 'updateNotifySettings': {
       return updateNotifySettings(global, update.peerType, update.isSilent, update.shouldShowPreviews);
@@ -18,7 +21,19 @@ addActionHandler('apiUpdate', (global, actions, update) => {
         global = updateChat(global, chatId, { isMuted });
       }
 
-      setGlobal(addNotifyException(global, chatId, { isMuted, isSilent, shouldShowPreviews }));
+      global = addNotifyException(global, chatId, { isMuted, isSilent, shouldShowPreviews });
+      setGlobal(global);
+      break;
+    }
+
+    case 'updateTopicNotifyExceptions': {
+      const {
+        chatId, topicId, isMuted,
+      } = update;
+
+      global = updateTopic(global, chatId, topicId, { isMuted });
+
+      setGlobal(global);
       break;
     }
   }

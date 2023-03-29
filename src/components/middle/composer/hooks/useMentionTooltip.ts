@@ -1,101 +1,103 @@
+import type { RefObject } from 'react';
 import {
   useCallback, useEffect, useState,
 } from '../../../../lib/teact/teact';
 import { getGlobal } from '../../../../global';
 
 import type { ApiChatMember, ApiUser } from '../../../../api/types';
+import type { Signal } from '../../../../util/signals';
+
 import { ApiMessageEntityTypes } from '../../../../api/types';
-import { EDITABLE_INPUT_ID } from '../../../../config';
-import { filterUsersByName, getUserFirstOrLastName } from '../../../../global/helpers';
+import { filterUsersByName, getMainUsername, getUserFirstOrLastName } from '../../../../global/helpers';
 import { prepareForRegExp } from '../helpers/prepareForRegExp';
 import focusEditableElement from '../../../../util/focusEditableElement';
 import { pickTruthy, unique } from '../../../../util/iteratees';
-import { throttle } from '../../../../util/schedulers';
+import { getHtmlBeforeSelection } from '../../../../util/selection';
 
 import useFlag from '../../../../hooks/useFlag';
+import useDerivedSignal from '../../../../hooks/useDerivedSignal';
+import { useThrottledResolver } from '../../../../hooks/useAsyncResolvers';
 
-const runThrottled = throttle((cb) => cb(), 500, true);
+const THROTTLE = 300;
+
 let RE_USERNAME_SEARCH: RegExp;
-
 try {
   RE_USERNAME_SEARCH = /(^|\s)@[-_\p{L}\p{M}\p{N}]*$/gui;
 } catch (e) {
-  // Support for older versions of firefox
-  RE_USERNAME_SEARCH = /(^|\s)@[-_\d\wа-яё]*$/gi;
+  // Support for older versions of Firefox
+  RE_USERNAME_SEARCH = /(^|\s)@[-_\d\wа-яёґєії]*$/gi;
 }
 
 export default function useMentionTooltip(
-  canSuggestMembers: boolean | undefined,
-  htmlRef: { current: string },
-  onUpdateHtml: (html: string) => void,
-  inputId: string = EDITABLE_INPUT_ID,
+  isEnabled: boolean,
+  getHtml: Signal<string>,
+  setHtml: (html: string) => void,
+  getSelectionRange: Signal<Range | undefined>,
+  inputRef: RefObject<HTMLDivElement>,
   groupChatMembers?: ApiChatMember[],
   topInlineBotIds?: string[],
   currentUserId?: string,
 ) {
-  const [isOpen, markIsOpen, unmarkIsOpen] = useFlag();
-  const [usersToMention, setUsersToMention] = useState<ApiUser[] | undefined>();
+  const [filteredUsers, setFilteredUsers] = useState<ApiUser[] | undefined>();
+  const [isManuallyClosed, markManuallyClosed, unmarkManuallyClosed] = useFlag(false);
 
-  const updateFilteredUsers = useCallback((filter, withInlineBots: boolean) => {
+  const extractUsernameTagThrottled = useThrottledResolver(() => {
+    const html = getHtml();
+    if (!isEnabled || !getSelectionRange()?.collapsed || !html.includes('@')) return undefined;
+
+    const htmlBeforeSelection = getHtmlBeforeSelection(inputRef.current!);
+
+    return prepareForRegExp(htmlBeforeSelection).match(RE_USERNAME_SEARCH)?.[0].trim();
+  }, [isEnabled, getHtml, getSelectionRange, inputRef], THROTTLE);
+
+  const getUsernameTag = useDerivedSignal(
+    extractUsernameTagThrottled, [extractUsernameTagThrottled, getHtml, getSelectionRange], true,
+  );
+
+  const getWithInlineBots = useDerivedSignal(() => {
+    return isEnabled && getHtml().startsWith('@');
+  }, [getHtml, isEnabled]);
+
+  useEffect(() => {
+    const usernameTag = getUsernameTag();
+
+    if (!usernameTag || !(groupChatMembers || topInlineBotIds)) {
+      setFilteredUsers(undefined);
+      return;
+    }
+
     // No need for expensive global updates on users, so we avoid them
     const usersById = getGlobal().users.byId;
-
-    if (!(groupChatMembers || topInlineBotIds) || !usersById) {
-      setUsersToMention(undefined);
-
+    if (!usersById) {
+      setFilteredUsers(undefined);
       return;
     }
 
-    runThrottled(() => {
-      const memberIds = groupChatMembers?.reduce((acc: string[], member) => {
-        if (member.userId !== currentUserId) {
-          acc.push(member.userId);
-        }
+    const memberIds = groupChatMembers?.reduce((acc: string[], member) => {
+      if (member.userId !== currentUserId) {
+        acc.push(member.userId);
+      }
 
-        return acc;
-      }, []);
+      return acc;
+    }, []);
 
-      const filteredIds = filterUsersByName(unique([
-        ...((withInlineBots && topInlineBotIds) || []),
-        ...(memberIds || []),
-      ]), usersById, filter);
+    const filter = usernameTag.substring(1);
+    const filteredIds = filterUsersByName(unique([
+      ...((getWithInlineBots() && topInlineBotIds) || []),
+      ...(memberIds || []),
+    ]), usersById, filter);
 
-      setUsersToMention(Object.values(pickTruthy(usersById, filteredIds)));
-    });
-  }, [currentUserId, groupChatMembers, topInlineBotIds]);
-
-  const html = htmlRef.current;
-  useEffect(() => {
-    if (!canSuggestMembers || !html.length) {
-      unmarkIsOpen();
-      return;
-    }
-
-    const usernameFilter = html.includes('@') && getUsernameFilter(html);
-
-    if (usernameFilter) {
-      const filter = usernameFilter ? usernameFilter.substr(1) : '';
-      updateFilteredUsers(filter, canSuggestInlineBots(html));
-    } else {
-      unmarkIsOpen();
-    }
-  }, [canSuggestMembers, updateFilteredUsers, markIsOpen, unmarkIsOpen, html]);
-
-  useEffect(() => {
-    if (usersToMention?.length) {
-      markIsOpen();
-    } else {
-      unmarkIsOpen();
-    }
-  }, [markIsOpen, unmarkIsOpen, usersToMention]);
+    setFilteredUsers(Object.values(pickTruthy(usersById, filteredIds)));
+  }, [currentUserId, groupChatMembers, topInlineBotIds, getUsernameTag, getWithInlineBots]);
 
   const insertMention = useCallback((user: ApiUser, forceFocus = false) => {
-    if (!user.username && !getUserFirstOrLastName(user)) {
+    if (!user.usernames && !getUserFirstOrLastName(user)) {
       return;
     }
 
-    const insertedHtml = user.username
-      ? `@${user.username}`
+    const mainUsername = getMainUsername(user);
+    const htmlToInsert = mainUsername
+      ? `@${mainUsername}`
       : `<a
           class="text-entity-link"
           data-entity-type="${ApiMessageEntityTypes.MentionName}"
@@ -104,33 +106,37 @@ export default function useMentionTooltip(
           dir="auto"
         >${getUserFirstOrLastName(user)}</a>`;
 
-    const currentHtml = htmlRef.current;
-    const atIndex = currentHtml.lastIndexOf('@');
+    const inputEl = inputRef.current!;
+    const htmlBeforeSelection = getHtmlBeforeSelection(inputEl);
+    const fixedHtmlBeforeSelection = cleanWebkitNewLines(htmlBeforeSelection);
+    const atIndex = fixedHtmlBeforeSelection.lastIndexOf('@');
+
     if (atIndex !== -1) {
-      onUpdateHtml(`${currentHtml.substr(0, atIndex)}${insertedHtml}&nbsp;`);
-      const messageInput = document.getElementById(inputId)!;
+      const newHtml = `${fixedHtmlBeforeSelection.substr(0, atIndex)}${htmlToInsert}&nbsp;`;
+      const htmlAfterSelection = cleanWebkitNewLines(inputEl.innerHTML).substring(fixedHtmlBeforeSelection.length);
+
+      setHtml(`${newHtml}${htmlAfterSelection}`);
+
       requestAnimationFrame(() => {
-        focusEditableElement(messageInput, forceFocus);
+        focusEditableElement(inputEl, forceFocus);
       });
     }
 
-    unmarkIsOpen();
-  }, [htmlRef, inputId, onUpdateHtml, unmarkIsOpen]);
+    setFilteredUsers(undefined);
+  }, [inputRef, setHtml]);
+
+  useEffect(unmarkManuallyClosed, [unmarkManuallyClosed, getHtml]);
 
   return {
-    isMentionTooltipOpen: isOpen,
-    closeMentionTooltip: unmarkIsOpen,
+    isMentionTooltipOpen: Boolean(filteredUsers?.length && !isManuallyClosed),
+    closeMentionTooltip: markManuallyClosed,
     insertMention,
-    mentionFilteredUsers: usersToMention,
+    mentionFilteredUsers: filteredUsers,
   };
 }
 
-function getUsernameFilter(html: string) {
-  const username = prepareForRegExp(html).match(RE_USERNAME_SEARCH);
-
-  return username ? username[0].trim() : undefined;
-}
-
-function canSuggestInlineBots(html: string) {
-  return html.startsWith('@');
+// Webkit replaces the line break with the `<div><br /></div>` or `<div></div>` code.
+// It is necessary to clean the html to a single form before processing.
+function cleanWebkitNewLines(html: string) {
+  return html.replace(/<div>(<br>|<br\s?\/>)?<\/div>/gi, '<br>');
 }

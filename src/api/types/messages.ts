@@ -28,6 +28,7 @@ export interface ApiPhoto {
   sizes: ApiPhotoSize[];
   videoSizes?: ApiVideoSize[];
   blobUrl?: string;
+  isSpoiler?: boolean;
 }
 
 export interface ApiSticker {
@@ -43,10 +44,11 @@ export interface ApiSticker {
   isPreloadedGlobally?: boolean;
   hasEffect?: boolean;
   isFree?: boolean;
+  shouldUseTextColor?: boolean;
 }
 
 export interface ApiStickerSet {
-  archived?: true;
+  isArchived?: true;
   isLottie?: true;
   isVideos?: true;
   isEmoji?: true;
@@ -87,8 +89,10 @@ export interface ApiVideo {
   supportsStreaming?: boolean;
   isRound?: boolean;
   isGif?: boolean;
+  isSpoiler?: boolean;
   thumbnail?: ApiThumbnail;
   blobUrl?: string;
+  previewBlobUrl?: string;
   size: number;
 }
 
@@ -166,6 +170,7 @@ export interface ApiPoll {
 export type ApiInputInvoice = {
   chatId: string;
   messageId: number;
+  isExtendedMedia?: boolean;
 } | {
   slug: string;
 };
@@ -258,7 +263,7 @@ export interface ApiAction {
   text: string;
   targetUserIds?: string[];
   targetChatId?: string;
-  type: 'historyClear' | 'contactSignUp' | 'chatCreate' | 'other';
+  type: 'historyClear' | 'contactSignUp' | 'chatCreate' | 'topicCreate' | 'suggestProfilePhoto' | 'other';
   photo?: ApiPhoto;
   amount?: number;
   currency?: string;
@@ -267,6 +272,8 @@ export interface ApiAction {
   phoneCall?: PhoneCallAction;
   score?: number;
   months?: number;
+  topicEmojiIconId?: string;
+  isTopicAction?: boolean;
 }
 
 export interface ApiWebPage {
@@ -285,6 +292,7 @@ export interface ApiWebPage {
 
 export interface ApiMessageForwardInfo {
   date: number;
+  isImported?: boolean;
   isChannelPost: boolean;
   channelPostId?: number;
   isLinkedChannelPost?: boolean;
@@ -292,7 +300,7 @@ export interface ApiMessageForwardInfo {
   senderUserId?: string;
   fromMessageId?: number;
   hiddenUserName?: string;
-  adminTitle?: string;
+  postAuthorTitle?: string;
 }
 
 export type ApiMessageEntityDefault = {
@@ -388,6 +396,7 @@ export interface ApiMessage {
   replyToChatId?: string;
   replyToMessageId?: number;
   replyToTopMessageId?: number;
+  isTopicReply?: true;
   sendingState?: 'messageSendingStatePending' | 'messageSendingStateFailed';
   forwardInfo?: ApiMessageForwardInfo;
   isDeleting?: boolean;
@@ -405,11 +414,13 @@ export interface ApiMessage {
   keyboardButtons?: ApiKeyboardButtons;
   keyboardPlaceholder?: string;
   isKeyboardSingleUse?: boolean;
+  isKeyboardSelective?: boolean;
   viaBotId?: string;
-  threadInfo?: ApiThreadInfo;
-  adminTitle?: string;
+  repliesThreadInfo?: ApiThreadInfo;
+  postAuthorTitle?: string;
   isScheduled?: boolean;
   shouldHideKeyboardButtons?: boolean;
+  isHideKeyboardSelective?: boolean;
   isFromScheduled?: boolean;
   isSilent?: boolean;
   seenByUserIds?: string[];
@@ -434,15 +445,15 @@ export interface ApiReactions {
 
 export interface ApiUserReaction {
   userId: string;
-  reaction: string;
+  reaction: ApiReaction;
   isBig?: boolean;
   isUnread?: boolean;
 }
 
 export interface ApiReactionCount {
-  isChosen?: boolean;
+  chosenOrder?: number;
   count: number;
-  reaction: string;
+  reaction: ApiReaction;
 }
 
 export interface ApiAvailableReaction {
@@ -452,13 +463,36 @@ export interface ApiAvailableReaction {
   staticIcon?: ApiDocument;
   centerIcon?: ApiDocument;
   aroundAnimation?: ApiDocument;
-  reaction: string;
+  reaction: ApiReactionEmoji;
   title: string;
   isInactive?: boolean;
   isPremium?: boolean;
 }
 
+type ApiChatReactionsAll = {
+  type: 'all';
+  areCustomAllowed?: true;
+};
+
+type ApiChatReactionsSome = {
+  type: 'some';
+  allowed: ApiReaction[];
+};
+
+export type ApiChatReactions = ApiChatReactionsAll | ApiChatReactionsSome;
+
+export type ApiReactionEmoji = {
+  emoticon: string;
+};
+
+export type ApiReactionCustomEmoji = {
+  documentId: string;
+};
+
+export type ApiReaction = ApiReactionEmoji | ApiReactionCustomEmoji;
+
 export interface ApiThreadInfo {
+  isComments?: boolean;
   threadId: number;
   chatId: string;
   topMessageId?: number;
@@ -570,6 +604,7 @@ export type ApiKeyboardButtons = ApiKeyboardButton[][];
 export type ApiReplyKeyboard = {
   keyboardPlaceholder?: string;
   isKeyboardSingleUse?: boolean;
+  isKeyboardSelective?: boolean;
 } & {
   [K in 'inlineButtons' | 'keyboardButtons']?: ApiKeyboardButtons;
 };

@@ -8,15 +8,17 @@ import type {
 import type { AnimationLevel } from '../../types';
 import { MediaViewerOrigin } from '../../types';
 
-import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../util/environment';
+import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 import {
-  selectChat, selectChatMessage, selectIsMessageProtected, selectScheduledMessage, selectUser,
+  selectChat, selectChatMessage, selectTabState, selectIsMessageProtected, selectScheduledMessage, selectUser,
 } from '../../global/selectors';
 import { calculateMediaViewerDimensions } from '../common/helpers/mediaDimensions';
 import { renderMessageText } from '../common/helpers/renderMessageText';
 import stopEvent from '../../util/stopEvent';
 import buildClassName from '../../util/buildClassName';
 import { useMediaProps } from './hooks/useMediaProps';
+import useAppLayout from '../../hooks/useAppLayout';
+import useLang from '../../hooks/useLang';
 
 import Spinner from '../ui/Spinner';
 import MediaViewerFooter from './MediaViewerFooter';
@@ -77,19 +79,19 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
     isMoving,
   } = props;
 
+  const lang = useLang();
+
   const isGhostAnimation = animationLevel === 2;
 
   const {
     isVideo,
     isPhoto,
+    actionPhoto,
     bestImageData,
+    bestData,
     dimensions,
     isGif,
     isVideoAvatar,
-    localBlobUrl,
-    fullMediaBlobUrl,
-    previewBlobUrl,
-    pictogramBlobUrl,
     videoSize,
     loadProgress,
   } = useMediaProps({
@@ -97,19 +99,20 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
   });
 
   const isOpen = Boolean(avatarOwner || mediaId);
+  const { isMobile } = useAppLayout();
 
   const toggleControls = useCallback((isVisible) => {
     setControlsVisible?.(isVisible);
   }, [setControlsVisible]);
 
-  if (avatarOwner) {
+  if (avatarOwner || actionPhoto) {
     if (!isVideoAvatar) {
       return (
         <div key={chatId} className="MediaViewerContent">
           {renderPhoto(
-            fullMediaBlobUrl || previewBlobUrl,
+            bestData,
             calculateMediaViewerDimensions(dimensions, false),
-            !IS_SINGLE_COLUMN_LAYOUT && !isProtected,
+            !isMobile && !isProtected,
             isProtected,
           )}
         </div>
@@ -119,7 +122,7 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
         <div key={chatId} className="MediaViewerContent">
           <VideoPlayer
             key={mediaId}
-            url={localBlobUrl || fullMediaBlobUrl}
+            url={bestData}
             isGif
             posterData={bestImageData}
             posterSize={calculateMediaViewerDimensions(dimensions!, false, true)}
@@ -143,7 +146,9 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
   }
 
   if (!message) return undefined;
-  const textParts = renderMessageText(message);
+  const textParts = message.content.action?.type === 'suggestProfilePhoto'
+    ? lang('Conversation.SuggestedPhotoTitle')
+    : renderMessageText(message);
   const hasFooter = Boolean(textParts);
 
   return (
@@ -151,20 +156,20 @@ const MediaViewerContent: FC<OwnProps & StateProps> = (props) => {
       className={buildClassName('MediaViewerContent', hasFooter && 'has-footer')}
     >
       {isPhoto && renderPhoto(
-        localBlobUrl || fullMediaBlobUrl || previewBlobUrl || pictogramBlobUrl,
+        bestData,
         message && calculateMediaViewerDimensions(dimensions!, hasFooter),
-        !IS_SINGLE_COLUMN_LAYOUT && !isProtected,
+        !isMobile && !isProtected,
         isProtected,
       )}
       {isVideo && (!isActive ? renderVideoPreview(
         bestImageData,
         message && calculateMediaViewerDimensions(dimensions!, hasFooter, true),
-        !IS_SINGLE_COLUMN_LAYOUT && !isProtected,
+        !isMobile && !isProtected,
         isProtected,
       ) : (
         <VideoPlayer
           key={mediaId}
-          url={localBlobUrl || fullMediaBlobUrl}
+          url={bestData}
           isGif={isGif}
           posterData={bestImageData}
           posterSize={message && calculateMediaViewerDimensions(dimensions!, hasFooter, true)}
@@ -211,7 +216,7 @@ export default memo(withGlobal<OwnProps>(
       isMuted,
       playbackRate,
       isHidden,
-    } = global.mediaViewer;
+    } = selectTabState(global).mediaViewer;
 
     if (origin === MediaViewerOrigin.SearchResult) {
       if (!(chatId && mediaId)) {

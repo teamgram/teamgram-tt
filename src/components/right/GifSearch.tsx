@@ -4,14 +4,14 @@ import { getActions, withGlobal } from '../../global';
 
 import type { ApiChat, ApiVideo } from '../../api/types';
 
-import { IS_TOUCH_ENV } from '../../util/environment';
+import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 import {
   selectCurrentGifSearch,
   selectChat,
   selectIsChatWithBot,
   selectCurrentMessageList,
   selectCanScheduleUntilOnline,
-  selectIsChatWithSelf,
+  selectIsChatWithSelf, selectThreadInfo,
 } from '../../global/selectors';
 import { getAllowedAttachmentOptions, getCanPostInChat } from '../../global/helpers';
 import buildClassName from '../../util/buildClassName';
@@ -88,6 +88,10 @@ const GifSearch: FC<OwnProps & StateProps> = ({
     }
   }, [canSendGifs, requestCalendar, sendMessage, setGifSearchQuery]);
 
+  const handleSearchMoreGifs = useCallback(() => {
+    searchMoreGifs();
+  }, [searchMoreGifs]);
+
   const lang = useLang();
 
   useHistoryBack({
@@ -134,7 +138,7 @@ const GifSearch: FC<OwnProps & StateProps> = ({
         itemSelector=".GifButton"
         preloadBackwards={PRELOAD_BACKWARDS}
         noFastList
-        onLoadMore={searchMoreGifs}
+        onLoadMore={handleSearchMoreGifs}
       >
         {renderContent()}
       </InfiniteScroll>
@@ -151,7 +155,9 @@ export default memo(withGlobal(
     const chat = chatId ? selectChat(global, chatId) : undefined;
     const isChatWithBot = chat ? selectIsChatWithBot(global, chat) : undefined;
     const isSavedMessages = Boolean(chatId) && selectIsChatWithSelf(global, chatId);
-    const canPostInChat = Boolean(chat) && Boolean(threadId) && getCanPostInChat(chat, threadId);
+    const threadInfo = chatId && threadId ? selectThreadInfo(global, chatId, threadId) : undefined;
+    const isComments = Boolean(threadInfo?.originChannelId);
+    const canPostInChat = Boolean(chat) && Boolean(threadId) && getCanPostInChat(chat, threadId, isComments);
 
     return {
       query,

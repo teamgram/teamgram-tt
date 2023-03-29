@@ -1,7 +1,9 @@
-import type { ApiMessage, ApiPhoto, ApiStickerSet } from './messages';
+import type {
+  ApiChatReactions, ApiMessage, ApiPhoto, ApiStickerSet,
+} from './messages';
 import type { ApiBotCommand } from './bots';
 import type { ApiChatInviteImporter } from './misc';
-import type { ApiFakeType } from './users';
+import type { ApiFakeType, ApiUsername } from './users';
 
 type ApiChatType = (
   'chatTypePrivate' | 'chatTypeSecret' |
@@ -13,7 +15,7 @@ export interface ApiChat {
   id: string;
   folderId?: number;
   type: ApiChatType;
-  title?: string;
+  title: string;
   hasUnreadMark?: boolean;
   lastMessage?: ApiMessage;
   lastReadOutboxMessageId?: number;
@@ -29,7 +31,7 @@ export interface ApiChat {
   isMin?: boolean;
   hasVideoAvatar?: boolean;
   avatarHash?: string;
-  username?: string;
+  usernames?: ApiUsername[];
   membersCount?: number;
   joinDate?: number;
   isSupport?: boolean;
@@ -37,6 +39,11 @@ export interface ApiChat {
   draftDate?: number;
   isProtected?: boolean;
   fakeType?: ApiFakeType;
+  isForum?: boolean;
+  topics?: Record<number, ApiTopic>;
+  listedTopicIds?: number[];
+  topicsCount?: number;
+  orderedPinnedTopicIds?: number[];
 
   // Calls
   isCallActive?: boolean;
@@ -62,8 +69,6 @@ export interface ApiChat {
   settings?: ApiChatSettings;
   // Obtained from GetFullChat / GetFullChannel
   fullInfo?: ApiChatFullInfo;
-  // Obtained with UpdateUserTyping or UpdateChatUserTyping updates
-  typingStatus?: ApiTypingStatus;
 
   joinRequests?: ApiChatInviteImporter[];
   isJoinToSend?: boolean;
@@ -86,7 +91,7 @@ export interface ApiChatFullInfo {
   onlineCount?: number;
   members?: ApiChatMember[];
   kickedMembers?: ApiChatMember[];
-  adminMembers?: ApiChatMember[];
+  adminMembersById?: Record<string, ApiChatMember>;
   canViewMembers?: boolean;
   isPreHistoryHidden?: boolean;
   inviteLink?: string;
@@ -101,7 +106,7 @@ export interface ApiChatFullInfo {
   };
   linkedChatId?: string;
   botCommands?: ApiBotCommand[];
-  enabledReactions?: string[];
+  enabledReactions?: ApiChatReactions;
   sendAsId?: string;
   canViewStatistics?: boolean;
   recentRequesterIds?: string[];
@@ -109,6 +114,7 @@ export interface ApiChatFullInfo {
   statisticsDcId?: number;
   stickerSet?: ApiStickerSet;
   profilePhoto?: ApiPhoto;
+  areParticipantsHidden?: boolean;
 }
 
 export interface ApiChatMember {
@@ -135,6 +141,7 @@ export interface ApiChatAdminRights {
   addAdmins?: true;
   anonymous?: true;
   manageCall?: true;
+  manageTopics?: true;
 }
 
 export interface ApiChatBannedRights {
@@ -150,6 +157,14 @@ export interface ApiChatBannedRights {
   changeInfo?: true;
   inviteUsers?: true;
   pinMessages?: true;
+  manageTopics?: true;
+  sendPhotos?: true;
+  sendVideos?: true;
+  sendRoundvideos?: true;
+  sendAudios?: true;
+  sendVoices?: true;
+  sendDocs?: true;
+  sendPlain?: true;
   untilDate?: number;
 }
 
@@ -186,4 +201,26 @@ export interface ApiChatSettings {
 export interface ApiSendAsPeerId {
   id: string;
   isPremium?: boolean;
+}
+
+export interface ApiTopic {
+  id: number;
+  isClosed?: boolean;
+  isPinned?: boolean;
+  isHidden?: boolean;
+  isOwner?: boolean;
+  // eslint-disable-next-line max-len
+  // TODO[forums] https://github.com/telegramdesktop/tdesktop/blob/1aece79a471d99a8b63d826b1bce1f36a04d7293/Telegram/SourceFiles/data/data_forum_topic.cpp#L318
+  isMin?: boolean;
+  date: number;
+  title: string;
+  iconColor: number;
+  iconEmojiId?: string;
+  lastMessageId: number;
+  unreadCount: number;
+  unreadMentionsCount: number;
+  unreadReactionsCount: number;
+  fromId: string;
+
+  isMuted?: boolean;
 }

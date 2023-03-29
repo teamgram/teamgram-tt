@@ -1,12 +1,14 @@
 import type { ApiMessageEntity, ApiFormattedText } from '../api/types';
 import { ApiMessageEntityTypes } from '../api/types';
 import { RE_LINK_TEMPLATE } from '../config';
+import { IS_EMOJI_SUPPORTED } from './windowEnvironment';
 
 export const ENTITY_CLASS_BY_NODE_NAME: Record<string, ApiMessageEntityTypes> = {
   B: ApiMessageEntityTypes.Bold,
   STRONG: ApiMessageEntityTypes.Bold,
   I: ApiMessageEntityTypes.Italic,
   EM: ApiMessageEntityTypes.Italic,
+  INS: ApiMessageEntityTypes.Underline,
   U: ApiMessageEntityTypes.Underline,
   S: ApiMessageEntityTypes.Strike,
   STRIKE: ApiMessageEntityTypes.Strike,
@@ -63,7 +65,7 @@ export default function parseMessageInput(
   };
 }
 
-function fixImageContent(fragment: HTMLDivElement) {
+export function fixImageContent(fragment: HTMLDivElement) {
   fragment.querySelectorAll('img').forEach((node) => {
     if (node.dataset.documentId) { // Custom Emoji
       node.textContent = (node as HTMLImageElement).alt || '';
@@ -101,9 +103,13 @@ function parseMarkdown(html: string) {
   );
 
   // Custom Emoji markdown tag
+  if (!IS_EMOJI_SUPPORTED) {
+    // Prepare alt text for custom emoji
+    parsedHtml = parsedHtml.replace(/\[<img[^>]+alt="([^"]+)"[^>]*>]/gm, '[$1]');
+  }
   parsedHtml = parsedHtml.replace(
-    /(^|\s)(?!<(?:code|pre)[^<]*|<\/)\[([^\]\n]+)\]\(customEmoji:(\d+)\)(?![^<]*<\/(?:code|pre)>)(\s|$)/g,
-    '$1<img alt="$2" data-document-id="$3">$4',
+    /(?!<(?:code|pre)[^<]*|<\/)\[([^\]\n]+)\]\(customEmoji:(\d+)\)(?![^<]*<\/(?:code|pre)>)/g,
+    '<img alt="$1" data-document-id="$2">',
   );
 
   // Other simple markdown

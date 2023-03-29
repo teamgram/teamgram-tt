@@ -3,34 +3,30 @@ import React, {
   memo, useCallback, useEffect, useMemo, useRef, useState,
 } from '../../lib/teact/teact';
 
-import type {
-  ApiChat, ApiMessage, ApiUser,
-} from '../../api/types';
+import type { ApiChat, ApiMessage, ApiUser } from '../../api/types';
 import type { AnimationLevel } from '../../types';
 import { MediaViewerOrigin } from '../../types';
 
 import { getActions, withGlobal } from '../../global';
-import {
-  getChatMediaMessageIds,
-} from '../../global/helpers';
+import { getChatMediaMessageIds, isChatAdmin, isUserId } from '../../global/helpers';
 import {
   selectChat,
   selectChatMessage,
   selectChatMessages,
-  selectCurrentMediaSearch,
+  selectChatScheduledMessages,
+  selectCurrentMediaSearch, selectTabState,
   selectIsChatWithSelf,
   selectListedIds,
   selectOutlyingIds,
   selectScheduledMessage,
-  selectScheduledMessages,
   selectUser,
 } from '../../global/selectors';
 import { stopCurrentAudio } from '../../util/audioPlayer';
 import captureEscKeyListener from '../../util/captureEscKeyListener';
-import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../util/environment';
+import { IS_TOUCH_ENV } from '../../util/windowEnvironment';
 import { ANIMATION_END_DELAY } from '../../config';
 import { MEDIA_VIEWER_MEDIA_QUERY } from '../common/helpers/mediaDimensions';
-import windowSize from '../../util/windowSize';
+import { disableDirectTextInput, enableDirectTextInput } from '../../util/directInputManager';
 import { animateClosing, animateOpening } from './helpers/ghostAnimation';
 import { renderMessageText } from '../common/helpers/renderMessageText';
 
@@ -41,6 +37,7 @@ import { exitPictureInPictureIfNeeded } from '../../hooks/usePictureInPicture';
 import useLang from '../../hooks/useLang';
 import usePrevious from '../../hooks/usePrevious';
 import { useMediaProps } from './hooks/useMediaProps';
+import useAppLayout from '../../hooks/useAppLayout';
 
 import ReportModal from '../common/ReportModal';
 import Button from '../ui/Button';
@@ -58,6 +55,7 @@ type StateProps = {
   mediaId?: number;
   senderId?: string;
   isChatWithSelf?: boolean;
+  canUpdateMedia?: boolean;
   origin?: MediaViewerOrigin;
   avatarOwner?: ApiChat | ApiUser;
   message?: ApiMessage;
@@ -76,6 +74,7 @@ const MediaViewer: FC<StateProps> = ({
   mediaId,
   senderId,
   isChatWithSelf,
+  canUpdateMedia,
   origin,
   avatarOwner,
   message,
@@ -94,6 +93,7 @@ const MediaViewer: FC<StateProps> = ({
   } = getActions();
 
   const isOpen = Boolean(avatarOwner || mediaId);
+  const { isMobile } = useAppLayout();
 
   /* Animation */
   const animationKey = useRef<number>();
@@ -109,24 +109,24 @@ const MediaViewer: FC<StateProps> = ({
     webPagePhoto,
     webPageVideo,
     isVideo,
+    actionPhoto,
     isPhoto,
     bestImageData,
+    bestData,
     dimensions,
     isGif,
     isFromSharedMedia,
     avatarPhoto,
     fileName,
-    fullMediaBlobUrl,
-    previewBlobUrl,
   } = useMediaProps({
-    message, avatarOwner, mediaId, delay: isGhostAnimation && ANIMATION_DURATION,
+    message, avatarOwner, mediaId, origin, delay: isGhostAnimation && ANIMATION_DURATION,
   });
 
   const canReport = !!avatarPhoto && !isChatWithSelf;
   const isVisible = !isHidden && isOpen;
 
   /* Navigation */
-  const singleMediaId = webPagePhoto || webPageVideo ? mediaId : undefined;
+  const singleMediaId = webPagePhoto || webPageVideo || actionPhoto ? mediaId : undefined;
 
   const mediaIds = useMemo(() => {
     if (singleMediaId) {
@@ -145,20 +145,30 @@ const MediaViewer: FC<StateProps> = ({
   }
 
   useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    disableDirectTextInput();
+
+    return enableDirectTextInput;
+  }, [isOpen]);
+
+  useEffect(() => {
     if (isVisible) {
       exitPictureInPictureIfNeeded();
     }
   }, [isVisible]);
 
   useEffect(() => {
-    if (IS_SINGLE_COLUMN_LAYOUT) {
+    if (isMobile) {
       document.body.classList.toggle('is-media-viewer-open', isOpen);
     }
     // Disable user selection if media viewer is open, to prevent accidental text selection
     if (IS_TOUCH_ENV) {
       document.body.classList.toggle('no-selection', isOpen);
     }
-  }, [isOpen]);
+  }, [isMobile, isOpen]);
 
   const forceUpdate = useForceUpdate();
   useEffect(() => {
@@ -208,15 +218,17 @@ const MediaViewer: FC<StateProps> = ({
   const handleFooterClick = useCallback(() => {
     handleClose();
 
-    if (IS_SINGLE_COLUMN_LAYOUT) {
+    if (!chatId || !mediaId) return;
+
+    if (isMobile) {
       setTimeout(() => {
-        toggleChatInfo(false, { forceSyncOnIOs: true });
-        focusMessage({ chatId, threadId, mediaId });
+        toggleChatInfo({ force: false }, { forceSyncOnIOs: true });
+        focusMessage({ chatId, threadId, messageId: mediaId });
       }, ANIMATION_DURATION);
     } else {
-      focusMessage({ chatId, threadId, mediaId });
+      focusMessage({ chatId, threadId, messageId: mediaId });
     }
-  }, [handleClose, chatId, threadId, focusMessage, toggleChatInfo, mediaId]);
+  }, [handleClose, isMobile, chatId, threadId, focusMessage, toggleChatInfo, mediaId]);
 
   const handleForward = useCallback(() => {
     openForwardMenu({
@@ -231,7 +243,7 @@ const MediaViewer: FC<StateProps> = ({
       threadId,
       mediaId: id,
       avatarOwnerId: avatarOwner?.id,
-      origin,
+      origin: origin!,
     }, {
       forceOnHeavyAnimation: true,
     });
@@ -247,18 +259,6 @@ const MediaViewer: FC<StateProps> = ({
     }
   }, [isGif, isVideo]);
 
-  // Prevent refresh when rotating device to watch a video
-  useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-    windowSize.disableRefresh();
-
-    return () => {
-      windowSize.enableRefresh();
-    };
-  }, [isOpen]);
-
   const getMediaId = useCallback((fromId?: number, direction?: number): number | undefined => {
     if (fromId === undefined) return undefined;
     const index = mediaIds.indexOf(fromId);
@@ -268,14 +268,27 @@ const MediaViewer: FC<StateProps> = ({
     return undefined;
   }, [mediaIds]);
 
+  const handleBeforeDelete = useCallback(() => {
+    if (mediaIds.length <= 1) {
+      handleClose();
+      return;
+    }
+    let index = mediaId ? mediaIds.indexOf(mediaId) : -1;
+    // Before deleting, select previous media or the first one
+    index = index > 0 ? index - 1 : 0;
+    selectMedia(mediaIds[index]);
+  }, [handleClose, mediaId, mediaIds, selectMedia]);
+
   const lang = useLang();
 
   function renderSenderInfo() {
     return avatarOwner ? (
       <SenderInfo
-        key={avatarOwner.id}
+        key={mediaId}
         chatId={avatarOwner.id}
         isAvatar
+        isFallbackAvatar={isUserId(avatarOwner.id)
+          && (avatarOwner as ApiUser).photos?.[mediaId!].id === (avatarOwner as ApiUser).fullInfo?.fallbackPhoto?.id}
       />
     ) : (
       <SenderInfo
@@ -291,10 +304,11 @@ const MediaViewer: FC<StateProps> = ({
       id="MediaViewer"
       isOpen={isOpen}
       isHidden={isHidden}
+      shouldAnimateFirstRender
       noCloseTransition={shouldSkipHistoryAnimations}
     >
       <div className="media-viewer-head" dir={lang.isRtl ? 'rtl' : undefined}>
-        {IS_SINGLE_COLUMN_LAYOUT && (
+        {isMobile && (
           <Button
             className="media-viewer-close"
             round
@@ -310,11 +324,16 @@ const MediaViewer: FC<StateProps> = ({
           {renderSenderInfo()}
         </Transition>
         <MediaViewerActions
-          mediaData={fullMediaBlobUrl || previewBlobUrl}
+          mediaData={bestData}
           isVideo={isVideo}
           message={message}
+          canUpdateMedia={canUpdateMedia}
+          avatarPhoto={avatarPhoto}
+          avatarOwner={avatarOwner}
           fileName={fileName}
           canReport={canReport}
+          selectMedia={selectMedia}
+          onBeforeDelete={handleBeforeDelete}
           onReport={openReportModal}
           onCloseMediaViewer={handleClose}
           onForward={handleForward}
@@ -354,6 +373,7 @@ const MediaViewer: FC<StateProps> = ({
 
 export default memo(withGlobal(
   (global): StateProps => {
+    const { mediaViewer, shouldSkipHistoryAnimations } = selectTabState(global);
     const {
       chatId,
       threadId,
@@ -361,13 +381,12 @@ export default memo(withGlobal(
       avatarOwnerId,
       origin,
       isHidden,
-    } = global.mediaViewer;
+    } = mediaViewer;
     const {
       animationLevel,
     } = global.settings.byKey;
 
-    const { shouldSkipHistoryAnimations } = global;
-
+    const { currentUserId } = global;
     let isChatWithSelf = !!chatId && selectIsChatWithSelf(global, chatId);
 
     if (origin === MediaViewerOrigin.SearchResult) {
@@ -394,14 +413,23 @@ export default memo(withGlobal(
     }
 
     if (avatarOwnerId) {
-      const sender = selectUser(global, avatarOwnerId) || selectChat(global, avatarOwnerId);
+      const user = selectUser(global, avatarOwnerId);
+      const chat = selectChat(global, avatarOwnerId);
+      let canUpdateMedia = false;
+      if (user) {
+        canUpdateMedia = avatarOwnerId === currentUserId;
+      } else if (chat) {
+        canUpdateMedia = isChatAdmin(chat);
+      }
+
       isChatWithSelf = selectIsChatWithSelf(global, avatarOwnerId);
 
       return {
         mediaId,
         senderId: avatarOwnerId,
-        avatarOwner: sender,
+        avatarOwner: user || chat,
         isChatWithSelf,
+        canUpdateMedia,
         animationLevel,
         origin,
         shouldSkipHistoryAnimations,
@@ -427,13 +455,15 @@ export default memo(withGlobal(
     let chatMessages: Record<number, ApiMessage> | undefined;
 
     if (origin && [MediaViewerOrigin.ScheduledAlbum, MediaViewerOrigin.ScheduledInline].includes(origin)) {
-      chatMessages = selectScheduledMessages(global, chatId);
+      chatMessages = selectChatScheduledMessages(global, chatId);
     } else {
       chatMessages = selectChatMessages(global, chatId);
     }
     let collectionIds: number[] | undefined;
 
-    if (origin === MediaViewerOrigin.Inline || origin === MediaViewerOrigin.Album) {
+    if (origin === MediaViewerOrigin.Inline
+      || origin === MediaViewerOrigin.Album
+      || origin === MediaViewerOrigin.SuggestedAvatar) {
       collectionIds = selectOutlyingIds(global, chatId, threadId) || selectListedIds(global, chatId, threadId);
     } else if (origin === MediaViewerOrigin.SharedMedia) {
       const currentSearch = selectCurrentMediaSearch(global);

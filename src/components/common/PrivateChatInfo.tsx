@@ -1,14 +1,18 @@
-import React, { useEffect, useCallback, memo } from '../../lib/teact/teact';
+import React, {
+  useEffect, useCallback, memo, useMemo,
+} from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import type { FC } from '../../lib/teact/teact';
-import type { ApiUser, ApiTypingStatus, ApiUserStatus } from '../../api/types';
+import type {
+  ApiUser, ApiTypingStatus, ApiUserStatus, ApiChatMember,
+} from '../../api/types';
 import type { GlobalState } from '../../global/types';
 import type { AnimationLevel } from '../../types';
 import { MediaViewerOrigin } from '../../types';
 
 import { selectChatMessages, selectUser, selectUserStatus } from '../../global/selectors';
-import { getUserStatus, isUserOnline } from '../../global/helpers';
+import { getMainUsername, getUserStatus, isUserOnline } from '../../global/helpers';
 import buildClassName from '../../util/buildClassName';
 import renderText from './helpers/renderText';
 
@@ -31,8 +35,10 @@ type OwnProps = {
   withFullInfo?: boolean;
   withUpdatingStatus?: boolean;
   withVideoAvatar?: boolean;
+  emojiStatusSize?: number;
   noStatusOrTyping?: boolean;
   noRtl?: boolean;
+  adminMember?: ApiChatMember;
 };
 
 type StateProps =
@@ -42,7 +48,6 @@ type StateProps =
     isSavedMessages?: boolean;
     animationLevel: AnimationLevel;
     areMessagesLoaded: boolean;
-    serverTimeOffset: number;
   }
   & Pick<GlobalState, 'lastSyncTime'>;
 
@@ -56,6 +61,7 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
   withFullInfo,
   withUpdatingStatus,
   withVideoAvatar,
+  emojiStatusSize,
   noStatusOrTyping,
   noRtl,
   user,
@@ -64,7 +70,7 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
   areMessagesLoaded,
   animationLevel,
   lastSyncTime,
-  serverTimeOffset,
+  adminMember,
 }) => {
   const {
     loadFullUser,
@@ -93,6 +99,7 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
   }, [user, avatarSize, openMediaViewer]);
 
   const lang = useLang();
+  const mainUsername = useMemo(() => user && withUsername && getMainUsername(user), [user, withUsername]);
 
   if (!user) {
     return undefined;
@@ -123,9 +130,38 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
 
     return (
       <span className={buildClassName('status', isUserOnline(user, userStatus) && 'online')}>
-        {withUsername && user.username && <span className="handle">{user.username}</span>}
-        <span className="user-status" dir="auto">{getUserStatus(lang, user, userStatus, serverTimeOffset)}</span>
+        {mainUsername && <span className="handle">{mainUsername}</span>}
+        <span className="user-status" dir="auto">{getUserStatus(lang, user, userStatus)}</span>
       </span>
+    );
+  }
+
+  const customTitle = adminMember
+    ? adminMember.customTitle || lang(adminMember.isOwner ? 'GroupInfo.LabelOwner' : 'GroupInfo.LabelAdmin')
+    : undefined;
+
+  function renderNameTitle() {
+    if (customTitle) {
+      return (
+        <div className="info-name-title">
+          <FullNameTitle
+            peer={user!}
+            withEmojiStatus
+            emojiStatusSize={emojiStatusSize}
+            isSavedMessages={isSavedMessages}
+          />
+          {customTitle && <span className="custom-title">{customTitle}</span>}
+        </div>
+      );
+    }
+
+    return (
+      <FullNameTitle
+        peer={user!}
+        withEmojiStatus
+        emojiStatusSize={emojiStatusSize}
+        isSavedMessages={isSavedMessages}
+      />
     );
   }
 
@@ -141,7 +177,7 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
         animationLevel={animationLevel}
       />
       <div className="info">
-        <FullNameTitle peer={user} withEmojiStatus isSavedMessages={isSavedMessages} />
+        {renderNameTitle()}
         {(status || (!isSavedMessages && !noStatusOrTyping)) && renderStatusOrTyping()}
       </div>
     </div>
@@ -150,7 +186,7 @@ const PrivateChatInfo: FC<OwnProps & StateProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   (global, { userId, forceShowSelf }): StateProps => {
-    const { lastSyncTime, serverTimeOffset } = global;
+    const { lastSyncTime } = global;
     const user = selectUser(global, userId);
     const userStatus = selectUserStatus(global, userId);
     const isSavedMessages = !forceShowSelf && user && user.isSelf;
@@ -162,7 +198,6 @@ export default memo(withGlobal<OwnProps>(
       userStatus,
       isSavedMessages,
       areMessagesLoaded,
-      serverTimeOffset,
       animationLevel: global.settings.byKey.animationLevel,
     };
   },

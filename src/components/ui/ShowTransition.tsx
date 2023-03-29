@@ -13,6 +13,7 @@ type OwnProps = {
   className?: string;
   onClick?: (e: React.MouseEvent<HTMLElement, MouseEvent>) => void;
   noCloseTransition?: boolean;
+  shouldAnimateFirstRender?: boolean;
   children: React.ReactNode;
 };
 
@@ -25,16 +26,22 @@ const ShowTransition: FC<OwnProps> = ({
   onClick,
   children,
   noCloseTransition,
+  shouldAnimateFirstRender,
 }) => {
+  const prevIsOpen = usePrevious(isOpen);
+  const prevChildren = usePrevious(children);
+  const fromChildrenRef = useRef<React.ReactNode>();
+  const isFirstRender = prevIsOpen === undefined;
   const {
     shouldRender,
     transitionClassNames,
   } = useShowTransition(
-    isOpen && !isHidden, undefined, undefined, isCustom ? false : undefined, noCloseTransition,
+    isOpen && !isHidden,
+    undefined,
+    isFirstRender && !shouldAnimateFirstRender,
+    isCustom ? false : undefined,
+    noCloseTransition,
   );
-  const prevIsOpen = usePrevious(isOpen);
-  const prevChildren = usePrevious(children);
-  const fromChildrenRef = useRef<React.ReactNode>();
 
   if (prevIsOpen && !isOpen) {
     fromChildrenRef.current = prevChildren;

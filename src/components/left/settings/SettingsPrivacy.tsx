@@ -23,11 +23,14 @@ type StateProps = {
   isCurrentUserPremium?: boolean;
   hasPassword?: boolean;
   hasPasscode?: boolean;
+  isAuthRememberMe?: boolean;
   blockedCount: number;
   webAuthCount: number;
   isSensitiveEnabled?: boolean;
   canChangeSensitive?: boolean;
+  canDisplayAutoarchiveSetting: boolean;
   shouldArchiveAndMuteNewNonContact?: boolean;
+  canDisplayChatInTitle?: boolean;
   privacyPhoneNumber?: ApiPrivacySettings;
   privacyLastSeen?: ApiPrivacySettings;
   privacyProfilePhoto?: ApiPrivacySettings;
@@ -47,7 +50,9 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
   webAuthCount,
   isSensitiveEnabled,
   canChangeSensitive,
+  canDisplayAutoarchiveSetting,
   shouldArchiveAndMuteNewNonContact,
+  canDisplayChatInTitle,
   privacyPhoneNumber,
   privacyLastSeen,
   privacyProfilePhoto,
@@ -58,6 +63,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
   privacyPhoneP2P,
   onScreenSelect,
   onReset,
+  isAuthRememberMe,
 }) => {
   const {
     loadPrivacySettings,
@@ -69,6 +75,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
     updateGlobalPrivacySettings,
     loadWebAuthorizations,
     showNotification,
+    setSettingOption,
   } = getActions();
 
   useEffect(() => {
@@ -108,6 +115,16 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
     }
   }, [isCurrentUserPremium, lang, onScreenSelect, showNotification]);
 
+  const handleChatInTitleChange = useCallback((isChecked: boolean) => {
+    setSettingOption({
+      canDisplayChatInTitle: isChecked,
+    });
+  }, []);
+
+  const handleUpdateContentSettings = useCallback((isChecked: boolean) => {
+    updateContentSettings(isChecked);
+  }, [updateContentSettings]);
+
   function getVisibilityValue(setting?: ApiPrivacySettings) {
     const { visibility } = setting || {};
     const blockCount = setting ? setting.blockChatIds.length + setting.blockUserIds.length : 0;
@@ -143,29 +160,23 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
           {lang('BlockedUsers')}
           <span className="settings-item__current-value">{blockedCount || ''}</span>
         </ListItem>
-        <ListItem
-          icon="web"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(SettingsScreens.ActiveWebsites)}
-        >
-          {lang('PrivacySettings.WebSessions')}
-          <span className="settings-item__current-value">{webAuthCount || ''}</span>
-        </ListItem>
-        <ListItem
-          icon="key"
-          narrow
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={() => onScreenSelect(
-            hasPasscode ? SettingsScreens.PasscodeEnabled : SettingsScreens.PasscodeDisabled,
-          )}
-        >
-          <div className="multiline-menu-item">
-            <span className="title">{lang('Passcode')}</span>
-            <span className="subtitle" dir="auto">
-              {lang(hasPasscode ? 'PasswordOn' : 'PasswordOff')}
-            </span>
-          </div>
-        </ListItem>
+        {isAuthRememberMe && (
+          <ListItem
+            icon="key"
+            narrow
+            // eslint-disable-next-line react/jsx-no-bind
+            onClick={() => onScreenSelect(
+              hasPasscode ? SettingsScreens.PasscodeEnabled : SettingsScreens.PasscodeDisabled,
+            )}
+          >
+            <div className="multiline-menu-item">
+              <span className="title">{lang('Passcode')}</span>
+              <span className="subtitle" dir="auto">
+                {lang(hasPasscode ? 'PasswordOn' : 'PasswordOff')}
+              </span>
+            </div>
+          </ListItem>
+        )}
         <ListItem
           icon="lock"
           narrow
@@ -181,6 +192,16 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
             </span>
           </div>
         </ListItem>
+        {webAuthCount > 0 && (
+          <ListItem
+            icon="web"
+            // eslint-disable-next-line react/jsx-no-bind
+            onClick={() => onScreenSelect(SettingsScreens.ActiveWebsites)}
+          >
+            {lang('PrivacySettings.WebSessions')}
+            <span className="settings-item__current-value">{webAuthCount}</span>
+          </ListItem>
+        )}
       </div>
 
       <div className="settings-item">
@@ -294,15 +315,28 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
         </ListItem>
       </div>
 
+      {canDisplayAutoarchiveSetting && (
+        <div className="settings-item">
+          <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>
+            {lang('NewChatsFromNonContacts')}
+          </h4>
+          <Checkbox
+            label={lang('ArchiveAndMute')}
+            subLabel={lang('ArchiveAndMuteInfo')}
+            checked={Boolean(shouldArchiveAndMuteNewNonContact)}
+            onCheck={handleArchiveAndMuteChange}
+          />
+        </div>
+      )}
+
       <div className="settings-item">
         <h4 className="settings-item-header" dir={lang.isRtl ? 'rtl' : undefined}>
-          {lang('NewChatsFromNonContacts')}
+          {lang('lng_settings_window_system')}
         </h4>
         <Checkbox
-          label={lang('ArchiveAndMute')}
-          subLabel={lang('ArchiveAndMuteInfo')}
-          checked={Boolean(shouldArchiveAndMuteNewNonContact)}
-          onCheck={handleArchiveAndMuteChange}
+          label={lang('lng_settings_title_chat_name')}
+          checked={Boolean(canDisplayChatInTitle)}
+          onCheck={handleChatInTitleChange}
         />
       </div>
 
@@ -316,7 +350,7 @@ const SettingsPrivacy: FC<OwnProps & StateProps> = ({
             subLabel={lang('lng_settings_sensitive_about')}
             checked={Boolean(isSensitiveEnabled)}
             disabled={!canChangeSensitive}
-            onCheck={updateContentSettings}
+            onCheck={handleUpdateContentSettings}
           />
         </div>
       )}
@@ -330,6 +364,7 @@ export default memo(withGlobal<OwnProps>(
       settings: {
         byKey: {
           hasPassword, isSensitiveEnabled, canChangeSensitive, shouldArchiveAndMuteNewNonContact,
+          canDisplayChatInTitle,
         },
         privacy,
       },
@@ -337,6 +372,7 @@ export default memo(withGlobal<OwnProps>(
       passcode: {
         hasPasscode,
       },
+      appConfig,
     } = global;
 
     return {
@@ -346,6 +382,7 @@ export default memo(withGlobal<OwnProps>(
       blockedCount: blocked.totalCount,
       webAuthCount: global.activeWebSessions.orderedHashes.length,
       isSensitiveEnabled,
+      canDisplayAutoarchiveSetting: Boolean(appConfig?.canDisplayAutoarchiveSetting),
       shouldArchiveAndMuteNewNonContact,
       canChangeSensitive,
       privacyPhoneNumber: privacy.phoneNumber,
@@ -356,6 +393,8 @@ export default memo(withGlobal<OwnProps>(
       privacyGroupChats: privacy.chatInvite,
       privacyPhoneCall: privacy.phoneCall,
       privacyPhoneP2P: privacy.phoneP2P,
+      canDisplayChatInTitle,
+      isAuthRememberMe: global.authRememberMe,
     };
   },
 )(SettingsPrivacy));

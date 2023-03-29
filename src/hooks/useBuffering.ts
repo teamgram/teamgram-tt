@@ -2,6 +2,7 @@ import type React from '../lib/teact/teact';
 import { useCallback, useMemo, useState } from '../lib/teact/teact';
 import { debounce } from '../util/schedulers';
 import { isSafariPatchInProgress } from '../util/patchSafariProgressiveAudio';
+import { areDeepEqual } from '../util/areDeepEqual';
 
 type BufferingEvent = (e: Event | React.SyntheticEvent<HTMLMediaElement>) => void;
 
@@ -14,7 +15,7 @@ const DEBOUNCE = 200;
  */
 export type BufferedRange = { start: number; end: number };
 
-const useBuffering = (noInitiallyBuffered = false) => {
+const useBuffering = (noInitiallyBuffered = false, onTimeUpdate?: AnyToVoidFunction) => {
   const [isBuffered, setIsBuffered] = useState(!noInitiallyBuffered);
   const [bufferedProgress, setBufferedProgress] = useState(0);
   const [bufferedRanges, setBufferedRanges] = useState<BufferedRange[]>([]);
@@ -24,19 +25,25 @@ const useBuffering = (noInitiallyBuffered = false) => {
   }, []);
 
   const handleBuffering = useCallback<BufferingEvent>((e) => {
+    if (e.type === 'timeupdate') {
+      onTimeUpdate?.(e);
+    }
+
     const media = e.currentTarget as HTMLMediaElement;
 
     if (!isSafariPatchInProgress(media)) {
       if (media.buffered.length) {
         const ranges = getTimeRanges(media.buffered, media.duration);
-        setBufferedRanges(ranges);
         const bufferedLength = ranges.reduce((acc, { start, end }) => acc + end - start, 0);
         setBufferedProgress(bufferedLength / media.duration);
+        setBufferedRanges((currentRanges) => {
+          return areDeepEqual(currentRanges, ranges) ? currentRanges : ranges;
+        });
       }
 
       setIsBufferedDebounced(media.readyState >= MIN_READY_STATE || media.currentTime > 0);
     }
-  }, [setIsBufferedDebounced]);
+  }, [onTimeUpdate, setIsBufferedDebounced]);
 
   const bufferingHandlers = {
     onLoadedData: handleBuffering,

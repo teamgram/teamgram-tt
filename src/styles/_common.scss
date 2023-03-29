@@ -4,8 +4,12 @@
 .media-inner {
   position: relative;
 
-  video,
-  img {
+  video.full-media,
+  img.full-media,
+  img.thumbnail,
+  canvas.thumbnail {
+    width: 100%;
+    height: 100%;
     display: block;
     object-fit: cover;
   }
@@ -15,8 +19,12 @@
     background-size: contain;
   }
 
-  .thumbnail ~ .thumbnail,
-  .thumbnail ~ .full-media,
+  .thumbnail {
+    position: absolute;
+    top: 0;
+    left: 0;
+  }
+
   .media-loading {
     position: absolute;
   }
@@ -73,19 +81,30 @@
 .chat-list {
   background: var(--color-background);
   height: 100%;
-  padding: 0.5rem 0.125rem 0.5rem 0.4375rem;
+  padding: 0.5rem 0.4375rem 0.5rem 0.4375rem;
 
   overflow-y: auto;
-  body.is-android & {
-    @include overflow-y-overlay();
+  @include overflow-y-overlay();
+
+  &.forum-panel-open {
+    .info {
+      opacity: 0;
+      transform: translateX(-20%);
+    }
+
+    .Chat[dir="rtl"] .info {
+      transform: translateX(20%);
+    }
+
+    .Avatar {
+      transform: scale(0.9);
+    }
   }
 
-  .scroll-container {
-    position: relative;
-  }
-
-  .ListItem.chat-item-clickable {
-    margin: 0;
+  @media (min-width: 600px) {
+    &.forum-panel-open .selected-forum .Avatar {
+      transform: none;
+    }
   }
 
   @media (max-width: 600px) {
@@ -93,15 +112,47 @@
     padding-right: 0;
   }
 
+  .scroll-container {
+    position: relative;
+  }
+
   .no-results {
     color: var(--color-text-meta);
     margin-top: 2rem;
     text-align: center;
   }
+
+  .Avatar {
+    transition: transform var(--layer-transition);
+
+    body.animation-level-0 & {
+      transition: none;
+    }
+  }
+
+  .ListItem {
+    &.chat-item-clickable {
+      margin: 0;
+    }
+  }
+
+  body.is-ios &,
+  body.is-android & {
+    .ListItem::after {
+      opacity: 1;
+      transition: opacity var(--layer-transition);
+    }
+
+    &.forum-panel-open {
+      .ListItem::after {
+        opacity: 0;
+      }
+    }
+  }
 }
 
 // Used by Avatar and ProfilePhoto components
-div {
+.Avatar, .ProfilePhoto {
   &.color-bg-1 {
     --color-user: var(--color-user-1);
   }
@@ -136,6 +187,6 @@ div {
   }
 
   &.deleted-account {
-    --color-user: var(--color-gray);
+    --color-user: var(--color-deleted-account);
   }
 }

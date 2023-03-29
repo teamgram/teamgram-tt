@@ -1,6 +1,6 @@
 import type { RefObject } from 'react';
 import type { FC } from '../../lib/teact/teact';
-import React, { useEffect, useRef } from '../../lib/teact/teact';
+import React, { memo, useEffect, useRef } from '../../lib/teact/teact';
 
 import useShowTransition from '../../hooks/useShowTransition';
 import useKeyboardListNavigation from '../../hooks/useKeyboardListNavigation';
@@ -12,7 +12,9 @@ import buildStyle from '../../util/buildStyle';
 import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import useHistoryBack from '../../hooks/useHistoryBack';
 import { preventMessageInputBlurWithBubbling } from '../middle/helpers/preventMessageInputBlur';
-import { IS_BACKDROP_BLUR_SUPPORTED, IS_COMPACT_MENU } from '../../util/environment';
+import { IS_BACKDROP_BLUR_SUPPORTED, IS_COMPACT_MENU } from '../../util/windowEnvironment';
+
+import Portal from './Portal';
 
 import './Menu.scss';
 
@@ -22,6 +24,7 @@ type OwnProps = {
   isOpen: boolean;
   id?: string;
   className?: string;
+  bubbleClassName?: string;
   style?: string;
   bubbleStyle?: string;
   ariaLabelledBy?: string;
@@ -38,7 +41,9 @@ type OwnProps = {
   onCloseAnimationEnd?: () => void;
   onClose: () => void;
   onMouseEnter?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+  onMouseEnterBackdrop?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
   onMouseLeave?: (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+  withPortal?: boolean;
   children: React.ReactNode;
 };
 
@@ -50,6 +55,7 @@ const Menu: FC<OwnProps> = ({
   isOpen,
   id,
   className,
+  bubbleClassName,
   style,
   bubbleStyle,
   ariaLabelledBy,
@@ -67,6 +73,8 @@ const Menu: FC<OwnProps> = ({
   onMouseEnter,
   onMouseLeave,
   shouldSkipTransition,
+  withPortal,
+  onMouseEnterBackdrop,
 }) => {
   // eslint-disable-next-line no-null/no-null
   let menuRef = useRef<HTMLDivElement>(null);
@@ -110,18 +118,19 @@ const Menu: FC<OwnProps> = ({
     noCloseOnBackdrop ? undefined : onClose,
   );
 
-  const bubbleClassName = buildClassName(
+  const bubbleFullClassName = buildClassName(
     'bubble menu-container custom-scroll',
     positionY,
     positionX,
     footer && 'with-footer',
     transitionClassNames,
+    bubbleClassName,
   );
 
   const transformOriginYStyle = transformOriginY !== undefined ? `${transformOriginY}px` : undefined;
   const transformOriginXStyle = transformOriginX !== undefined ? `${transformOriginX}px` : undefined;
 
-  return (
+  const menu = (
     <div
       id={id}
       className={buildClassName(
@@ -139,12 +148,16 @@ const Menu: FC<OwnProps> = ({
     >
       {isOpen && (
         // This only prevents click events triggering on underlying elements
-        <div className="backdrop" onMouseDown={preventMessageInputBlurWithBubbling} />
+        <div
+          className="backdrop"
+          onMouseDown={preventMessageInputBlurWithBubbling}
+          onMouseEnter={onMouseEnterBackdrop}
+        />
       )}
       <div
         role="presentation"
         ref={menuRef}
-        className={bubbleClassName}
+        className={bubbleFullClassName}
         style={buildStyle(
           `transform-origin: ${transformOriginXStyle || positionX} ${transformOriginYStyle || positionY}`,
           bubbleStyle,
@@ -156,6 +169,12 @@ const Menu: FC<OwnProps> = ({
       </div>
     </div>
   );
+
+  if (withPortal) {
+    return <Portal>{menu}</Portal>;
+  }
+
+  return menu;
 };
 
-export default Menu;
+export default memo(Menu);

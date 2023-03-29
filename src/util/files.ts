@@ -1,3 +1,4 @@
+import { CONTENT_TYPES_WITH_PREVIEW } from '../config';
 import { pause } from './schedulers';
 
 // Polyfill for Safari: `File` is not available in web worker
@@ -121,4 +122,24 @@ export function imgToCanvas(img: HTMLImageElement) {
   ctx.drawImage(img, 0, 0);
 
   return canvas;
+}
+
+export function hasPreview(file: File) {
+  return CONTENT_TYPES_WITH_PREVIEW.has(file.type);
+}
+
+export function validateFiles(files: File[] | FileList | null): File[] | undefined {
+  if (!files?.length) {
+    return undefined;
+  }
+  return Array.from(files).map(fixMovMime).filter((file) => file.size);
+}
+
+// .mov MIME type not reported sometimes https://developer.mozilla.org/en-US/docs/Web/API/File/type#sect1
+function fixMovMime(file: File) {
+  const ext = file.name.split('.').pop()!;
+  if (!file.type && ext.toLowerCase() === 'mov') {
+    return new File([file], file.name, { type: 'video/quicktime' });
+  }
+  return file;
 }

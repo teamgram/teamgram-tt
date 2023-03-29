@@ -1,5 +1,6 @@
 .StickerButton {
   --custom-emoji-size: 2.5rem;
+  --premium-gradient: linear-gradient(88.39deg, #6C93FF -2.56%, #976FFF 51.27%, #DF69D1 107.39%);
 
   display: inline-block;
   width: 4rem;
@@ -10,12 +11,18 @@
   background-size: contain;
   transition: background-color 0.15s ease, opacity 0.3s ease !important;
   position: relative;
-  --premium-gradient: linear-gradient(88.39deg, #6C93FF -2.56%, #976FFF 51.27%, #DF69D1 107.39%);
 
   &.custom-emoji {
     width: var(--custom-emoji-size);
     height: var(--custom-emoji-size);
     margin: 0.3125rem;
+
+    &.status-default {
+      font-size: 2rem;
+
+      padding: 0.25rem;
+      color: var(--color-text);
+    }
   }
 
   &.set-expand {
@@ -44,12 +51,16 @@
     right: 0;
     width: 1.25rem;
     height: 1.25rem;
+
     display: flex;
     justify-content: center;
     align-items: center;
+
     border-radius: 50%;
     color: white;
     background: var(--premium-gradient);
+
+    z-index: 1;
   }
 
   &.interactive {
@@ -113,13 +124,14 @@
 
     opacity: 0;
   }
+}
 
-  .sticker-context-menu {
-    position: absolute;
-    cursor: default;
+.sticker-context-menu {
+  position: absolute;
+  cursor: default;
+  z-index: var(--z-header-menu);
 
-    .bubble {
-      width: auto;
-    }
+  .bubble {
+    width: auto !important;
   }
 }

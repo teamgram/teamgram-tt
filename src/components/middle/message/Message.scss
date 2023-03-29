@@ -23,6 +23,7 @@
     var(--meta-safe-area-base) + var(--meta-safe-author-width) + var(--meta-safe-area-extra-width)
   );
   --color-voice-transcribe: var(--color-voice-transcribe-button);
+  --thumbs-background: var(--color-background);
   --deleting-translate-x: -50%;
   --select-message-scale: 0.9;
 
@@ -63,22 +64,19 @@
     left: 0;
 
     margin-right: 0.3125rem;
-
-    @media (max-width: 600px) {
-      width: 2.5rem;
-      height: 2.5rem;
-    }
   }
 
   .quick-reaction {
+    --custom-emoji-size: 1.75rem;
+
     cursor: pointer;
     position: absolute;
-    right: -0.5rem;
-    bottom: -0.375rem;
+    right: -0.875rem;
+    bottom: -0.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    transform: scale(1);
+    transform: scale(0.7);
     opacity: 0;
     transition: transform 0.2s ease-out, opacity 0.2s ease-out;
     transition-delay: 0.2s;
@@ -89,21 +87,17 @@
 
     &:hover {
       transition-delay: unset;
-      transform: scale(1.4);
-    }
-
-    .ReactionStaticEmoji {
-      width: 1.125rem;
+      transform: scale(1);
     }
   }
 
   &.last-in-list .quick-reaction:hover {
-    transform: translateY(-0.1875rem) scale(1.4);
+    transform: translateY(-0.1875rem) scale(1);
   }
 
   &.own .quick-reaction {
     right: auto;
-    left: -0.5rem;
+    left: -0.75rem;
   }
 
   &.last-in-group {
@@ -201,6 +195,7 @@
     --deleting-translate-x: 50%;
     --color-text-green: var(--color-accent-own);
     --color-voice-transcribe: var(--color-voice-transcribe-button-own);
+    --thumbs-background: var(--color-background-own);
 
     @media (min-width: 1921px) {
       --max-width: 30vw;
@@ -558,6 +553,7 @@
   }
 
   .message-content {
+    &.has-replies:not(.custom-shape):not(.has-reactions) .WebPage.with-square-photo .media-inner,
     &.has-replies:not(.custom-shape):not(.has-reactions) .WebPage.with-video .media-inner {
       margin-bottom: 1.5rem !important;
     }
@@ -571,7 +567,7 @@
       }
     }
 
-    &.is-reply .EmbeddedMessage {
+    &.has-subheader .EmbeddedMessage {
       & + .Album,
       & + .Audio,
       & + .File {
@@ -579,8 +575,8 @@
       }
     }
 
-    &:not(.custom-shape).is-reply .media-inner,
-    &:not(.custom-shape).is-reply .Album,
+    &:not(.custom-shape).has-subheader .media-inner,
+    &:not(.custom-shape).has-subheader .Album,
     &:not(.custom-shape).force-sender-name .Album,
     &:not(.is-forwarded) .message-title ~ .media-inner {
       --border-top-left-radius: 0;
@@ -645,7 +641,8 @@
 .media-inner,
 .message-content.media .media-inner img,
 .message-content.media .media-inner video,
-.message-content.custom-shape .media-inner img {
+.message-content.custom-shape .media-inner img,
+.message-content.custom-shape .media-inner video {
   border-top-left-radius: var(--border-top-left-radius);
   border-top-right-radius: var(--border-top-right-radius);
   border-bottom-left-radius: var(--border-bottom-left-radius);
@@ -658,10 +655,6 @@
 
 .media-inner {
   overflow: hidden;
-
-  &.small-image img {
-    border-radius: 0 !important;
-  }
 }
 
 .Message .custom-shape .message-action-button {

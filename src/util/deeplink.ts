@@ -3,7 +3,7 @@ import { getActions } from '../global';
 import type { ApiChatType } from '../api/types';
 
 import { API_CHAT_TYPES } from '../config';
-import { IS_SAFARI } from './environment';
+import { IS_SAFARI } from './windowEnvironment';
 
 type DeepLinkMethod = 'resolve' | 'login' | 'passport' | 'settings' | 'join' | 'addstickers' | 'addemoji' |
 'setlanguage' | 'addtheme' | 'confirmphone' | 'socks' | 'proxy' | 'privatepost' | 'bg' | 'share' | 'msg' | 'msg_url' |
@@ -35,11 +35,12 @@ export const processDeepLink = (url: string) => {
   switch (method) {
     case 'resolve': {
       const {
-        domain, phone, post, comment, voicechat, livestream, start, startattach, attach,
+        domain, phone, post, comment, voicechat, livestream, start, startattach, attach, thread, topic,
       } = params;
 
       const startAttach = params.hasOwnProperty('startattach') && !startattach ? true : startattach;
       const choose = parseChooseParameter(params.choose);
+      const threadId = Number(thread) || Number(topic) || undefined;
 
       if (domain !== 'telegrampassport') {
         if (startAttach && choose) {
@@ -54,15 +55,16 @@ export const processDeepLink = (url: string) => {
             inviteHash: voicechat || livestream,
           });
         } else if (phone) {
-          openChatByPhoneNumber({ phone, startAttach, attach });
+          openChatByPhoneNumber({ phoneNumber: phone, startAttach, attach });
         } else {
           openChatByUsername({
             username: domain,
-            messageId: Number(post),
-            commentId: Number(comment),
+            messageId: post ? Number(post) : undefined,
+            commentId: comment ? Number(comment) : undefined,
             startParam: start,
             startAttach,
             attach,
+            threadId,
           });
         }
       }
@@ -75,7 +77,7 @@ export const processDeepLink = (url: string) => {
 
       focusMessage({
         chatId: `-${channel}`,
-        id: post,
+        messageId: Number(post),
       });
       break;
     }
@@ -132,6 +134,6 @@ export function parseChooseParameter(choose?: string) {
   return types.filter((type): type is ApiChatType => API_CHAT_TYPES.includes(type as ApiChatType));
 }
 
-export function formatShareText(url?: string, text?: string) {
-  return [url, text].filter(Boolean).join('\n');
+export function formatShareText(url?: string, text?: string, title?: string): string {
+  return [url, title, text].filter(Boolean).join('\n');
 }

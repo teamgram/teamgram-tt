@@ -1,13 +1,11 @@
 import type { FC } from '../../lib/teact/teact';
-import React, { useEffect, memo } from '../../lib/teact/teact';
+import React, { memo } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
 import type { GlobalState } from '../../global/types';
 
 import '../../global/actions/initial';
-import { pick } from '../../util/iteratees';
-import { PLATFORM_ENV } from '../../util/environment';
-import windowSize from '../../util/windowSize';
+import { PLATFORM_ENV } from '../../util/windowEnvironment';
 import useHistoryBack from '../../hooks/useHistoryBack';
 import useCurrentOrPrev from '../../hooks/useCurrentOrPrev';
 
@@ -20,25 +18,14 @@ import AuthQrCode from './AuthQrCode';
 
 import './Auth.scss';
 
-type OwnProps = {
-  isActive: boolean;
-};
-
 type StateProps = Pick<GlobalState, 'authState'>;
 
-const Auth: FC<OwnProps & StateProps> = ({
-  isActive, authState,
+const Auth: FC<StateProps> = ({
+  authState,
 }) => {
   const {
-    reset, initApi, returnToAuthPhoneNumber, goToAuthQrCode,
+    returnToAuthPhoneNumber, goToAuthQrCode,
   } = getActions();
-
-  useEffect(() => {
-    if (isActive) {
-      reset();
-      initApi();
-    }
-  }, [isActive, reset, initApi]);
 
   const isMobile = PLATFORM_ENV === 'iOS' || PLATFORM_ENV === 'Android';
 
@@ -55,15 +42,6 @@ const Auth: FC<OwnProps & StateProps> = ({
       || (isMobile && authState === 'authorizationStateWaitQrCode'),
     onBack: handleChangeAuthorizationMethod,
   });
-
-  // Prevent refresh when rotating device
-  useEffect(() => {
-    windowSize.disableRefresh();
-
-    return () => {
-      windowSize.enableRefresh();
-    };
-  }, []);
 
   // For animation purposes
   const renderingAuthState = useCurrentOrPrev(
@@ -112,6 +90,10 @@ const Auth: FC<OwnProps & StateProps> = ({
   );
 };
 
-export default memo(withGlobal<OwnProps>(
-  (global): StateProps => pick(global, ['authState']),
+export default memo(withGlobal(
+  (global): StateProps => {
+    return {
+      authState: global.authState,
+    };
+  },
 )(Auth));

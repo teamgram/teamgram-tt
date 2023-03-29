@@ -12,6 +12,7 @@ import buildClassName from '../../../util/buildClassName';
 import useLang from '../../../hooks/useLang';
 
 import Avatar from '../../common/Avatar';
+import AnimatedCounter from '../../common/AnimatedCounter';
 
 import './CommentButton.scss';
 
@@ -24,16 +25,16 @@ const CommentButton: FC<OwnProps> = ({
   threadInfo,
   disabled,
 }) => {
-  const { openChat } = getActions();
+  const { openComments } = getActions();
 
   const lang = useLang();
   const {
-    threadId, chatId, messagesCount, lastMessageId, lastReadInboxMessageId, recentReplierIds,
+    threadId, chatId, messagesCount, lastMessageId, lastReadInboxMessageId, recentReplierIds, originChannelId,
   } = threadInfo;
 
   const handleClick = useCallback(() => {
-    openChat({ id: chatId, threadId });
-  }, [openChat, chatId, threadId]);
+    openComments({ id: chatId, threadId, originChannelId });
+  }, [openComments, chatId, threadId, originChannelId]);
 
   const recentRepliers = useMemo(() => {
     if (!recentReplierIds?.length) {
@@ -71,6 +72,13 @@ const CommentButton: FC<OwnProps> = ({
 
   const hasUnread = Boolean(lastReadInboxMessageId && lastMessageId && lastReadInboxMessageId < lastMessageId);
 
+  const commentsText = messagesCount ? (lang('Comments', '%COMMENTS_COUNT%', undefined, messagesCount) as string)
+    .split('%')
+    .map((s) => {
+      return (s === 'COMMENTS_COUNT' ? <AnimatedCounter text={formatIntegerCompact(messagesCount)} /> : s);
+    })
+    : undefined;
+
   return (
     <div
       data-cnt={formatIntegerCompact(messagesCount)}
@@ -82,7 +90,7 @@ const CommentButton: FC<OwnProps> = ({
       {(!recentRepliers || recentRepliers.length === 0) && <i className="icon-comments" />}
       {renderRecentRepliers()}
       <div className="label" dir="auto">
-        {messagesCount ? lang('Comments', messagesCount, 'i') : lang('LeaveAComment')}
+        {messagesCount ? commentsText : lang('LeaveAComment')}
       </div>
       <i className="icon-next" />
     </div>

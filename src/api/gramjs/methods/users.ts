@@ -1,7 +1,7 @@
 import BigInt from 'big-integer';
 import { Api as GramJs } from '../../../lib/gramjs';
 import type {
-  OnApiUpdate, ApiUser, ApiChat,
+  OnApiUpdate, ApiUser, ApiChat, ApiSticker,
 } from '../../types';
 
 import { COMMON_CHATS_LIMIT, PROFILE_PHOTOS_LIMIT } from '../../../config';
@@ -14,6 +14,7 @@ import {
   buildInputContact,
   buildMtpPeerId,
   getEntityTypeById,
+  buildInputEmojiStatus,
 } from '../gramjsBuilders';
 import { buildApiUser, buildApiUserFromFull, buildApiUsersAndStatuses } from '../apiBuilders/users';
 import { buildApiChatFromPreview } from '../apiBuilders/chats';
@@ -46,8 +47,19 @@ export async function fetchFullUser({
     return undefined;
   }
 
+  updateLocalDb(fullInfo);
+  addUserToLocalDb(fullInfo.users[0], true);
+
   if (fullInfo.fullUser.profilePhoto instanceof GramJs.Photo) {
     localDb.photos[fullInfo.fullUser.profilePhoto.id.toString()] = fullInfo.fullUser.profilePhoto;
+  }
+
+  if (fullInfo.fullUser.personalPhoto instanceof GramJs.Photo) {
+    localDb.photos[fullInfo.fullUser.personalPhoto.id.toString()] = fullInfo.fullUser.personalPhoto;
+  }
+
+  if (fullInfo.fullUser.fallbackPhoto instanceof GramJs.Photo) {
+    localDb.photos[fullInfo.fullUser.fallbackPhoto.id.toString()] = fullInfo.fullUser.fallbackPhoto;
   }
 
   const botInfo = fullInfo.fullUser.botInfo;
@@ -59,11 +71,14 @@ export async function fetchFullUser({
   }
 
   const userWithFullInfo = buildApiUserFromFull(fullInfo);
+  const user = buildApiUser(fullInfo.users[0]);
 
   onUpdate({
     '@type': 'updateUser',
     id,
     user: {
+      ...user,
+      avatarHash: user?.avatarHash || undefined,
       fullInfo: userWithFullInfo.fullInfo,
     },
   });
@@ -253,7 +268,8 @@ export async function fetchProfilePhotos(user?: ApiUser, chat?: ApiChat) {
     return {
       photos: result.photos
         .filter((photo): photo is GramJs.Photo => photo instanceof GramJs.Photo)
-        .map(buildApiPhoto),
+        .map((photo) => buildApiPhoto(photo)),
+      users: result.users.map(buildApiUser).filter(Boolean),
     };
   }
 
@@ -283,6 +299,12 @@ export function reportSpam(userOrChat: ApiUser | ApiChat) {
   }), true);
 }
 
+export function updateEmojiStatus(emojiStatus: ApiSticker, expires?: number) {
+  return invokeRequest(new GramJs.account.UpdateEmojiStatus({
+    emojiStatus: buildInputEmojiStatus(emojiStatus, expires),
+  }), true);
+}
+
 function updateLocalDb(result: (GramJs.photos.Photos | GramJs.photos.PhotosSlice | GramJs.messages.Chats)) {
   if ('chats' in result) {
     addEntitiesWithPhotosToLocalDb(result.chats);
@@ -290,5 +312,9 @@ function updateLocalDb(result: (GramJs.photos.Photos | GramJs.photos.PhotosSlice
 
   if ('photos' in result) {
     result.photos.forEach(addPhotoToLocalDb);
+  }
+
+  if ('users' in result) {
+    addEntitiesWithPhotosToLocalDb(result.users);
   }
 }

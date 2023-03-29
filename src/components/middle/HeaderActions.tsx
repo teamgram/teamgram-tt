@@ -12,9 +12,8 @@ import { MAIN_THREAD_ID } from '../../api/types';
 import type { IAnchorPosition } from '../../types';
 import { ManagementScreens } from '../../types';
 
-import {
-  ARE_CALLS_SUPPORTED, IS_PWA, IS_SINGLE_COLUMN_LAYOUT,
-} from '../../util/environment';
+import { ANIMATION_LEVEL_MIN } from '../../config';
+import { ARE_CALLS_SUPPORTED, IS_PWA } from '../../util/windowEnvironment';
 import {
   isChatBasicGroup, isChatChannel, isChatSuperGroup, isUserId,
 } from '../../global/helpers';
@@ -38,6 +37,9 @@ interface OwnProps {
   threadId: number;
   messageListType: MessageListType;
   canExpandActions: boolean;
+  withForumActions?: boolean;
+  isMobile?: boolean;
+  onTopicSearch?: NoneToVoidFunction;
 }
 
 interface StateProps {
@@ -57,15 +59,17 @@ interface StateProps {
   pendingJoinRequests?: number;
   shouldJoinToSend?: boolean;
   shouldSendJoinRequest?: boolean;
+  noAnimation?: boolean;
 }
 
 // Chrome breaks layout when focusing input during transition
-const SEARCH_FOCUS_DELAY_MS = 400;
+const SEARCH_FOCUS_DELAY_MS = 320;
 
 const HeaderActions: FC<OwnProps & StateProps> = ({
   chatId,
   threadId,
   noMenu,
+  isMobile,
   isChannel,
   canStartBot,
   canRestartBot,
@@ -79,18 +83,22 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
   canCreateVoiceChat,
   pendingJoinRequests,
   isRightColumnShown,
+  withForumActions,
   canExpandActions,
   shouldJoinToSend,
   shouldSendJoinRequest,
+  noAnimation,
+  onTopicSearch,
 }) => {
   const {
     joinChannel,
     sendBotCommand,
     openLocalTextSearch,
     restartBot,
-    requestCall,
+    requestMasterAndRequestCall,
     requestNextManagementScreen,
     showNotification,
+    openChat,
   } = getActions();
   // eslint-disable-next-line no-null/no-null
   const menuButtonRef = useRef<HTMLButtonElement>(null);
@@ -134,24 +142,33 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
   }, [requestNextManagementScreen]);
 
   const handleSearchClick = useCallback(() => {
+    if (withForumActions) {
+      onTopicSearch?.();
+      return;
+    }
+
     openLocalTextSearch();
 
-    if (IS_SINGLE_COLUMN_LAYOUT) {
+    if (isMobile) {
       // iOS requires synchronous focus on user event.
       const searchInput = document.querySelector<HTMLInputElement>('#MobileSearch input')!;
       searchInput.focus();
+    } else if (noAnimation) {
+      // The second RAF is necessary because teact must update the state and render the async component
+      requestAnimationFrame(() => {
+        requestAnimationFrame(setFocusInSearchInput);
+      });
     } else {
-      setTimeout(() => {
-        const searchInput = document.querySelector<HTMLInputElement>('.RightHeader .SearchInput input');
-        if (searchInput) {
-          searchInput.focus();
-        }
-      }, SEARCH_FOCUS_DELAY_MS);
+      setTimeout(setFocusInSearchInput, SEARCH_FOCUS_DELAY_MS);
     }
-  }, [openLocalTextSearch]);
+  }, [isMobile, noAnimation, onTopicSearch, openLocalTextSearch, withForumActions]);
+
+  const handleAsMessagesClick = useCallback(() => {
+    openChat({ id: chatId, threadId: MAIN_THREAD_ID });
+  }, [chatId, openChat]);
 
   function handleRequestCall() {
-    requestCall({ userId: chatId });
+    requestMasterAndRequestCall({ userId: chatId });
   }
 
   const handleHotkeySearchClick = useCallback((e: KeyboardEvent) => {
@@ -169,7 +186,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
 
   return (
     <div className="HeaderActions">
-      {!IS_SINGLE_COLUMN_LAYOUT && (
+      {!isMobile && (
         <>
           {canExpandActions && !shouldSendJoinRequest && (canSubscribe || shouldJoinToSend) && (
             <Button
@@ -237,7 +254,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
           )}
         </>
       )}
-      {Boolean(pendingJoinRequests) && (
+      {!withForumActions && Boolean(pendingJoinRequests) && (
         <Button
           round
           className="badge-button"
@@ -255,7 +272,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
         ref={menuButtonRef}
         className={isMenuOpen ? 'active' : ''}
         round
-        ripple={!IS_SINGLE_COLUMN_LAYOUT}
+        ripple={!isMobile}
         size="smaller"
         color="translucent"
         disabled={noMenu}
@@ -270,7 +287,7 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
           threadId={threadId}
           isOpen={isMenuOpen}
           anchor={menuPosition}
-          withExtraActions={IS_SINGLE_COLUMN_LAYOUT || !canExpandActions}
+          withExtraActions={isMobile || !canExpandActions}
           isChannel={isChannel}
           canStartBot={canStartBot}
           canRestartBot={canRestartBot}
@@ -282,8 +299,12 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
           canLeave={canLeave}
           canEnterVoiceChat={canEnterVoiceChat}
           canCreateVoiceChat={canCreateVoiceChat}
+          pendingJoinRequests={pendingJoinRequests}
+          onJoinRequestsClick={handleJoinRequestsClick}
+          withForumActions={withForumActions}
           onSubscribeChannel={handleSubscribeClick}
           onSearchClick={handleSearchClick}
+          onAsMessagesClick={handleAsMessagesClick}
           onClose={handleHeaderMenuClose}
           onCloseAnimationEnd={handleHeaderMenuHide}
         />
@@ -293,7 +314,9 @@ const HeaderActions: FC<OwnProps & StateProps> = ({
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { chatId, threadId, messageListType }): StateProps => {
+  (global, {
+    chatId, threadId, messageListType, isMobile,
+  }): StateProps => {
     const chat = selectChat(global, chatId);
     const isChannel = Boolean(chat && isChatChannel(chat));
 
@@ -307,24 +330,25 @@ export default memo(withGlobal<OwnProps>(
     const isChatWithSelf = selectIsChatWithSelf(global, chatId);
     const isMainThread = messageListType === 'thread' && threadId === MAIN_THREAD_ID;
     const isDiscussionThread = messageListType === 'thread' && threadId !== MAIN_THREAD_ID;
-    const isRightColumnShown = selectIsRightColumnShown(global);
+    const isRightColumnShown = selectIsRightColumnShown(global, isMobile);
 
     const canRestartBot = Boolean(bot && selectIsUserBlocked(global, bot.id));
     const canStartBot = !canRestartBot && Boolean(selectIsChatBotNotStarted(global, chatId));
     const canSubscribe = Boolean(
-      isMainThread && (isChannel || isChatSuperGroup(chat)) && chat.isNotJoined,
+      (isMainThread || chat.isForum) && (isChannel || isChatSuperGroup(chat)) && chat.isNotJoined,
     );
     const canSearch = isMainThread || isDiscussionThread;
     const canCall = ARE_CALLS_SUPPORTED && isUserId(chat.id) && !isChatWithSelf && !bot;
     const canMute = isMainThread && !isChatWithSelf && !canSubscribe;
     const canLeave = isMainThread && !canSubscribe;
-    const canEnterVoiceChat = ARE_CALLS_SUPPORTED && chat.isCallActive;
-    const canCreateVoiceChat = ARE_CALLS_SUPPORTED && !chat.isCallActive
+    const canEnterVoiceChat = ARE_CALLS_SUPPORTED && isMainThread && chat.isCallActive;
+    const canCreateVoiceChat = ARE_CALLS_SUPPORTED && isMainThread && !chat.isCallActive
       && (chat.adminRights?.manageCall || (chat.isCreator && isChatBasicGroup(chat)));
-    const canViewStatistics = chat.fullInfo?.canViewStatistics;
-    const pendingJoinRequests = chat.fullInfo?.requestsPending;
+    const canViewStatistics = isMainThread && chat.fullInfo?.canViewStatistics;
+    const pendingJoinRequests = isMainThread ? chat.fullInfo?.requestsPending : undefined;
     const shouldJoinToSend = Boolean(chat?.isNotJoined && chat.isJoinToSend);
     const shouldSendJoinRequest = Boolean(chat?.isNotJoined && chat.isJoinRequest);
+    const noAnimation = global.settings.byKey.animationLevel === ANIMATION_LEVEL_MIN;
 
     return {
       noMenu: false,
@@ -343,6 +367,12 @@ export default memo(withGlobal<OwnProps>(
       pendingJoinRequests,
       shouldJoinToSend,
       shouldSendJoinRequest,
+      noAnimation,
     };
   },
 )(HeaderActions));
+
+function setFocusInSearchInput() {
+  const searchInput = document.querySelector<HTMLInputElement>('.RightHeader .SearchInput input');
+  searchInput?.focus();
+}

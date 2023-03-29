@@ -1,28 +1,33 @@
-import type { ChangeEvent } from 'react';
+import type { RefObject, ChangeEvent } from 'react';
 import type { FC } from '../../../lib/teact/teact';
 import React, {
-  useEffect, useRef, memo, useState, useCallback,
+  useEffect, useRef, memo, useState, useCallback, useLayoutEffect,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
 import type { IAnchorPosition, ISettings } from '../../../types';
+import type { Signal } from '../../../util/signals';
 
 import { EDITABLE_INPUT_ID } from '../../../config';
-import { selectReplyingToId } from '../../../global/selectors';
+import {
+  IS_ANDROID, IS_EMOJI_SUPPORTED, IS_IOS, IS_TOUCH_ENV,
+} from '../../../util/windowEnvironment';
+import { selectIsInSelectMode, selectReplyingToId } from '../../../global/selectors';
 import { debounce } from '../../../util/schedulers';
 import focusEditableElement from '../../../util/focusEditableElement';
 import buildClassName from '../../../util/buildClassName';
-import {
-  IS_ANDROID, IS_EMOJI_SUPPORTED, IS_IOS, IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV,
-} from '../../../util/environment';
 import captureKeyboardListeners from '../../../util/captureKeyboardListeners';
-import useLayoutEffectWithPrevDeps from '../../../hooks/useLayoutEffectWithPrevDeps';
-import useFlag from '../../../hooks/useFlag';
-import { isHeavyAnimating } from '../../../hooks/useHeavyAnimationCheck';
-import useLang from '../../../hooks/useLang';
+import { getIsDirectTextInputDisabled } from '../../../util/directInputManager';
 import parseEmojiOnlyString from '../../../util/parseEmojiOnlyString';
 import { isSelectionInsideInput } from './helpers/selection';
 import renderText from '../../common/helpers/renderText';
+
+import useFlag from '../../../hooks/useFlag';
+import { isHeavyAnimating } from '../../../hooks/useHeavyAnimationCheck';
+import useLang from '../../../hooks/useLang';
+import useInputCustomEmojis from './hooks/useInputCustomEmojis';
+import useAppLayout from '../../../hooks/useAppLayout';
+import useDerivedState from '../../../hooks/useDerivedState';
 
 import TextFormatter from './TextFormatter';
 
@@ -31,37 +36,48 @@ const CONTEXT_MENU_CLOSE_DELAY_MS = 100;
 const FOCUS_DELAY_MS = 350;
 const TRANSITION_DURATION_FACTOR = 50;
 
+const SCROLLER_CLASS = 'input-scroller';
+const INPUT_WRAPPER_CLASS = 'message-input-wrapper';
+
 type OwnProps = {
+  ref?: RefObject<HTMLDivElement>;
   id: string;
   chatId: string;
   threadId: number;
   isAttachmentModalInput?: boolean;
   editableInputId?: string;
-  html: string;
+  isActive: boolean;
+  getHtml: Signal<string>;
   placeholder: string;
   forcedPlaceholder?: string;
+  noFocusInterception?: boolean;
   canAutoFocus: boolean;
   shouldSuppressFocus?: boolean;
   shouldSuppressTextFormatter?: boolean;
+  canSendPlainText?: boolean;
   onUpdate: (html: string) => void;
   onSuppressedFocus?: () => void;
   onSend: () => void;
+  onScroll?: (event: React.UIEvent<HTMLElement>) => void;
   captionLimit?: number;
 };
 
 type StateProps = {
   replyingToId?: number;
-  noTabCapture?: boolean;
+  isSelectModeActive?: boolean;
   messageSendKeyCombo?: ISettings['messageSendKeyCombo'];
 };
 
-const MAX_INPUT_HEIGHT = IS_SINGLE_COLUMN_LAYOUT ? 256 : 416;
+const MAX_ATTACHMENT_MODAL_INPUT_HEIGHT = 160;
 const TAB_INDEX_PRIORITY_TIMEOUT = 2000;
 // Heuristics allowing the user to make a triple click
 const SELECTION_RECALCULATE_DELAY_MS = 260;
-const TEXT_FORMATTER_SAFE_AREA_PX = 90;
+const TEXT_FORMATTER_SAFE_AREA_PX = 140;
 // For some reason Safari inserts `<br>` after user removes text from input
 const SAFARI_BR = '<br>';
+const IGNORE_KEYS = [
+  'Esc', 'Escape', 'Enter', 'PageUp', 'PageDown', 'Meta', 'Alt', 'Ctrl', 'ArrowDown', 'ArrowUp', 'Control', 'Shift',
+];
 
 function clearSelection() {
   const selection = window.getSelection();
@@ -77,35 +93,53 @@ function clearSelection() {
 }
 
 const MessageInput: FC<OwnProps & StateProps> = ({
+  ref,
   id,
   chatId,
   captionLimit,
   isAttachmentModalInput,
   editableInputId,
-  html,
+  isActive,
+  getHtml,
   placeholder,
   forcedPlaceholder,
+  canSendPlainText,
   canAutoFocus,
+  noFocusInterception,
   shouldSuppressFocus,
   shouldSuppressTextFormatter,
   replyingToId,
-  noTabCapture,
+  isSelectModeActive,
   messageSendKeyCombo,
   onUpdate,
   onSuppressedFocus,
   onSend,
+  onScroll,
 }) => {
   const {
     editLastMessage,
     replyToNextMessage,
+    showAllowedMessageTypesNotification,
   } = getActions();
 
   // eslint-disable-next-line no-null/no-null
-  const inputRef = useRef<HTMLDivElement>(null);
+  let inputRef = useRef<HTMLDivElement>(null);
+  if (ref) {
+    inputRef = ref;
+  }
+
   // eslint-disable-next-line no-null/no-null
   const selectionTimeoutRef = useRef<number>(null);
   // eslint-disable-next-line no-null/no-null
   const cloneRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line no-null/no-null
+  const scrollerCloneRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line no-null/no-null
+  const sharedCanvasRef = useRef<HTMLCanvasElement>(null);
+  // eslint-disable-next-line no-null/no-null
+  const sharedCanvasHqRef = useRef<HTMLCanvasElement>(null);
+  // eslint-disable-next-line no-null/no-null
+  const absoluteContainerRef = useRef<HTMLDivElement>(null);
 
   const lang = useLang();
   const isContextMenuOpenRef = useRef(false);
@@ -113,13 +147,56 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   const [textFormatterAnchorPosition, setTextFormatterAnchorPosition] = useState<IAnchorPosition>();
   const [selectedRange, setSelectedRange] = useState<Range>();
   const [isTextFormatterDisabled, setIsTextFormatterDisabled] = useState<boolean>(false);
+  const { isMobile } = useAppLayout();
+
+  useInputCustomEmojis(
+    getHtml,
+    inputRef,
+    sharedCanvasRef,
+    sharedCanvasHqRef,
+    absoluteContainerRef,
+    isAttachmentModalInput ? 'attachment' : 'composer',
+    isActive,
+  );
+
+  const maxInputHeight = isMobile ? 256 : 416;
+  const updateInputHeight = useCallback((willSend = false) => {
+    const scroller = inputRef.current!.closest<HTMLDivElement>(`.${SCROLLER_CLASS}`)!;
+    const clone = scrollerCloneRef.current!;
+    const currentHeight = Number(scroller.style.height.replace('px', ''));
+    const maxHeight = isAttachmentModalInput ? MAX_ATTACHMENT_MODAL_INPUT_HEIGHT : maxInputHeight;
+    const newHeight = Math.min(clone.scrollHeight, maxHeight);
+    if (newHeight === currentHeight) {
+      return;
+    }
+
+    const transitionDuration = Math.round(
+      TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight)),
+    );
+
+    const exec = () => {
+      scroller.style.height = `${newHeight}px`;
+      scroller.style.transitionDuration = `${transitionDuration}ms`;
+      scroller.classList.toggle('overflown', clone.scrollHeight > maxHeight);
+    };
+
+    if (willSend) {
+      // Sync with sending animation
+      requestAnimationFrame(exec);
+    } else {
+      exec();
+    }
+  }, [isAttachmentModalInput, maxInputHeight]);
 
   useEffect(() => {
     if (!isAttachmentModalInput) return;
     updateInputHeight(false);
-  }, [isAttachmentModalInput]);
+  }, [isAttachmentModalInput, updateInputHeight]);
 
-  useLayoutEffectWithPrevDeps(([prevHtml]) => {
+  const htmlRef = useRef(getHtml());
+  useLayoutEffect(() => {
+    const html = isActive ? getHtml() : '';
+
     if (html !== inputRef.current!.innerHTML) {
       inputRef.current!.innerHTML = html;
     }
@@ -128,10 +205,12 @@ const MessageInput: FC<OwnProps & StateProps> = ({
       cloneRef.current!.innerHTML = html;
     }
 
-    if (prevHtml !== undefined && prevHtml !== html) {
-      updateInputHeight(!html.length);
+    if (html !== htmlRef.current) {
+      htmlRef.current = html;
+
+      updateInputHeight(!html);
     }
-  }, [html]);
+  }, [getHtml, isActive, updateInputHeight]);
 
   const chatIdRef = useRef(chatId);
   chatIdRef.current = chatId;
@@ -195,19 +274,19 @@ const MessageInput: FC<OwnProps & StateProps> = ({
 
     const selectionRange = window.getSelection()!.getRangeAt(0);
     const selectionRect = selectionRange.getBoundingClientRect();
-    const inputRect = inputRef.current!.getBoundingClientRect();
+    const scrollerRect = inputRef.current!.closest<HTMLDivElement>(`.${SCROLLER_CLASS}`)!.getBoundingClientRect();
 
-    let x = (selectionRect.left + selectionRect.width / 2) - inputRect.left;
+    let x = (selectionRect.left + selectionRect.width / 2) - scrollerRect.left;
 
     if (x < TEXT_FORMATTER_SAFE_AREA_PX) {
       x = TEXT_FORMATTER_SAFE_AREA_PX;
-    } else if (x > inputRect.width - TEXT_FORMATTER_SAFE_AREA_PX) {
-      x = inputRect.width - TEXT_FORMATTER_SAFE_AREA_PX;
+    } else if (x > scrollerRect.width - TEXT_FORMATTER_SAFE_AREA_PX) {
+      x = scrollerRect.width - TEXT_FORMATTER_SAFE_AREA_PX;
     }
 
     setTextFormatterAnchorPosition({
       x,
-      y: selectionRect.top - inputRect.top,
+      y: selectionRect.top - scrollerRect.top,
     });
 
     setSelectedRange(selectionRange);
@@ -224,7 +303,9 @@ const MessageInput: FC<OwnProps & StateProps> = ({
 
   function handleMouseDown(e: React.MouseEvent<HTMLDivElement, MouseEvent>) {
     if (e.button !== 2) {
-      e.target.addEventListener('mouseup', processSelectionWithTimeout, { once: true });
+      const listenerEl = e.currentTarget.closest(`.${INPUT_WRAPPER_CLASS}`) || e.target;
+
+      listenerEl.addEventListener('mouseup', processSelectionWithTimeout, { once: true });
       return;
     }
 
@@ -255,7 +336,9 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     // https://levelup.gitconnected.com/javascript-events-handlers-keyboard-and-load-events-1b3e46a6b0c3#1960
     const { isComposing } = e;
 
-    if (!isComposing && !html.length && (e.metaKey || e.ctrlKey)) {
+    const html = getHtml();
+
+    if (!isComposing && !html && (e.metaKey || e.ctrlKey)) {
       const targetIndexDelta = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : undefined;
       if (targetIndexDelta) {
         e.preventDefault();
@@ -278,7 +361,7 @@ const MessageInput: FC<OwnProps & StateProps> = ({
         closeTextFormatter();
         onSend();
       }
-    } else if (!isComposing && e.key === 'ArrowUp' && !html.length && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    } else if (!isComposing && e.key === 'ArrowUp' && !html && !e.metaKey && !e.ctrlKey && !e.altKey) {
       e.preventDefault();
       editLastMessage();
     } else {
@@ -325,31 +408,9 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     }
   }
 
-  function updateInputHeight(willSend = false) {
-    const input = inputRef.current!;
-    const clone = cloneRef.current!;
-    const currentHeight = Number(input.style.height.replace('px', ''));
-    const newHeight = Math.min(clone.scrollHeight, MAX_INPUT_HEIGHT);
-    if (newHeight === currentHeight) {
-      return;
-    }
-
-    const transitionDuration = Math.round(
-      TRANSITION_DURATION_FACTOR * Math.log(Math.abs(newHeight - currentHeight)),
-    );
-
-    const exec = () => {
-      input.style.height = `${newHeight}px`;
-      input.style.transitionDuration = `${transitionDuration}ms`;
-      input.classList.toggle('overflown', clone.scrollHeight > MAX_INPUT_HEIGHT);
-    };
-
-    if (willSend) {
-      // Sync with sending animation
-      requestAnimationFrame(exec);
-    } else {
-      exec();
-    }
+  function handleClick() {
+    if (isAttachmentModalInput || canSendPlainText) return;
+    showAllowedMessageTypesNotification({ chatId });
   }
 
   useEffect(() => {
@@ -363,19 +424,69 @@ const MessageInput: FC<OwnProps & StateProps> = ({
   }, [chatId, focusInput, replyingToId, canAutoFocus]);
 
   useEffect(() => {
-    if (noTabCapture) {
+    if (
+      !chatId
+      || editableInputId !== EDITABLE_INPUT_ID
+      || noFocusInterception
+      || (IS_TOUCH_ENV && isMobile)
+      || isSelectModeActive
+    ) {
       return undefined;
     }
 
+    const handleDocumentKeyDown = (e: KeyboardEvent) => {
+      if (getIsDirectTextInputDisabled()) {
+        return;
+      }
+
+      const { key } = e;
+      const target = e.target as HTMLElement | undefined;
+
+      if (!target || IGNORE_KEYS.includes(key)) {
+        return;
+      }
+
+      const input = inputRef.current!;
+      const isSelectionCollapsed = document.getSelection()?.isCollapsed;
+
+      if (
+        ((key.startsWith('Arrow') || (e.shiftKey && key === 'Shift')) && !isSelectionCollapsed)
+        || (e.code === 'KeyC' && (e.ctrlKey || e.metaKey) && target.tagName !== 'INPUT')
+      ) {
+        return;
+      }
+
+      if (
+        input
+        && target !== input
+        && target.tagName !== 'INPUT'
+        && target.tagName !== 'TEXTAREA'
+        && !target.isContentEditable
+      ) {
+        focusEditableElement(input, true, true);
+
+        const newEvent = new KeyboardEvent(e.type, e as any);
+        input.dispatchEvent(newEvent);
+      }
+    };
+
+    document.addEventListener('keydown', handleDocumentKeyDown, true);
+
+    return () => {
+      document.removeEventListener('keydown', handleDocumentKeyDown, true);
+    };
+  }, [chatId, editableInputId, isMobile, isSelectModeActive, noFocusInterception]);
+
+  useEffect(() => {
     const captureFirstTab = debounce((e: KeyboardEvent) => {
-      if (e.key === 'Tab') {
+      if (e.key === 'Tab' && !getIsDirectTextInputDisabled()) {
         e.preventDefault();
         requestAnimationFrame(focusInput);
       }
     }, TAB_INDEX_PRIORITY_TIMEOUT, true, false);
 
     return captureKeyboardListeners({ onTab: captureFirstTab });
-  }, [focusInput, noTabCapture]);
+  }, [focusInput]);
 
   useEffect(() => {
     const input = inputRef.current!;
@@ -393,38 +504,65 @@ const MessageInput: FC<OwnProps & StateProps> = ({
     };
   }, [shouldSuppressFocus]);
 
+  const isTouched = useDerivedState(() => Boolean(isActive && getHtml()), [isActive, getHtml]);
+
   const className = buildClassName(
-    'form-control custom-scroll',
-    html.length > 0 && 'touched',
+    'form-control',
+    isTouched && 'touched',
     shouldSuppressFocus && 'focus-disabled',
   );
 
   return (
     <div id={id} onClick={shouldSuppressFocus ? onSuppressedFocus : undefined} dir={lang.isRtl ? 'rtl' : undefined}>
       <div
-        ref={inputRef}
-        id={editableInputId || EDITABLE_INPUT_ID}
-        className={className}
-        contentEditable
-        role="textbox"
-        dir="auto"
-        tabIndex={0}
-        onClick={focusInput}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        onMouseDown={handleMouseDown}
-        onContextMenu={IS_ANDROID ? handleAndroidContextMenu : undefined}
-        onTouchCancel={IS_ANDROID ? processSelectionWithTimeout : undefined}
-        aria-label={placeholder}
-      />
-      {captionLimit && (
+        className={buildClassName('custom-scroll', SCROLLER_CLASS)}
+        onScroll={onScroll}
+        onClick={!isAttachmentModalInput && !canSendPlainText ? handleClick : undefined}
+      >
+        <div className="input-scroller-content">
+          <div
+            ref={inputRef}
+            id={editableInputId || EDITABLE_INPUT_ID}
+            className={className}
+            contentEditable={isAttachmentModalInput || canSendPlainText}
+            role="textbox"
+            dir="auto"
+            tabIndex={0}
+            onClick={focusInput}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            onMouseDown={handleMouseDown}
+            onContextMenu={IS_ANDROID ? handleAndroidContextMenu : undefined}
+            onTouchCancel={IS_ANDROID ? processSelectionWithTimeout : undefined}
+            aria-label={placeholder}
+          />
+          {!forcedPlaceholder && (
+            <span
+              className={buildClassName(
+                'placeholder-text',
+                !isAttachmentModalInput && !canSendPlainText && 'with-icon',
+              )}
+              dir="auto"
+            >
+              {!isAttachmentModalInput && !canSendPlainText && <i className="icon-lock-badge placeholder-icon" />}
+              {placeholder}
+            </span>
+          )}
+          <canvas ref={sharedCanvasRef} className="shared-canvas" />
+          <canvas ref={sharedCanvasHqRef} className="shared-canvas" />
+          <div ref={absoluteContainerRef} className="absolute-video-container" />
+        </div>
+      </div>
+      <div ref={scrollerCloneRef} className={buildClassName('custom-scroll', SCROLLER_CLASS, 'clone')}>
+        <div className="input-scroller-content">
+          <div ref={cloneRef} className={buildClassName(className, 'clone')} dir="auto" />
+        </div>
+      </div>
+      {captionLimit !== undefined && (
         <div className="max-length-indicator" dir="auto">
           {captionLimit}
         </div>
       )}
-
-      <div ref={cloneRef} className={buildClassName(className, 'clone')} dir="auto" />
-      {!forcedPlaceholder && <span className="placeholder-text" dir="auto">{placeholder}</span>}
       <TextFormatter
         isOpen={isTextFormatterOpen}
         anchorPosition={textFormatterAnchorPosition}
@@ -444,7 +582,7 @@ export default memo(withGlobal<OwnProps>(
     return {
       messageSendKeyCombo,
       replyingToId: chatId && threadId ? selectReplyingToId(global, chatId, threadId) : undefined,
-      noTabCapture: global.pollModal.isOpen || global.payment.isPaymentModalOpen,
+      isSelectModeActive: selectIsInSelectMode(global),
     };
   },
 )(MessageInput));

@@ -4,7 +4,7 @@ import React, { memo, useCallback, useState } from '../../../lib/teact/teact';
 import { SettingsScreens } from '../../../types';
 import type { FolderEditDispatch, FoldersState } from '../../../hooks/reducers/useFoldersReducer';
 
-import { LAYERS_ANIMATION_NAME } from '../../../util/environment';
+import { LAYERS_ANIMATION_NAME } from '../../../util/windowEnvironment';
 import useTwoFaReducer from '../../../hooks/reducers/useTwoFaReducer';
 
 import Transition from '../../ui/Transition';
@@ -29,6 +29,7 @@ import SettingsQuickReaction from './SettingsQuickReaction';
 import SettingsPasscode from './passcode/SettingsPasscode';
 import SettingsStickers from './SettingsStickers';
 import SettingsCustomEmoji from './SettingsCustomEmoji';
+import SettingsDoNotTranslate from './SettingsDoNotTranslate';
 import SettingsExperimental from './SettingsExperimental';
 
 import './Settings.scss';
@@ -249,7 +250,15 @@ const Settings: FC<OwnProps> = ({
         );
       case SettingsScreens.Language:
         return (
-          <SettingsLanguage isActive={isScreenActive} onReset={handleReset} />
+          <SettingsLanguage
+            isActive={isScreenActive || screen === SettingsScreens.DoNotTranslate}
+            onReset={handleReset}
+            onScreenSelect={onScreenSelect}
+          />
+        );
+      case SettingsScreens.DoNotTranslate:
+        return (
+          <SettingsDoNotTranslate isActive={isScreenActive} onReset={handleReset} />
         );
       case SettingsScreens.Stickers:
         return (

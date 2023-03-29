@@ -3,13 +3,13 @@ import { getActions } from '../../../global';
 
 import type { MessageListType } from '../../../global/types';
 
-import { IS_ANDROID, IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
+import { IS_ANDROID } from '../../../util/windowEnvironment';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 import useBackgroundMode from '../../../hooks/useBackgroundMode';
+import useAppLayout from '../../../hooks/useAppLayout';
 
-const INTERSECTION_THROTTLE_FOR_MEDIA = IS_ANDROID ? 1000 : 350;
-const INTERSECTION_MARGIN_FOR_MEDIA = IS_SINGLE_COLUMN_LAYOUT ? 300 : 500;
 const INTERSECTION_THROTTLE_FOR_READING = 150;
+const INTERSECTION_THROTTLE_FOR_MEDIA = IS_ANDROID ? 1000 : 350;
 
 export default function useMessageObservers(
   type: MessageListType,
@@ -18,13 +18,8 @@ export default function useMessageObservers(
 ) {
   const { markMessageListRead, markMentionsRead, animateUnreadReaction } = getActions();
 
-  const {
-    observe: observeIntersectionForMedia,
-  } = useIntersectionObserver({
-    rootRef: containerRef,
-    throttleMs: INTERSECTION_THROTTLE_FOR_MEDIA,
-    margin: INTERSECTION_MARGIN_FOR_MEDIA,
-  });
+  const { isMobile } = useAppLayout();
+  const INTERSECTION_MARGIN_FOR_LOADING = isMobile ? 300 : 500;
 
   const {
     observe: observeIntersectionForReading, freeze: freezeForReading, unfreeze: unfreezeForReading,
@@ -78,14 +73,22 @@ export default function useMessageObservers(
 
   useBackgroundMode(freezeForReading, unfreezeForReading);
 
-  const { observe: observeIntersectionForAnimatedStickers } = useIntersectionObserver({
+  const {
+    observe: observeIntersectionForLoading,
+  } = useIntersectionObserver({
+    rootRef: containerRef,
+    throttleMs: INTERSECTION_THROTTLE_FOR_MEDIA,
+    margin: INTERSECTION_MARGIN_FOR_LOADING,
+  });
+
+  const { observe: observeIntersectionForPlaying } = useIntersectionObserver({
     rootRef: containerRef,
     throttleMs: INTERSECTION_THROTTLE_FOR_MEDIA,
   });
 
   return {
-    observeIntersectionForMedia,
     observeIntersectionForReading,
-    observeIntersectionForAnimatedStickers,
+    observeIntersectionForLoading,
+    observeIntersectionForPlaying,
   };
 }

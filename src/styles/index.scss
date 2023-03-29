@@ -125,6 +125,12 @@ body.cursor-ew-resize {
   }
 }
 
+.clearfix::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
 /*
  See the article for more information on this visually-hidden pattern.
  https://snook.ca/archives/html_and_css/hiding-content-for-accessibility
@@ -284,6 +290,20 @@ div[role="button"] {
   position: absolute;
   bottom: 0;
   left: 0;
+}
+
+.shared-canvas-container {
+  position: relative;
+}
+
+.shared-canvas, .absolute-video-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 @keyframes grow-icon {

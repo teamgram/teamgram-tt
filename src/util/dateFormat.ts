@@ -98,11 +98,11 @@ export function formatCountdown(
   }
 }
 
-export function formatCountdownShort(lang: LangFn, msLeft: number) {
+export function formatCountdownShort(lang: LangFn, msLeft: number): string {
   if (msLeft < 60 * 1000) {
-    return Math.ceil(msLeft / 1000);
+    return Math.ceil(msLeft / 1000).toString();
   } else if (msLeft < 60 * 60 * 1000) {
-    return Math.ceil(msLeft / (60 * 1000));
+    return Math.ceil(msLeft / (60 * 1000)).toString();
   } else if (msLeft < MILLISECONDS_IN_DAY) {
     return lang('MessageTimer.ShortHours', Math.ceil(msLeft / (60 * 60 * 1000)));
   } else {
@@ -159,7 +159,7 @@ export function formatTimeDuration(lang: LangFn, duration: number, showLast = 2)
   }
 
   // TODO In arabic we don't use "," as delimiter rather we use "and" each time
-  return out.map((l) => lang(l.type, l.duration, 'i')).join(', ');
+  return out.map((part) => lang(part.type, part.duration, 'i')).join(', ');
 }
 
 export function formatHumanDate(
@@ -290,7 +290,7 @@ export function formatDateToString(
   return formatDayToStringWithCache(dayStartAt, locale, noYear, monthFormat, noDay);
 }
 
-export function formatDateTimeToString(datetime: Date | number, locale = 'en-US') {
+export function formatDateTimeToString(datetime: Date | number, locale = 'en-US', noSeconds?: boolean) {
   const date = typeof datetime === 'number' ? new Date(datetime) : datetime;
   return date.toLocaleString(
     locale,
@@ -300,7 +300,7 @@ export function formatDateTimeToString(datetime: Date | number, locale = 'en-US'
       day: 'numeric',
       hour: 'numeric',
       minute: 'numeric',
-      second: 'numeric',
+      second: noSeconds ? undefined : 'numeric',
     },
   );
 }

@@ -18,7 +18,7 @@ import {
   IS_PROGRESSIVE_SUPPORTED,
   IS_SAFARI,
   MAX_BUFFER_SIZE,
-} from '../../util/environment';
+} from '../../util/windowEnvironment';
 import { getMessageKey, isMessageLocal, matchLinkInMessageText } from './messages';
 import { getDocumentHasPreview } from '../../components/common/helpers/documentInfo';
 
@@ -26,8 +26,8 @@ type Target =
   'micro'
   | 'pictogram'
   | 'inline'
-  | 'viewerPreview'
-  | 'viewerFull'
+  | 'preview'
+  | 'full'
   | 'download';
 
 export function getMessageContent(message: ApiMessage) {
@@ -50,6 +50,10 @@ export function hasMessageMedia(message: ApiMessage) {
 
 export function getMessagePhoto(message: ApiMessage) {
   return message.content.photo;
+}
+
+export function getMessageActionPhoto(message: ApiMessage) {
+  return message.content.action?.type === 'suggestProfilePhoto' ? message.content.action.photo : undefined;
 }
 
 export function getMessageVideo(message: ApiMessage) {
@@ -116,12 +120,16 @@ export function getMessageWebPagePhoto(message: ApiMessage) {
   return getMessageWebPage(message)?.photo;
 }
 
-export function getMessageWebPageDocument(message: ApiMessage) {
-  return getMessageWebPage(message)?.document;
+export function getMessageDocumentPhoto(message: ApiMessage) {
+  return isMessageDocumentPhoto(message) ? getMessageDocument(message) : undefined;
 }
 
-export function getMessageWebPageVideo(message: ApiMessage): ApiVideo | undefined {
+export function getMessageWebPageVideo(message: ApiMessage) {
   return getMessageWebPage(message)?.video;
+}
+
+export function getMessageDocumentVideo(message: ApiMessage) {
+  return isMessageDocumentVideo(message) ? getMessageDocument(message) : undefined;
 }
 
 export function getMessageMediaThumbnail(message: ApiMessage) {
@@ -130,7 +138,8 @@ export function getMessageMediaThumbnail(message: ApiMessage) {
     || getMessageDocument(message)
     || getMessageSticker(message)
     || getMessageWebPagePhoto(message)
-    || getMessageWebPageVideo(message);
+    || getMessageWebPageVideo(message)
+    || getMessageInvoice(message)?.extendedMedia;
 
   if (!media) {
     return undefined;
@@ -141,6 +150,14 @@ export function getMessageMediaThumbnail(message: ApiMessage) {
 
 export function getMessageMediaThumbDataUri(message: ApiMessage) {
   return getMessageMediaThumbnail(message)?.dataUri;
+}
+
+export function getMessageIsSpoiler(message: ApiMessage) {
+  const media = getMessagePhoto(message)
+    || getMessageVideo(message);
+
+  const invoiceMedia = getMessageInvoice(message)?.extendedMedia;
+  return Boolean(invoiceMedia || media?.isSpoiler);
 }
 
 export function getDocumentMediaHash(document: ApiDocument) {
@@ -167,16 +184,14 @@ export function getMessageMediaHash(
   target: Target,
 ) {
   const {
-    photo, video, sticker, audio, voice, document,
+    video, sticker, audio, voice, document,
   } = message.content;
-  const webPagePhoto = getMessageWebPagePhoto(message);
-  const webPageVideo = getMessageWebPageVideo(message);
 
-  const messageVideo = video || webPageVideo;
-  const messagePhoto = photo || webPagePhoto;
+  const messagePhoto = getMessagePhoto(message) || getMessageWebPagePhoto(message) || getMessageDocumentPhoto(message);
+  const actionPhoto = getMessageActionPhoto(message);
+  const messageVideo = video || getMessageWebPageVideo(message) || getMessageDocumentVideo(message);
 
-  const content = messagePhoto || messageVideo || sticker || audio || voice || document;
-
+  const content = actionPhoto || messagePhoto || messageVideo || sticker || audio || voice || document;
   if (!content) {
     return undefined;
   }
@@ -191,27 +206,27 @@ export function getMessageMediaHash(
         return `${base}?size=m`;
       case 'inline':
         return !hasMessageLocalBlobUrl(message) ? getVideoOrAudioBaseHash(messageVideo, base) : undefined;
-      case 'viewerPreview':
-        return `${base}?size=m`;
-      case 'viewerFull':
+      case 'preview':
+        return `${base}?size=x`;
+      case 'full':
         return getVideoOrAudioBaseHash(messageVideo, base);
       case 'download':
         return `${base}?download`;
     }
   }
 
-  if (messagePhoto) {
+  if (messagePhoto || actionPhoto) {
     switch (target) {
       case 'micro':
       case 'pictogram':
-        return `${base}?size=m`;
+        return `${base}?size=${actionPhoto ? 'a' : 'm'}`;
       case 'inline':
-        return !hasMessageLocalBlobUrl(message) ? `${base}?size=x` : undefined;
-      case 'viewerPreview':
-        return `${base}?size=x`;
-      case 'viewerFull':
+        return !hasMessageLocalBlobUrl(message) ? `${base}?size=${actionPhoto ? 'b' : 'x'}` : undefined;
+      case 'preview':
+        return `${base}?size=${actionPhoto ? 'b' : 'x'}`;
+      case 'full':
       case 'download':
-        return `${base}?size=z`;
+        return document ? base : `${base}?size=${actionPhoto ? 'c' : 'z'}`;
     }
   }
 
@@ -220,13 +235,13 @@ export function getMessageMediaHash(
       case 'micro':
       case 'pictogram':
       case 'inline':
-      case 'viewerPreview':
+      case 'preview':
         if (!getDocumentHasPreview(document) || hasMessageLocalBlobUrl(message)) {
           return undefined;
         }
 
         return `${base}?size=m`;
-      case 'viewerFull':
+      case 'full':
       case 'download':
         return base;
     }
@@ -297,7 +312,7 @@ export function getGamePreviewVideoHash(game: ApiGame) {
   return undefined;
 }
 
-function getVideoOrAudioBaseHash(media: ApiAudio | ApiVideo, base: string) {
+function getVideoOrAudioBaseHash(media: ApiAudio | ApiVideo | ApiDocument, base: string) {
   if (IS_PROGRESSIVE_SUPPORTED && IS_SAFARI) {
     return `${base}?fileSize=${media.size}&mimeType=${media.mimeType}`;
   }
@@ -315,7 +330,7 @@ export function getMessageMediaFormat(
   const {
     video, audio, voice, document,
   } = message.content;
-  const fullVideo = video || getMessageWebPageVideo(message);
+  const isVideo = Boolean(video || getMessageWebPageVideo(message) || isMessageDocumentVideo(message));
   const size = (video || audio || document)?.size!;
   if (target === 'download') {
     if (IS_PROGRESSIVE_SUPPORTED && size > MAX_BUFFER_SIZE && !IS_OPFS_SUPPORTED) {
@@ -324,8 +339,8 @@ export function getMessageMediaFormat(
     return ApiMediaFormat.BlobUrl;
   }
 
-  if (fullVideo && IS_PROGRESSIVE_SUPPORTED && (
-    target === 'viewerFull' || target === 'inline'
+  if (isVideo && IS_PROGRESSIVE_SUPPORTED && (
+    target === 'full' || target === 'inline'
   )) {
     return ApiMediaFormat.Progressive;
   }

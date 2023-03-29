@@ -1,11 +1,15 @@
-import type { GlobalState } from '../types';
+import type { TabState, GlobalState, TabArgs } from '../types';
 import type { ApiUser, ApiUserStatus } from '../../api/types';
 
 import { omit, pick } from '../../util/iteratees';
 import { MEMO_EMPTY_ARRAY } from '../../util/memo';
 import { updateChat } from './chats';
+import { updateTabState } from './tabs';
+import { selectTabState } from '../selectors';
+import { getCurrentTabId } from '../../util/establishMultitabRole';
+import { areDeepEqual } from '../../util/areDeepEqual';
 
-export function replaceUsers(global: GlobalState, newById: Record<string, ApiUser>): GlobalState {
+export function replaceUsers<T extends GlobalState>(global: T, newById: Record<string, ApiUser>): T {
   return {
     ...global,
     users: {
@@ -15,7 +19,7 @@ export function replaceUsers(global: GlobalState, newById: Record<string, ApiUse
   };
 }
 
-function updateContactList(global: GlobalState, updatedUsers: ApiUser[]): GlobalState {
+function updateContactList<T extends GlobalState>(global: T, updatedUsers: ApiUser[]): T {
   const { userIds: contactUserIds } = global.contactList || {};
 
   if (!contactUserIds) return global;
@@ -37,7 +41,7 @@ function updateContactList(global: GlobalState, updatedUsers: ApiUser[]): Global
   };
 }
 
-export function updateUser(global: GlobalState, userId: string, userUpdate: Partial<ApiUser>): GlobalState {
+export function updateUser<T extends GlobalState>(global: T, userId: string, userUpdate: Partial<ApiUser>): T {
   const { byId } = global.users;
 
   const updatedUser = getUpdatedUser(global, userId, userUpdate);
@@ -53,7 +57,7 @@ export function updateUser(global: GlobalState, userId: string, userUpdate: Part
   });
 }
 
-export function updateUsers(global: GlobalState, newById: Record<string, ApiUser>): GlobalState {
+export function updateUsers<T extends GlobalState>(global: T, newById: Record<string, ApiUser>): T {
   const updatedById = Object.keys(newById).reduce((acc: Record<string, ApiUser>, id) => {
     const updatedUser = getUpdatedUser(global, id, newById[id]);
     if (updatedUser) {
@@ -74,7 +78,7 @@ export function updateUsers(global: GlobalState, newById: Record<string, ApiUser
 }
 
 // @optimization Allows to avoid redundant updates which cause a lot of renders
-export function addUsers(global: GlobalState, newById: Record<string, ApiUser>): GlobalState {
+export function addUsers<T extends GlobalState>(global: T, newById: Record<string, ApiUser>): T {
   const { byId } = global.users;
   let isUpdated = false;
 
@@ -109,11 +113,26 @@ export function addUsers(global: GlobalState, newById: Record<string, ApiUser>):
 function getUpdatedUser(global: GlobalState, userId: string, userUpdate: Partial<ApiUser>) {
   const { byId } = global.users;
   const user = byId[userId];
-  const shouldOmitMinInfo = userUpdate.isMin && user && !user.isMin;
+  const omitProps: (keyof ApiUser)[] = [];
+
+  const shouldIgnoreUndefinedFields = userUpdate.isMin && user && !user.isMin;
+  if (shouldIgnoreUndefinedFields) {
+    omitProps.push('isMin', 'accessHash');
+    Object.keys(userUpdate).forEach((key) => {
+      const prop = key as keyof ApiUser;
+      if (userUpdate[prop] === undefined) {
+        omitProps.push(prop);
+      }
+    });
+  }
+
+  if (areDeepEqual(user?.usernames, userUpdate.usernames)) {
+    omitProps.push('usernames');
+  }
 
   const updatedUser = {
     ...user,
-    ...(shouldOmitMinInfo ? omit(userUpdate, ['isMin', 'accessHash']) : userUpdate),
+    ...omit(userUpdate, omitProps),
   };
 
   if (!updatedUser.id || !updatedUser.type) {
@@ -123,7 +142,7 @@ function getUpdatedUser(global: GlobalState, userId: string, userUpdate: Partial
   return updatedUser;
 }
 
-export function deleteContact(global: GlobalState, userId: string): GlobalState {
+export function deleteContact<T extends GlobalState>(global: T, userId: string): T {
   const { byId } = global.users;
   const { userIds } = global.contactList || {};
 
@@ -147,28 +166,29 @@ export function deleteContact(global: GlobalState, userId: string): GlobalState 
   });
 }
 
-export function updateUserSearch(
-  global: GlobalState,
-  searchStatePartial: Partial<GlobalState['userSearch']>,
-) {
-  return {
-    ...global,
+export function updateUserSearch<T extends GlobalState>(
+  global: T,
+  searchStatePartial: Partial<TabState['userSearch']>,
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+): T {
+  return updateTabState(global, {
     userSearch: {
-      ...global.userSearch,
+      ...selectTabState(global, tabId).userSearch,
       ...searchStatePartial,
     },
-  };
+  }, tabId);
 }
 
-export function updateUserSearchFetchingStatus(
-  global: GlobalState, newState: boolean,
-) {
+export function updateUserSearchFetchingStatus<T extends GlobalState>(
+  global: T, newState: boolean,
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+): T {
   return updateUserSearch(global, {
     fetchingStatus: newState,
-  });
+  }, tabId);
 }
 
-export function updateUserBlockedState(global: GlobalState, userId: string, isBlocked: boolean) {
+export function updateUserBlockedState<T extends GlobalState>(global: T, userId: string, isBlocked: boolean): T {
   const { byId } = global.users;
   const user = byId[userId];
   if (!user || !user.fullInfo) {
@@ -184,7 +204,7 @@ export function updateUserBlockedState(global: GlobalState, userId: string, isBl
   });
 }
 
-export function replaceUserStatuses(global: GlobalState, newById: Record<string, ApiUserStatus>): GlobalState {
+export function replaceUserStatuses<T extends GlobalState>(global: T, newById: Record<string, ApiUserStatus>): T {
   return {
     ...global,
     users: {
@@ -195,7 +215,7 @@ export function replaceUserStatuses(global: GlobalState, newById: Record<string,
 }
 
 // @optimization Allows to avoid redundant updates which cause a lot of renders
-export function addUserStatuses(global: GlobalState, newById: Record<string, ApiUserStatus>): GlobalState {
+export function addUserStatuses<T extends GlobalState>(global: T, newById: Record<string, ApiUserStatus>): T {
   const { statusesById } = global.users;
 
   const newKeys = Object.keys(newById).filter((id) => !statusesById[id]);
@@ -211,9 +231,11 @@ export function addUserStatuses(global: GlobalState, newById: Record<string, Api
   return global;
 }
 
-export function closeNewContactDialog(global: GlobalState): GlobalState {
-  return {
-    ...global,
+export function closeNewContactDialog<T extends GlobalState>(
+  global: T,
+  ...[tabId = getCurrentTabId()]: TabArgs<T>
+): T {
+  return updateTabState(global, {
     newContact: undefined,
-  };
+  }, tabId);
 }

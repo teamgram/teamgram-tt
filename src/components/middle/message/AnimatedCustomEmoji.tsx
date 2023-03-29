@@ -23,7 +23,6 @@ type OwnProps = {
   customEmojiId: string;
   withEffects: boolean;
   isOwn?: boolean;
-  size?: 'large' | 'medium' | 'small';
   lastSyncTime?: number;
   forceLoadPreview?: boolean;
   messageId?: number;
@@ -55,7 +54,7 @@ const AnimatedCustomEmoji: FC<OwnProps & StateProps> = ({
     style,
     handleClick,
   } = useAnimatedEmoji(
-    chatId, messageId, soundId, activeEmojiInteractions, isOwn, undefined, effect?.emoji, getCustomEmojiSize(1),
+    chatId, messageId, soundId, activeEmojiInteractions, isOwn, effect?.emoji, getCustomEmojiSize(1),
   );
 
   return (
@@ -65,9 +64,10 @@ const AnimatedCustomEmoji: FC<OwnProps & StateProps> = ({
       className={buildClassName('AnimatedEmoji media-inner', sticker?.id === LIKE_STICKER_ID && 'like-sticker-thumb')}
       style={style}
       size={size}
+      isBig
       withSharedAnimation
       forceOnHeavyAnimation
-      observeIntersection={observeIntersection}
+      observeIntersectionForLoading={observeIntersection}
       onClick={handleClick}
     />
   );

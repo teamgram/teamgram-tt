@@ -89,6 +89,10 @@ export interface ISettings extends NotifySettings, Record<string, any> {
   wasTimeFormatSetManually: boolean;
   isConnectionStatusMinimized: boolean;
   shouldArchiveAndMuteNewNonContact?: boolean;
+  canTranslate: boolean;
+  canTranslateChats: boolean;
+  doNotTranslate: string[];
+  canDisplayChatInTitle: boolean;
 }
 
 export interface ApiPrivacySettings {
@@ -216,10 +220,12 @@ export enum SettingsScreens {
   Stickers,
   QuickReaction,
   CustomEmoji,
+  DoNotTranslate,
 }
 
 export type StickerSetOrRecent = Pick<ApiStickerSet, (
-  'id' | 'title' | 'count' | 'stickers' | 'hasThumbnail' | 'isLottie' | 'isVideos' | 'isEmoji' | 'installedDate'
+  'id' | 'accessHash' | 'title' | 'count' | 'stickers' | 'hasThumbnail' | 'isLottie' | 'isVideos' | 'isEmoji' |
+  'installedDate' | 'isArchived'
 )>;
 
 export enum LeftColumnContent {
@@ -253,6 +259,8 @@ export enum RightColumnContent {
   GifSearch,
   PollResults,
   AddingMembers,
+  CreateTopic,
+  EditTopic,
 }
 
 export enum MediaViewerOrigin {
@@ -265,6 +273,7 @@ export enum MediaViewerOrigin {
   Album,
   ScheduledAlbum,
   SearchResult,
+  SuggestedAvatar,
 }
 
 export enum AudioOrigin {
@@ -387,4 +396,5 @@ export type InlineBotSettings = {
   results?: (ApiBotInlineResult | ApiBotInlineMediaResult)[];
   isGallery?: boolean;
   switchPm?: ApiBotInlineSwitchPm;
+  cacheTime: number;
 };

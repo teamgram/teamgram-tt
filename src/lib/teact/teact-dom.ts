@@ -23,9 +23,15 @@ import { DEBUG } from '../../config';
 import { addEventListener, removeAllDelegatedListeners, removeEventListener } from './dom-events';
 import { unique } from '../../util/iteratees';
 
-type VirtualDomHead = {
+interface VirtualDomHead {
   children: [VirtualElement] | [];
-};
+}
+
+interface SelectionState {
+  selectionStart: number | null;
+  selectionEnd: number | null;
+  isCaretAtEnd: boolean;
+}
 
 const FILTERED_ATTRIBUTES = new Set(['key', 'ref', 'teactFastList', 'teactOrderKey']);
 const HTML_ATTRIBUTES = new Set(['dir', 'role', 'form']);
@@ -99,6 +105,7 @@ function renderWithVirtual<T extends VirtualElement | undefined>(
   }
 
   if (DEBUG && $new) {
+    // @ts-ignore TS 4.9 bug https://github.com/microsoft/TypeScript/issues/51501
     const newTarget = 'target' in $new && $new.target;
     if (newTarget && (!$current || ('target' in $current && newTarget !== $current.target))) {
       throw new Error('[Teact] Cached virtual element was moved within tree');
@@ -558,20 +565,18 @@ function processControlled(tag: string, props: AnyLiteral) {
     onInput?.(e);
     onChange?.(e);
 
-    if (value !== undefined) {
+    if (value !== undefined && value !== e.currentTarget.value) {
       const { selectionStart, selectionEnd } = e.currentTarget;
+      const isCaretAtEnd = selectionStart === selectionEnd && selectionEnd === e.currentTarget.value.length;
 
-      if (e.currentTarget.value !== value) {
-        e.currentTarget.value = value;
+      e.currentTarget.value = value;
 
-        if (selectionStart !== undefined && selectionEnd !== undefined) {
-          e.currentTarget.setSelectionRange(selectionStart, selectionEnd);
+      if (typeof selectionStart === 'number' && typeof selectionEnd === 'number') {
+        e.currentTarget.setSelectionRange(selectionStart, selectionEnd);
 
-          // eslint-disable-next-line no-underscore-dangle
-          e.currentTarget.dataset.__teactSelectionStart = String(selectionStart);
-          // eslint-disable-next-line no-underscore-dangle
-          e.currentTarget.dataset.__teactSelectionEnd = String(selectionEnd);
-        }
+        const selectionState: SelectionState = { selectionStart, selectionEnd, isCaretAtEnd };
+        // eslint-disable-next-line no-underscore-dangle
+        e.currentTarget.dataset.__teactSelectionState = JSON.stringify(selectionState);
       }
     }
 
@@ -630,15 +635,22 @@ function setAttribute(element: HTMLElement, key: string, value: any) {
     element.className = value;
     // An optimization attempt
   } else if (key === 'value') {
-    if ((element as HTMLInputElement).value !== value) {
-      const {
-        __teactSelectionStart: selectionStart, __teactSelectionEnd: selectionEnd,
-      } = (element as HTMLInputElement).dataset;
+    const inputEl = element as HTMLInputElement;
 
-      (element as HTMLInputElement).value = value;
+    if (inputEl.value !== value) {
+      inputEl.value = value;
 
-      if (selectionStart !== undefined && selectionEnd !== undefined) {
-        (element as HTMLInputElement).setSelectionRange(Number(selectionStart), Number(selectionEnd));
+      // eslint-disable-next-line no-underscore-dangle
+      const selectionStateJson = inputEl.dataset.__teactSelectionState;
+      if (selectionStateJson) {
+        const { selectionStart, selectionEnd, isCaretAtEnd } = JSON.parse(selectionStateJson) as SelectionState;
+
+        if (isCaretAtEnd) {
+          const length = inputEl.value.length;
+          inputEl.setSelectionRange(length, length);
+        } else if (typeof selectionStart === 'number' && typeof selectionEnd === 'number') {
+          inputEl.setSelectionRange(selectionStart, selectionEnd);
+        }
       }
     }
   } else if (key === 'style') {
@@ -666,10 +678,8 @@ function removeAttribute(element: HTMLElement, key: string, value: any) {
     element.innerHTML = '';
   } else if (key.startsWith('on')) {
     removeEventListener(element, key, value, key.endsWith('Capture'));
-  } else if (key.startsWith('data-') || key.startsWith('aria-') || HTML_ATTRIBUTES.has(key)) {
-    element.removeAttribute(key);
   } else if (!FILTERED_ATTRIBUTES.has(key)) {
-    delete (element as any)[MAPPED_ATTRIBUTES[key] || key];
+    element.removeAttribute(key);
   }
 }
 
@@ -697,6 +707,8 @@ function DEBUG_checkKeyUniqueness(children: VirtualElementChildren) {
     }, []);
 
     if (keys.length !== unique(keys).length) {
+      // eslint-disable-next-line no-console
+      console.warn('[Teact] Duplicated keys:', keys.filter((e, i, a) => a.indexOf(e) !== i));
       throw new Error('[Teact] Children keys are not unique');
     }
   }

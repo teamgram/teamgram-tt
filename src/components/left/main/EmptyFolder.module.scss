@@ -1,0 +1,60 @@
+.root {
+  width: 100%;
+  height: 80%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+
+  @media (max-height: 480px) {
+    height: 100%;
+  }
+
+  .sticker {
+    height: 6rem;
+    margin-bottom: 1.875rem;
+  }
+
+  .title {
+    font-size: 1.25rem;
+    margin-bottom: 0.125rem;
+    word-break: break-word;
+    text-align: center;
+    max-width: 100%;
+  }
+
+  .description {
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+
+    body.is-ios &,
+    body.is-macos & {
+      color: var(--color-text-secondary-apple);
+    }
+  }
+
+  :global(.Button.pill) {
+    max-width: 100%;
+    margin-top: 0.625rem;
+    font-weight: 500;
+    padding-inline-start: 0.75rem;
+    unicode-bidi: plaintext;
+
+    justify-content: start;
+
+    .button-text {
+      text-overflow: ellipsis;
+      overflow: hidden;
+      white-space: nowrap;
+    }
+
+    i {
+      margin-inline-end: 0.625rem;
+      font-size: 1.5rem;
+    }
+  }
+}
+
+.centered {
+  text-align: center;
+}

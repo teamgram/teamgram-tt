@@ -9,7 +9,7 @@ import type { AnimationLevel } from '../../../types';
 
 import { selectChatGroupCall } from '../../../global/selectors/calls';
 import buildClassName from '../../../util/buildClassName';
-import { selectChat } from '../../../global/selectors';
+import { selectChat, selectTabState } from '../../../global/selectors';
 import useLang from '../../../hooks/useLang';
 
 import Button from '../../ui/Button';
@@ -20,6 +20,7 @@ import './GroupCallTopPane.scss';
 type OwnProps = {
   chatId: string;
   hasPinnedOffset: boolean;
+  className?: string;
 };
 
 type StateProps = {
@@ -33,6 +34,7 @@ type StateProps = {
 const GroupCallTopPane: FC<OwnProps & StateProps> = ({
   chatId,
   isActive,
+  className,
   groupCall,
   hasPinnedOffset,
   usersById,
@@ -40,17 +42,17 @@ const GroupCallTopPane: FC<OwnProps & StateProps> = ({
   animationLevel,
 }) => {
   const {
-    joinGroupCall,
+    requestMasterAndJoinGroupCall,
     subscribeToGroupCallUpdates,
   } = getActions();
 
   const lang = useLang();
 
   const handleJoinGroupCall = useCallback(() => {
-    joinGroupCall({
+    requestMasterAndJoinGroupCall({
       chatId,
     });
-  }, [joinGroupCall, chatId]);
+  }, [requestMasterAndJoinGroupCall, chatId]);
 
   const participants = groupCall?.participants;
 
@@ -97,6 +99,7 @@ const GroupCallTopPane: FC<OwnProps & StateProps> = ({
         'GroupCallTopPane',
         hasPinnedOffset && 'has-pinned-offset',
         !isActive && 'is-hidden',
+        className,
       )}
       onClick={handleJoinGroupCall}
     >
@@ -125,6 +128,7 @@ export default memo(withGlobal<OwnProps>(
   (global, { chatId }) => {
     const chat = selectChat(global, chatId)!;
     const groupCall = selectChatGroupCall(global, chatId);
+    const activeGroupCallId = selectTabState(global).isMasterTab ? global.groupCalls.activeGroupCallId : undefined;
     return {
       groupCall,
       usersById: global.users.byId,
@@ -132,7 +136,7 @@ export default memo(withGlobal<OwnProps>(
       activeGroupCallId: global.groupCalls.activeGroupCallId,
       isActive: ((!groupCall ? (chat && chat.isCallNotEmpty && chat.isCallActive)
         : (groupCall.participantsCount > 0 && groupCall.isLoaded)))
-        && (global.groupCalls.activeGroupCallId !== groupCall?.id),
+        && (activeGroupCallId !== groupCall?.id),
       animationLevel: global.settings.byKey.animationLevel,
     };
   },

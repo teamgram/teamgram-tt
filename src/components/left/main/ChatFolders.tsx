@@ -5,15 +5,17 @@ import React, {
 import { getActions, withGlobal } from '../../../global';
 
 import type { ApiChatFolder } from '../../../api/types';
-import type { SettingsScreens } from '../../../types';
+import type { LeftColumnContent, SettingsScreens } from '../../../types';
 import type { FolderEditDispatch } from '../../../hooks/reducers/useFoldersReducer';
+import type { GlobalState } from '../../../global/types';
 
 import { ALL_FOLDER_ID } from '../../../config';
-import { IS_TOUCH_ENV } from '../../../util/environment';
+import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { captureEvents, SwipeDirection } from '../../../util/captureEvents';
 import buildClassName from '../../../util/buildClassName';
 import captureEscKeyListener from '../../../util/captureEscKeyListener';
 import { selectCurrentLimit } from '../../../global/selectors/limits';
+import { selectTabState, selectIsForumPanelOpen } from '../../../global/selectors';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useLang from '../../../hooks/useLang';
 import useHistoryBack from '../../../hooks/useHistoryBack';
@@ -24,8 +26,10 @@ import TabList from '../../ui/TabList';
 import ChatList from './ChatList';
 
 type OwnProps = {
-  onScreenSelect: (screen: SettingsScreens) => void;
+  onSettingsScreenSelect: (screen: SettingsScreens) => void;
   foldersDispatch: FolderEditDispatch;
+  onLeftColumnContentChange: (content: LeftColumnContent) => void;
+  shouldHideFolderTabs?: boolean;
 };
 
 type StateProps = {
@@ -33,9 +37,12 @@ type StateProps = {
   orderedFolderIds?: number[];
   activeChatFolder: number;
   currentUserId?: string;
+  isForumPanelOpen?: boolean;
   lastSyncTime?: number;
   shouldSkipHistoryAnimations?: boolean;
   maxFolders: number;
+  hasArchivedChats?: boolean;
+  archiveSettings: GlobalState['archiveSettings'];
 };
 
 const SAVED_MESSAGES_HOTKEY = '0';
@@ -43,14 +50,19 @@ const FIRST_FOLDER_INDEX = 0;
 
 const ChatFolders: FC<OwnProps & StateProps> = ({
   foldersDispatch,
-  onScreenSelect,
+  onSettingsScreenSelect,
+  onLeftColumnContentChange,
   chatFoldersById,
   orderedFolderIds,
   activeChatFolder,
   currentUserId,
+  isForumPanelOpen,
   lastSyncTime,
   shouldSkipHistoryAnimations,
   maxFolders,
+  shouldHideFolderTabs,
+  hasArchivedChats,
+  archiveSettings,
 }) => {
   const {
     loadChatFolders,
@@ -112,52 +124,55 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
   }, [displayedFolders, folderCountersById, maxFolders]);
 
   const handleSwitchTab = useCallback((index: number) => {
-    setActiveChatFolder(index, { forceOnHeavyAnimation: true });
+    setActiveChatFolder({ activeChatFolder: index }, { forceOnHeavyAnimation: true });
   }, [setActiveChatFolder]);
 
   // Prevent `activeTab` pointing at non-existing folder after update
   useEffect(() => {
-    if (!folderTabs || !folderTabs.length) {
+    if (!folderTabs?.length) {
       return;
     }
 
     if (activeChatFolder >= folderTabs.length) {
-      setActiveChatFolder(FIRST_FOLDER_INDEX);
+      setActiveChatFolder({ activeChatFolder: FIRST_FOLDER_INDEX });
     }
   }, [activeChatFolder, folderTabs, setActiveChatFolder]);
 
   useEffect(() => {
-    if (!transitionRef.current || !IS_TOUCH_ENV || !folderTabs || !folderTabs.length) {
+    if (!IS_TOUCH_ENV || !folderTabs?.length || isForumPanelOpen) {
       return undefined;
     }
 
-    return captureEvents(transitionRef.current, {
+    return captureEvents(transitionRef.current!, {
       selectorToPreventScroll: '.chat-list',
       onSwipe: ((e, direction) => {
         if (direction === SwipeDirection.Left) {
-          setActiveChatFolder(Math.min(activeChatFolder + 1, folderTabs.length - 1), { forceOnHeavyAnimation: true });
+          setActiveChatFolder(
+            { activeChatFolder: Math.min(activeChatFolder + 1, folderTabs.length - 1) },
+            { forceOnHeavyAnimation: true },
+          );
           return true;
         } else if (direction === SwipeDirection.Right) {
-          setActiveChatFolder(Math.max(0, activeChatFolder - 1), { forceOnHeavyAnimation: true });
+          setActiveChatFolder({ activeChatFolder: Math.max(0, activeChatFolder - 1) }, { forceOnHeavyAnimation: true });
           return true;
         }
 
         return false;
       }),
     });
-  }, [activeChatFolder, folderTabs, setActiveChatFolder]);
+  }, [activeChatFolder, folderTabs, isForumPanelOpen, setActiveChatFolder]);
 
   const isNotInFirstFolderRef = useRef();
   isNotInFirstFolderRef.current = !isInFirstFolder;
   useEffect(() => (isNotInFirstFolderRef.current ? captureEscKeyListener(() => {
     if (isNotInFirstFolderRef.current) {
-      setActiveChatFolder(FIRST_FOLDER_INDEX);
+      setActiveChatFolder({ activeChatFolder: FIRST_FOLDER_INDEX });
     }
   }) : undefined), [activeChatFolder, setActiveChatFolder]);
 
   useHistoryBack({
     isActive: !isInFirstFolder,
-    onBack: () => setActiveChatFolder(FIRST_FOLDER_INDEX, { forceOnHeavyAnimation: true }),
+    onBack: () => setActiveChatFolder({ activeChatFolder: FIRST_FOLDER_INDEX }, { forceOnHeavyAnimation: true }),
   });
 
   useEffect(() => {
@@ -174,7 +189,7 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
         const folder = Number(digit) - 1;
         if (folder > folderTabs.length - 1) return;
 
-        setActiveChatFolder(folder, { forceOnHeavyAnimation: true });
+        setActiveChatFolder({ activeChatFolder: folder }, { forceOnHeavyAnimation: true });
         e.preventDefault();
       }
     };
@@ -193,27 +208,20 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
   function renderCurrentTab(isActive: boolean) {
     const activeFolder = Object.values(chatFoldersById)
       .find(({ id }) => id === folderTabs![activeChatFolder].id);
-
-    if (!activeFolder || isInAllChatsFolder) {
-      return (
-        <ChatList
-          folderType="all"
-          isActive={isActive}
-          lastSyncTime={lastSyncTime}
-          foldersDispatch={foldersDispatch}
-          onScreenSelect={onScreenSelect}
-        />
-      );
-    }
+    const isFolder = activeFolder && !isInAllChatsFolder;
 
     return (
       <ChatList
-        folderType="folder"
-        folderId={activeFolder.id}
+        folderType={isFolder ? 'folder' : 'all'}
+        folderId={isFolder ? activeFolder.id : undefined}
         isActive={isActive}
+        isForumPanelOpen={isForumPanelOpen}
         lastSyncTime={lastSyncTime}
-        onScreenSelect={onScreenSelect}
         foldersDispatch={foldersDispatch}
+        onSettingsScreenSelect={onSettingsScreenSelect}
+        onLeftColumnContentChange={onLeftColumnContentChange}
+        canDisplayArchive={hasArchivedChats && !archiveSettings.isHidden}
+        archiveSettings={archiveSettings}
       />
     );
   }
@@ -221,7 +229,12 @@ const ChatFolders: FC<OwnProps & StateProps> = ({
   const shouldRenderFolders = folderTabs && folderTabs.length > 1;
 
   return (
-    <div className="ChatFolders">
+    <div
+      className={buildClassName(
+        'ChatFolders',
+        shouldRenderFolders && shouldHideFolderTabs && 'ChatFolders--tabs-hidden',
+      )}
+    >
       {shouldRenderFolders ? (
         <TabList tabs={folderTabs} activeTab={activeChatFolder} onSwitchTab={handleSwitchTab} areFolders />
       ) : shouldRenderPlaceholder ? (
@@ -245,23 +258,29 @@ export default memo(withGlobal<OwnProps>(
       chatFolders: {
         byId: chatFoldersById,
         orderedIds: orderedFolderIds,
-        activeChatFolder,
+      },
+      chats: {
+        listIds: {
+          archived,
+        },
       },
       currentUserId,
       lastSyncTime,
-      shouldSkipHistoryAnimations,
+      archiveSettings,
     } = global;
-
-    const maxFolders = selectCurrentLimit(global, 'dialogFilters');
+    const { shouldSkipHistoryAnimations, activeChatFolder } = selectTabState(global);
 
     return {
       chatFoldersById,
       orderedFolderIds,
       activeChatFolder,
       currentUserId,
+      isForumPanelOpen: selectIsForumPanelOpen(global),
       lastSyncTime,
       shouldSkipHistoryAnimations,
-      maxFolders,
+      hasArchivedChats: Boolean(archived?.length),
+      maxFolders: selectCurrentLimit(global, 'dialogFilters'),
+      archiveSettings,
     };
   },
 )(ChatFolders));

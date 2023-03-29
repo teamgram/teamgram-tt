@@ -3,25 +3,26 @@ import React, { useCallback, useEffect, useRef } from '../../../lib/teact/teact'
 
 import type { ApiMessage } from '../../../api/types';
 import { ApiMediaFormat } from '../../../api/types';
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 
 import { getStickerDimensions } from '../../common/helpers/mediaDimensions';
 import { getMessageMediaHash } from '../../../global/helpers';
 import buildClassName from '../../../util/buildClassName';
-import { IS_WEBM_SUPPORTED } from '../../../util/environment';
+import { IS_WEBM_SUPPORTED } from '../../../util/windowEnvironment';
 import { getActions } from '../../../global';
 
-import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 import { useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useMedia from '../../../hooks/useMedia';
 import useFlag from '../../../hooks/useFlag';
 import useLang from '../../../hooks/useLang';
+import useAppLayout from '../../../hooks/useAppLayout';
+import usePrevious from '../../../hooks/usePrevious';
 
 import StickerView from '../../common/StickerView';
 import AnimatedSticker from '../../common/AnimatedSticker';
 
 import './Sticker.scss';
 
-// eslint-disable-next-line max-len
 // https://github.com/telegramdesktop/tdesktop/blob/master/Telegram/SourceFiles/history/view/media/history_view_sticker.cpp#L42
 const EFFECT_SIZE_MULTIPLIER = 1 + 0.245 * 2;
 
@@ -43,6 +44,7 @@ const Sticker: FC<OwnProps> = ({
   const { showNotification, openStickerSet } = getActions();
 
   const lang = useLang();
+  const { isMobile } = useAppLayout();
 
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);
@@ -70,12 +72,14 @@ const Sticker: FC<OwnProps> = ({
     onStopEffect?.();
   }, [onStopEffect, stopPlayingEffect]);
 
+  const previousShouldPlayEffect = usePrevious(shouldPlayEffect);
+
   useEffect(() => {
-    if (hasEffect && canPlay && shouldPlayEffect) {
+    if (hasEffect && canPlay && (shouldPlayEffect || previousShouldPlayEffect)) {
       startPlayingEffect();
       onPlayEffect?.();
     }
-  }, [hasEffect, canPlay, onPlayEffect, shouldPlayEffect, startPlayingEffect]);
+  }, [hasEffect, canPlay, onPlayEffect, shouldPlayEffect, previousShouldPlayEffect, startPlayingEffect]);
 
   const openModal = useCallback(() => {
     openStickerSet({
@@ -88,7 +92,12 @@ const Sticker: FC<OwnProps> = ({
       if (isPlayingEffect) {
         showNotification({
           message: lang('PremiumStickerTooltip'),
-          action: openModal,
+          action: {
+            action: 'openStickerSet',
+            payload: {
+              stickerSetInfo: sticker.stickerSetInfo,
+            },
+          },
           actionText: lang('ViewAction'),
         });
         return;
@@ -99,10 +108,13 @@ const Sticker: FC<OwnProps> = ({
       }
     }
     openModal();
-  }, [hasEffect, isPlayingEffect, lang, onPlayEffect, openModal, showNotification, startPlayingEffect]);
+  }, [
+    hasEffect, isPlayingEffect, lang, onPlayEffect, openModal, showNotification, startPlayingEffect,
+    sticker.stickerSetInfo,
+  ]);
 
   const isMemojiSticker = 'isMissing' in stickerSetInfo;
-  const { width, height } = getStickerDimensions(sticker);
+  const { width, height } = getStickerDimensions(sticker, isMobile);
   const className = buildClassName(
     'Sticker media-inner',
     isMemojiSticker && 'inactive',

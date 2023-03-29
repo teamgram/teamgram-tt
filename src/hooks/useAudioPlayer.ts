@@ -11,9 +11,10 @@ import type { MediaSessionHandlers } from '../util/mediaSession';
 import {
   registerMediaSession, setPlaybackState, setPositionState, updateMetadata,
 } from '../util/mediaSession';
+import { selectTabState } from '../global/selectors';
 
 import useEffectWithPrevDeps from './useEffectWithPrevDeps';
-import useOnChange from './useOnChange';
+import useSyncEffect from './useSyncEffect';
 
 type Handler = (e: Event) => void;
 
@@ -46,7 +47,7 @@ const useAudioPlayer = (
     if (onTrackChange) onTrackChange();
   }, [onTrackChange]);
 
-  useOnChange(() => {
+  useSyncEffect(() => {
     controllerRef.current = register(trackId, trackType, (eventName, e) => {
       switch (eventName) {
         case 'onPlay': {
@@ -57,11 +58,12 @@ const useAudioPlayer = (
 
           registerMediaSession(metadata, makeMediaHandlers(controllerRef));
           setPlaybackState('playing');
-          setVolume(getGlobal().audioPlayer.volume);
-          toggleMuted(Boolean(getGlobal().audioPlayer.isMuted));
+          const { audioPlayer } = selectTabState(getGlobal());
+          setVolume(audioPlayer.volume);
+          toggleMuted(Boolean(audioPlayer.isMuted));
           const duration = proxy.duration && Number.isFinite(proxy.duration) ? proxy.duration : originalDuration;
           if (trackType === 'voice' || duration > PLAYBACK_RATE_FOR_AUDIO_MIN_DURATION) {
-            setPlaybackRate(getGlobal().audioPlayer.playbackRate);
+            setPlaybackRate(audioPlayer.playbackRate);
           }
 
           setPositionState({
@@ -103,6 +105,8 @@ const useAudioPlayer = (
 
     if (!isPlaying && !proxy.paused) {
       setIsPlaying(true);
+      // `isPlayingSync` is only needed to help `setIsPlaying` because it is asynchronous
+      // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps
       isPlayingSync = true;
     }
 

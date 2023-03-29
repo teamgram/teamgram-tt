@@ -6,16 +6,15 @@ import { getActions } from '../../global';
 
 import type { ApiDimensions } from '../../api/types';
 
+import { IS_IOS, IS_TOUCH_ENV, IS_YA_BROWSER } from '../../util/windowEnvironment';
+import safePlay from '../../util/safePlay';
+import stopEvent from '../../util/stopEvent';
 import useBuffering from '../../hooks/useBuffering';
 import useFullscreen from '../../hooks/useFullscreen';
 import usePictureInPicture from '../../hooks/usePictureInPicture';
 import useShowTransition from '../../hooks/useShowTransition';
 import useVideoCleanup from '../../hooks/useVideoCleanup';
-import {
-  IS_IOS, IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV, IS_YA_BROWSER,
-} from '../../util/environment';
-import safePlay from '../../util/safePlay';
-import stopEvent from '../../util/stopEvent';
+import useAppLayout from '../../hooks/useAppLayout';
 
 import Button from '../ui/Button';
 import ProgressSpinner from '../ui/ProgressSpinner';
@@ -77,21 +76,23 @@ const VideoPlayer: FC<OwnProps> = ({
   const [isPlaying, setIsPlaying] = useState(!IS_TOUCH_ENV || !IS_IOS);
   const [currentTime, setCurrentTime] = useState(0);
   const [isFullscreen, setFullscreen, exitFullscreen] = useFullscreen(videoRef, setIsPlaying);
+  const { isMobile } = useAppLayout();
 
   const handleEnterFullscreen = useCallback(() => {
     // Yandex browser doesn't support PIP when video is hidden
     if (IS_YA_BROWSER) return;
-    setMediaViewerHidden(true);
+    setMediaViewerHidden({ isHidden: true });
   }, [setMediaViewerHidden]);
 
   const handleLeaveFullscreen = useCallback(() => {
     if (IS_YA_BROWSER) return;
-    setMediaViewerHidden(false);
+    setMediaViewerHidden({ isHidden: false });
   }, [setMediaViewerHidden]);
 
   const [
     isPictureInPictureSupported,
     enterPictureInPicture,
+    isInPictureInPicture,
   ] = usePictureInPicture(videoRef, handleEnterFullscreen, handleLeaveFullscreen);
 
   const handleVideoMove = useCallback(() => {
@@ -158,7 +159,10 @@ const VideoPlayer: FC<OwnProps> = ({
   }, [isPlaying]);
 
   const handleClick = useCallback((e: React.MouseEvent<HTMLVideoElement, MouseEvent>) => {
-    if (isClickDisabled) return;
+    if (isClickDisabled) {
+      return;
+    }
+
     if (shouldCloseOnClick) {
       onClose(e);
     } else {
@@ -207,7 +211,7 @@ const VideoPlayer: FC<OwnProps> = ({
   useEffect(() => {
     if (!isMediaViewerOpen) return undefined;
     const togglePayingStateBySpace = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === ' ') {
+      if ((e.key === 'Enter' || e.key === ' ') && !isInPictureInPicture) {
         e.preventDefault();
         togglePlayState(e);
       }
@@ -218,7 +222,7 @@ const VideoPlayer: FC<OwnProps> = ({
     return () => {
       document.removeEventListener('keydown', togglePayingStateBySpace, false);
     };
-  }, [togglePlayState, isMediaViewerOpen]);
+  }, [togglePlayState, isMediaViewerOpen, isInPictureInPicture]);
 
   const wrapperStyle = posterSize && `width: ${posterSize.width}px; height: ${posterSize.height}px`;
   const videoStyle = `background-image: url(${posterData})`;
@@ -238,14 +242,14 @@ const VideoPlayer: FC<OwnProps> = ({
           <div
             onContextMenu={stopEvent}
             onDoubleClick={!IS_TOUCH_ENV ? handleFullscreenChange : undefined}
-            onClick={!IS_SINGLE_COLUMN_LAYOUT ? togglePlayState : undefined}
+            onClick={!isMobile ? togglePlayState : undefined}
             className="protector"
           />
         )}
         <video
           ref={videoRef}
           autoPlay={IS_TOUCH_ENV}
-          controlsList={isProtected ? 'nodownload' : undefined}
+          controlsList="nodownload"
           playsInline
           loop={isGif || duration <= MAX_LOOP_DURATION}
           // This is to force autoplaying on mobiles
@@ -254,7 +258,7 @@ const VideoPlayer: FC<OwnProps> = ({
           style={videoStyle}
           onPlay={() => setIsPlaying(true)}
           onEnded={handleEnded}
-          onClick={!IS_SINGLE_COLUMN_LAYOUT ? handleClick : undefined}
+          onClick={!isMobile && !isFullscreen ? handleClick : undefined}
           onDoubleClick={!IS_TOUCH_ENV ? handleFullscreenChange : undefined}
           // eslint-disable-next-line react/jsx-props-no-spreading
           {...bufferingHandlers}

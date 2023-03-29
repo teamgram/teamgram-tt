@@ -5,6 +5,7 @@ import type {
 
 import { buildApiThumbnailFromCached, buildApiThumbnailFromPath } from './common';
 import localDb from '../localDb';
+import { compact } from '../../../util/iteratees';
 
 const LOTTIE_STICKER_MIME_TYPE = 'application/x-tgsticker';
 const VIDEO_STICKER_MIME_TYPE = 'video/webm';
@@ -35,6 +36,7 @@ export function buildStickerFromDocument(document: GramJs.TypeDocument, isNoPrem
   const isLottie = mimeType === LOTTIE_STICKER_MIME_TYPE;
   const isVideo = mimeType === VIDEO_STICKER_MIME_TYPE;
   const isCustomEmoji = Boolean(customEmojiAttribute);
+  const shouldUseTextColor = isCustomEmoji && customEmojiAttribute.textColor;
 
   const imageSizeAttribute = document.attributes
     .find((attr: any): attr is GramJs.DocumentAttributeImageSize => (
@@ -80,7 +82,9 @@ export function buildStickerFromDocument(document: GramJs.TypeDocument, isNoPrem
 
   const { w: width, h: height } = cachedThumb as GramJs.PhotoCachedSize || sizeAttribute || {};
 
-  const hasEffect = !isNoPremium && videoThumbs?.some(({ type }) => type === 'f');
+  const hasEffect = !isNoPremium && videoThumbs && compact(videoThumbs
+    ?.filter((thumb) => thumb instanceof GramJs.VideoSize) as GramJs.VideoSize[])
+    .some(({ type }) => type === 'f');
 
   return {
     id: String(document.id),
@@ -94,6 +98,7 @@ export function buildStickerFromDocument(document: GramJs.TypeDocument, isNoPrem
     thumbnail,
     hasEffect,
     isFree,
+    shouldUseTextColor,
   };
 }
 
@@ -114,7 +119,7 @@ export function buildStickerSet(set: GramJs.StickerSet): ApiStickerSet {
   } = set;
 
   return {
-    archived,
+    isArchived: archived,
     isLottie: animated,
     isVideos: videos,
     isEmoji: emojis,
@@ -149,6 +154,10 @@ function buildApiStickerSetInfo(inputSet?: GramJs.TypeInputStickerSet): ApiStick
 export function buildStickerSetCovered(coveredStickerSet: GramJs.TypeStickerSetCovered): ApiStickerSet {
   const stickerSet = buildStickerSet(coveredStickerSet.set);
 
+  if (coveredStickerSet instanceof GramJs.StickerSetNoCovered) {
+    return stickerSet;
+  }
+
   const stickerSetCovers = (coveredStickerSet instanceof GramJs.StickerSetCovered) ? [coveredStickerSet.cover]
     : (coveredStickerSet instanceof GramJs.StickerSetMultiCovered) ? coveredStickerSet.covers
       : coveredStickerSet.documents;
@@ -171,7 +180,7 @@ export function buildStickerSetCovered(coveredStickerSet: GramJs.TypeStickerSetC
 
 export function buildApiEmojiInteraction(json: GramJsEmojiInteraction): ApiEmojiInteraction {
   return {
-    timestamps: json.a.map((l) => l.t),
+    timestamps: json.a.map(({ t }) => t),
   };
 }
 

@@ -4,12 +4,12 @@ import React, {
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
-import type { ISettings, TimeFormat } from '../../../types';
+import type { AnimationLevel, ISettings, TimeFormat } from '../../../types';
 import { SettingsScreens } from '../../../types';
 
 import {
   getSystemTheme, IS_IOS, IS_MAC_OS, IS_TOUCH_ENV,
-} from '../../../util/environment';
+} from '../../../util/windowEnvironment';
 import { pick } from '../../../util/iteratees';
 import { setTimeFormat } from '../../../util/langProvider';
 import useLang from '../../../hooks/useLang';
@@ -95,7 +95,7 @@ const SettingsGeneral: FC<OwnProps & StateProps> = ({
       document.body.classList.toggle(`animation-level-${i}`, newLevel === i);
     });
 
-    setSettingOption({ animationLevel: newLevel });
+    setSettingOption({ animationLevel: newLevel as AnimationLevel });
   }, [setSettingOption]);
 
   const handleMessageTextSizeChange = useCallback((newSize: number) => {
@@ -120,14 +120,14 @@ const SettingsGeneral: FC<OwnProps & StateProps> = ({
   }, [animationLevel, setSettingOption, theme]);
 
   const handleTimeFormatChange = useCallback((newTimeFormat: string) => {
-    setSettingOption({ timeFormat: newTimeFormat });
+    setSettingOption({ timeFormat: newTimeFormat as TimeFormat });
     setSettingOption({ wasTimeFormatSetManually: true });
 
     setTimeFormat(newTimeFormat as TimeFormat);
   }, [setSettingOption]);
 
   const handleMessageSendComboChange = useCallback((newCombo: string) => {
-    setSettingOption({ messageSendKeyCombo: newCombo });
+    setSettingOption({ messageSendKeyCombo: newCombo as ISettings['messageSendKeyCombo'] });
   }, [setSettingOption]);
 
   useHistoryBack({

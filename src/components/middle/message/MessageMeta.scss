@@ -13,15 +13,12 @@
   max-width: 100%;
   user-select: none;
 
-  .ReactionAnimatedEmoji {
-    width: 1rem;
-    height: 1rem;
-    margin-right: 0.25rem;
-  }
-
   .message-time,
+  .message-imported,
   .message-signature,
-  .message-views {
+  .message-views,
+  .message-replies,
+  .message-translated {
     font-size: 0.75rem;
     white-space: nowrap;
   }
@@ -40,10 +37,20 @@
     margin-inline-start: 0.1875rem;
   }
 
+  .message-translated {
+    margin-inline-end: 0.25rem;
+  }
+
+  .message-imported,
   .message-signature {
     overflow: hidden;
     text-overflow: ellipsis;
     margin-right: 0.375rem;
+
+    .emoji-small {
+      width: 1rem !important;
+      height: 1rem !important;
+    }
   }
 
   .icon-channelviews {
@@ -52,6 +59,12 @@
     font-size: 1.125rem;
     position: relative;
     top: -0.0625rem;
+  }
+
+  .icon-reply-filled {
+    margin-left: 0.125rem;
+    margin-right: 0.375rem;
+    font-size: 0.75rem;
   }
 
   .has-solid-background & {
@@ -144,7 +157,7 @@
 }
 
 .Message:not(.own) {
-  .custom-shape .reply-message + .MessageMeta {
+  .custom-shape .with-subheader + .MessageMeta {
     right: auto;
     left: 13.25rem;
     bottom: 0.25rem;

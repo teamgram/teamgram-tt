@@ -9,6 +9,11 @@
     overflow-x: hidden;
   }
 
+  .personal-photo {
+    margin-right: 2rem;
+    transform: scale(1.25);
+  }
+
   .section {
     padding: 1rem 1.5rem;
     background-color: var(--color-background);
@@ -63,6 +68,13 @@
         text-overflow: ellipsis;
       }
 
+      &.with-checkbox {
+        body.is-ios &::after,
+        body.is-android &::after {
+          bottom: -1rem;
+        }
+      }
+
       &:not(.picker-list-item) .Checkbox {
         margin-top: 2rem;
         margin-bottom: 2rem;
@@ -104,6 +116,10 @@
     .section-info {
       color: var(--color-text-secondary);
       font-size: 0.875rem;
+    }
+
+    .section-info_push {
+      margin-top: 0.5rem;
     }
 
     &[dir="rtl"] {
@@ -294,5 +310,63 @@
     font-size: 0.875rem;
     margin-bottom: 0;
     margin-top: 0.5rem;
+  }
+}
+
+.DropdownList {
+  transition: 0.25s ease-in-out transform;
+  transform: translateY(calc(-100%));
+  position: absolute;
+  width: 100%;
+  left: 0;
+  padding: 0 1.5rem 0 2.5rem;
+  background: var(--color-background);
+
+  &--open {
+    transform: translateY(-2rem);
+  }
+}
+
+.DropdownListTrap {
+  height: 0;
+  width: 100%;
+
+  &::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: calc(var(--before-shift-height) + 2.5rem);
+    background: var(--color-background);
+    content: "";
+    z-index: 1;
+  }
+}
+
+.with-shifted-dropdown {
+  .ListItem, .section-heading {
+    position: relative;
+    z-index: 2;
+  }
+
+  .without-bottom-shadow {
+    box-shadow: none;
+    padding-bottom: 0;
+  }
+
+  .part {
+    background-color: var(--color-background);
+    box-shadow: inset 0 -0.0625rem 0 0 var(--color-background-secondary-accent);
+    margin: 0 -1.5rem;
+    padding: 0 1.5rem 1rem;
+  }
+
+  .section, .part {
+    position: relative;
+    transition: 0.25s ease-in-out transform;
+
+    &.shifted {
+      transform: translateY(var(--shift-height));
+    }
   }
 }

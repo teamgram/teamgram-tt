@@ -1,6 +1,8 @@
 import { DEBUG, DEBUG_MORE, IS_TEST } from '../config';
 import { getActions } from '../global';
-import { IS_ANDROID, IS_IOS, IS_SERVICE_WORKER_SUPPORTED } from './environment';
+import { formatShareText } from './deeplink';
+import { IS_ANDROID, IS_IOS, IS_SERVICE_WORKER_SUPPORTED } from './windowEnvironment';
+import { validateFiles } from './files';
 import { notifyClientReady, playNotifySoundDebounced } from './notifications';
 
 type WorkerAction = {
@@ -20,11 +22,17 @@ function handleWorkerMessage(e: MessageEvent) {
   switch (action.type) {
     case 'focusMessage':
       if (dispatch.focusMessage) {
-        dispatch.focusMessage(payload);
+        dispatch.focusMessage(payload as any);
       }
       break;
     case 'playNotificationSound':
       playNotifySoundDebounced(action.payload.id);
+      break;
+    case 'share':
+      dispatch.openChatWithDraft({
+        text: formatShareText(payload.url, payload.text, payload.title),
+        files: validateFiles(payload.files),
+      });
       break;
   }
 }

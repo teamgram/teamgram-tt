@@ -13,7 +13,7 @@ export interface ApiUser {
   firstName?: string;
   lastName?: string;
   noStatus?: boolean;
-  username: string;
+  usernames?: ApiUsername[];
   phoneNumber: string;
   accessHash?: string;
   hasVideoAvatar?: boolean;
@@ -41,6 +41,8 @@ export interface ApiUserFullInfo {
   pinnedMessageId?: number;
   botInfo?: ApiBotInfo;
   profilePhoto?: ApiPhoto;
+  fallbackPhoto?: ApiPhoto;
+  personalPhoto?: ApiPhoto;
   noVoiceMessages?: boolean;
   premiumGifts?: ApiPremiumGiftOption[];
 }
@@ -58,12 +60,19 @@ export interface ApiUserStatus {
   expires?: number;
 }
 
+export interface ApiUsername {
+  username: string;
+  isActive?: boolean;
+  isEditable?: boolean;
+}
+
 export type ApiChatType = typeof API_CHAT_TYPES[number];
 export type ApiAttachMenuPeerType = 'self' | ApiChatType;
 
 export interface ApiAttachBot {
   id: string;
   hasSettings?: boolean;
+  shouldRequestWriteAccess?: boolean;
   shortName: string;
   peerTypes: ApiAttachMenuPeerType[];
   icons: ApiAttachBotIcon[];

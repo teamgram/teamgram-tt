@@ -7,6 +7,7 @@ import type { TextPart } from '../../types';
 import captureKeyboardListeners from '../../util/captureKeyboardListeners';
 import trapFocus from '../../util/trapFocus';
 import buildClassName from '../../util/buildClassName';
+import { enableDirectTextInput, disableDirectTextInput } from '../../util/directInputManager';
 import { dispatchHeavyAnimationEvent } from '../../hooks/useHeavyAnimationCheck';
 import useShowTransition from '../../hooks/useShowTransition';
 import useEffectWithPrevDeps from '../../hooks/useEffectWithPrevDeps';
@@ -25,8 +26,10 @@ type OwnProps = {
   className?: string;
   isOpen?: boolean;
   header?: TeactNode;
+  isSlim?: boolean;
   hasCloseButton?: boolean;
   noBackdrop?: boolean;
+  noBackdropClose?: boolean;
   children: React.ReactNode;
   style?: string;
   onClose: () => void;
@@ -44,9 +47,11 @@ const Modal: FC<OwnProps & StateProps> = ({
   title,
   className,
   isOpen,
+  isSlim,
   header,
   hasCloseButton,
   noBackdrop,
+  noBackdropClose,
   children,
   style,
   onClose,
@@ -62,6 +67,16 @@ const Modal: FC<OwnProps & StateProps> = ({
   );
   // eslint-disable-next-line no-null/no-null
   const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return undefined;
+    }
+
+    disableDirectTextInput();
+
+    return enableDirectTextInput;
+  }, [isOpen]);
 
   useEffect(() => (isOpen
     ? captureKeyboardListeners({ onEsc: onClose, onEnter })
@@ -123,6 +138,7 @@ const Modal: FC<OwnProps & StateProps> = ({
     className,
     transitionClassNames,
     noBackdrop && 'transparent-backdrop',
+    isSlim && 'slim',
   );
 
   return (
@@ -134,7 +150,7 @@ const Modal: FC<OwnProps & StateProps> = ({
         role="dialog"
       >
         <div className="modal-container">
-          <div className="modal-backdrop" onClick={onClose} />
+          <div className="modal-backdrop" onClick={!noBackdropClose ? onClose : undefined} />
           <div className="modal-dialog" ref={dialogRef}>
             {renderHeader()}
             <div className="modal-content custom-scroll" style={style}>

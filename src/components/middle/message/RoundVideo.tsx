@@ -11,7 +11,7 @@ import type { ApiMessage } from '../../../api/types';
 import { ApiMediaFormat } from '../../../api/types';
 
 import { ROUND_VIDEO_DIMENSIONS_PX } from '../../common/helpers/mediaDimensions';
-import { getMessageMediaFormat, getMessageMediaHash } from '../../../global/helpers';
+import { getMessageMediaFormat, getMessageMediaHash, getMessageMediaThumbDataUri } from '../../../global/helpers';
 import { formatMediaDuration } from '../../../util/dateFormat';
 import buildClassName from '../../../util/buildClassName';
 import { stopCurrentAudio } from '../../../util/audioPlayer';
@@ -23,7 +23,7 @@ import useMediaWithLoadProgress from '../../../hooks/useMediaWithLoadProgress';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useMediaTransition from '../../../hooks/useMediaTransition';
 import usePrevious from '../../../hooks/usePrevious';
-import useBuffering from '../../../hooks/useBuffering';
+import useFlag from '../../../hooks/useFlag';
 import useBlurredMediaThumbRef from './hooks/useBlurredMediaThumbRef';
 
 import ProgressSpinner from '../../ui/ProgressSpinner';
@@ -74,17 +74,20 @@ const RoundVideo: FC<OwnProps> = ({
     ApiMediaFormat.BlobUrl,
     lastSyncTime,
   );
-  const thumbRef = useBlurredMediaThumbRef(message, mediaData);
 
-  const { isBuffered, bufferingHandlers } = useBuffering();
-  const isTransferring = (isLoadAllowed && !isBuffered) || isDownloading;
+  const [isPlayerReady, markPlayerReady] = useFlag();
+  const hasThumb = Boolean(getMessageMediaThumbDataUri(message));
+  const noThumb = !hasThumb || isPlayerReady;
+  const thumbRef = useBlurredMediaThumbRef(message, noThumb);
+  const thumbClassNames = useMediaTransition(!noThumb);
+
+  const isTransferring = (isLoadAllowed && !isPlayerReady) || isDownloading;
   const wasLoadDisabled = usePrevious(isLoadAllowed) === false;
 
-  const transitionClassNames = useMediaTransition(mediaData);
   const {
     shouldRender: shouldSpinnerRender,
     transitionClassNames: spinnerClassNames,
-  } = useShowTransition(isTransferring || !isBuffered, undefined, wasLoadDisabled);
+  } = useShowTransition(isTransferring, undefined, wasLoadDisabled);
 
   const [isActivated, setIsActivated] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
@@ -178,29 +181,19 @@ const RoundVideo: FC<OwnProps> = ({
     setProgress(playerEl.currentTime / playerEl.duration);
   }, []);
 
-  const videoClassName = buildClassName('full-media', transitionClassNames);
-
   return (
     <div
       ref={ref}
       className="RoundVideo media-inner"
       onClick={handleClick}
     >
-      <div className="thumbnail-wrapper">
-        <canvas
-          ref={thumbRef}
-          className="thumbnail"
-          style={`width: ${ROUND_VIDEO_DIMENSIONS_PX}px; height: ${ROUND_VIDEO_DIMENSIONS_PX}px`}
-        />
-      </div>
       {mediaData && (
         <div className="video-wrapper">
-          {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
           <OptimizedVideo
             canPlay={shouldPlay}
             ref={playerRef}
             src={mediaData}
-            className={videoClassName}
+            className="full-media"
             width={ROUND_VIDEO_DIMENSIONS_PX}
             height={ROUND_VIDEO_DIMENSIONS_PX}
             autoPlay
@@ -209,12 +202,16 @@ const RoundVideo: FC<OwnProps> = ({
             loop={!isActivated}
             playsInline
             onEnded={isActivated ? stopPlaying : undefined}
-            // eslint-disable-next-line react/jsx-props-no-spreading
-            {...bufferingHandlers}
             onTimeUpdate={isActivated ? handleTimeUpdate : undefined}
+            onReady={markPlayerReady}
           />
         </div>
       )}
+      <canvas
+        ref={thumbRef}
+        className={buildClassName('thumbnail', thumbClassNames)}
+        style={`width: ${ROUND_VIDEO_DIMENSIONS_PX}px; height: ${ROUND_VIDEO_DIMENSIONS_PX}px`}
+      />
       <div className="progress" ref={playingProgressRef} />
       {shouldSpinnerRender && (
         <div className={`media-loading ${spinnerClassNames}`}>

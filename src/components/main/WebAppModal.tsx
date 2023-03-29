@@ -5,23 +5,24 @@ import { getActions, withGlobal } from '../../global';
 
 import type { FC } from '../../lib/teact/teact';
 import type { ApiAttachBot, ApiChat, ApiUser } from '../../api/types';
-import type { GlobalState } from '../../global/types';
+import type { TabState } from '../../global/types';
 import type { ThemeKey } from '../../types';
 import type { PopupOptions, WebAppInboundEvent } from './hooks/useWebAppFrame';
 
-import windowSize from '../../util/windowSize';
-import { IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
 import { TME_LINK_PREFIX } from '../../config';
-import { selectCurrentChat, selectTheme, selectUser } from '../../global/selectors';
+import {
+  selectCurrentChat, selectTabState, selectTheme, selectUser,
+} from '../../global/selectors';
 import buildClassName from '../../util/buildClassName';
 import { extractCurrentThemeParams, validateHexColor } from '../../util/themeStyle';
 
 import useInterval from '../../hooks/useInterval';
 import useLang from '../../hooks/useLang';
-import useOnChange from '../../hooks/useOnChange';
+import useSyncEffect from '../../hooks/useSyncEffect';
 import useWebAppFrame from './hooks/useWebAppFrame';
 import usePrevious from '../../hooks/usePrevious';
 import useFlag from '../../hooks/useFlag';
+import useAppLayout from '../../hooks/useAppLayout';
 
 import Modal from '../ui/Modal';
 import Button from '../ui/Button';
@@ -30,7 +31,7 @@ import MenuItem from '../ui/MenuItem';
 import Spinner from '../ui/Spinner';
 import ConfirmDialog from '../ui/ConfirmDialog';
 
-import './WebAppModal.scss';
+import styles from './WebAppModal.module.scss';
 
 type WebAppButton = {
   isVisible: boolean;
@@ -42,7 +43,7 @@ type WebAppButton = {
 };
 
 export type OwnProps = {
-  webApp?: GlobalState['webApp'];
+  webApp?: TabState['webApp'];
 };
 
 type StateProps = {
@@ -51,7 +52,7 @@ type StateProps = {
   attachBot?: ApiAttachBot;
   theme?: ThemeKey;
   isPaymentModalOpen?: boolean;
-  paymentStatus?: GlobalState['payment']['status'];
+  paymentStatus?: TabState['payment']['status'];
 };
 
 const NBSP = '\u00A0';
@@ -92,6 +93,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
     openChat,
     openInvoice,
     setWebAppPaymentSlug,
+    showNotification,
   } = getActions();
   const [mainButton, setMainButton] = useState<WebAppButton | undefined>();
   const [isBackButtonVisible, setIsBackButtonVisible] = useState(false);
@@ -99,7 +101,9 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
   const [headerColor, setHeaderColor] = useState(extractCurrentThemeParams().bg_color);
   const [confirmClose, setConfirmClose] = useState(false);
   const [isCloseModalOpen, openCloseModal, closeCloseModal] = useFlag(false);
+  const [isLoaded, markLoaded, markUnloaded] = useFlag(false);
   const [popupParams, setPopupParams] = useState<PopupOptions | undefined>();
+  const { isMobile } = useAppLayout();
   const prevPopupParams = usePrevious(popupParams);
   const renderingPopupParams = popupParams || prevPopupParams;
 
@@ -108,7 +112,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
 
   const lang = useLang();
   const {
-    url, buttonText, queryId,
+    url, buttonText, queryId, replyToMessageId, threadId,
   } = webApp || {};
   const isOpen = Boolean(url);
   const isSimple = !queryId;
@@ -188,14 +192,20 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
       if (!eventData.message.trim().length || !eventData.buttons?.length || eventData.buttons.length > 3) return;
       setPopupParams(eventData);
     }
+
+    if (eventType === 'web_app_open_scan_qr_popup') {
+      showNotification({
+        message: 'Scan QR code is not supported in this client yet',
+      });
+    }
   }, [
     bot, buttonText, closeWebApp, openInvoice, openTelegramLink, sendWebViewData, setWebAppPaymentSlug,
-    isPaymentModalOpen,
+    isPaymentModalOpen, showNotification,
   ]);
 
   const {
     reloadFrame, sendEvent, sendViewport, sendTheme,
-  } = useWebAppFrame(frameRef, isOpen, isSimple, handleEvent);
+  } = useWebAppFrame(frameRef, isOpen, isSimple, handleEvent, markLoaded);
 
   const shouldShowMainButton = mainButton?.isVisible && mainButton.text.trim().length > 0;
 
@@ -204,6 +214,8 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
       botId: bot!.id,
       queryId: queryId!,
       peerId: chat!.id,
+      replyToMessageId,
+      threadId,
     });
   }, queryId ? PROLONG_INTERVAL : undefined, true);
 
@@ -246,30 +258,20 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
   }, [handlePopupClose]);
 
   // Notify view that height changed
-  useOnChange(() => {
+  useSyncEffect(() => {
     setTimeout(() => {
       sendViewport();
     }, ANIMATION_WAIT);
   }, [mainButton?.isVisible, sendViewport]);
 
   // Notify view that theme changed
-  useOnChange(() => {
+  useSyncEffect(() => {
     setTimeout(() => {
       sendTheme();
     }, ANIMATION_WAIT);
   }, [theme, sendTheme]);
 
-  // Prevent refresh when rotating device
-  useEffect(() => {
-    if (!isOpen) return undefined;
-    windowSize.disableRefresh();
-
-    return () => {
-      windowSize.enableRefresh();
-    };
-  }, [isOpen]);
-
-  useOnChange(([prevIsPaymentModalOpen]) => {
+  useSyncEffect(([prevIsPaymentModalOpen]) => {
     if (isPaymentModalOpen === prevIsPaymentModalOpen) return;
     if (webApp?.slug && !isPaymentModalOpen && paymentStatus) {
       sendEvent({
@@ -283,7 +285,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
         slug: undefined,
       });
     }
-  }, [isPaymentModalOpen, paymentStatus, sendEvent, setWebAppPaymentSlug, webApp] as const);
+  }, [isPaymentModalOpen, paymentStatus, sendEvent, setWebAppPaymentSlug, webApp]);
 
   const handleToggleClick = useCallback(() => {
     toggleAttachBot({
@@ -314,14 +316,15 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
       setConfirmClose(false);
       closeCloseModal();
       setPopupParams(undefined);
+      markUnloaded();
     }
-  }, [closeCloseModal, isOpen]);
+  }, [closeCloseModal, isOpen, markUnloaded]);
 
   const MoreMenuButton: FC<{ onTrigger: () => void; isOpen?: boolean }> = useMemo(() => {
     return ({ onTrigger, isOpen: isMenuOpen }) => (
       <Button
         round
-        ripple={!IS_SINGLE_COLUMN_LAYOUT}
+        ripple={!isMobile}
         size="smaller"
         color="translucent"
         className={isMenuOpen ? 'active' : ''}
@@ -331,14 +334,14 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
         <i className="icon-more" />
       </Button>
     );
-  }, []);
+  }, [isMobile]);
 
   const backButtonClassName = buildClassName(
-    'animated-close-icon',
-    isBackButtonVisible && 'state-back',
+    styles.closeIcon,
+    isBackButtonVisible && styles.stateBack,
   );
 
-  const header = useMemo(() => {
+  function renderHeader() {
     return (
       <div className="modal-header" style={`background-color: ${headerColor}`}>
         <Button
@@ -352,7 +355,7 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
         </Button>
         <div className="modal-title">{bot?.firstName}</div>
         <DropdownMenu
-          className="web-app-more-menu"
+          className="web-app-more-menu with-menu-transitions"
           trigger={MoreMenuButton}
           positionX="right"
         >
@@ -360,6 +363,11 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
             <MenuItem icon="bots" onClick={openBotChat}>{lang('BotWebViewOpenBot')}</MenuItem>
           )}
           <MenuItem icon="reload" onClick={handleRefreshClick}>{lang('WebApp.ReloadPage')}</MenuItem>
+          {attachBot?.hasSettings && (
+            <MenuItem icon="settings" onClick={handleSettingsButtonClick}>
+              {lang('Settings')}
+            </MenuItem>
+          )}
           {bot?.isAttachBot && (
             <MenuItem
               icon={attachBot ? 'stop' : 'install'}
@@ -369,18 +377,10 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
               {lang(attachBot ? 'WebApp.RemoveBot' : 'WebApp.AddToAttachmentAdd')}
             </MenuItem>
           )}
-          {attachBot?.hasSettings && (
-            <MenuItem icon="settings" onClick={handleSettingsButtonClick}>
-              {lang('Settings')}
-            </MenuItem>
-          )}
         </DropdownMenu>
       </div>
     );
-  }, [
-    lang, handleBackClick, bot, MoreMenuButton, chat, openBotChat, handleRefreshClick, attachBot,
-    handleToggleClick, handleSettingsButtonClick, isBackButtonVisible, headerColor, backButtonClassName,
-  ]);
+  }
 
   const prevMainButtonColor = usePrevious(mainButton?.color, true);
   const prevMainButtonTextColor = usePrevious(mainButton?.textColor, true);
@@ -424,17 +424,17 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
 
   return (
     <Modal
-      className="WebAppModal"
+      className={styles.root}
       isOpen={isOpen}
       onClose={handleClose}
-      header={header}
-      hasCloseButton
+      header={renderHeader()}
       style={`background-color: ${backgroundColor}`}
     >
+      <Spinner className={buildClassName(styles.loadingSpinner, isLoaded && styles.hide)} />
       {isOpen && (
         <>
           <iframe
-            className={buildClassName('web-app-frame', shouldDecreaseWebFrameSize && 'with-button')}
+            className={buildClassName(styles.frame, shouldDecreaseWebFrameSize && styles.withButton)}
             src={url}
             title={`${bot?.firstName} Web App`}
             sandbox={SANDBOX_ATTRIBUTES}
@@ -444,16 +444,16 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
           />
           <Button
             className={buildClassName(
-              'web-app-button',
-              shouldShowMainButton && 'visible',
-              shouldHideButton && 'hidden',
+              styles.mainButton,
+              shouldShowMainButton && styles.visible,
+              shouldHideButton && styles.hidden,
             )}
             style={`background-color: ${mainButtonCurrentColor}; color: ${mainButtonCurrentTextColor}`}
             disabled={!mainButtonCurrentIsActive}
             onClick={handleMainButtonClick}
           >
             {mainButtonCurrentText}
-            {mainButton?.isProgressVisible && <Spinner color="white" />}
+            {mainButton?.isProgressVisible && <Spinner className={styles.mainButtonSpinner} color="white" />}
           </Button>
         </>
       )}
@@ -474,16 +474,18 @@ const WebAppModal: FC<OwnProps & StateProps> = ({
           title={renderingPopupParams.title || NBSP}
           onClose={handlePopupModalClose}
           hasCloseButton
-          className={buildClassName('web-app-popup', !renderingPopupParams.title?.trim().length && 'without-title')}
+          className={
+            buildClassName(styles.webAppPopup, !renderingPopupParams.title?.trim().length && styles.withoutTitle)
+          }
         >
           {renderingPopupParams.message}
           <div className="dialog-buttons mt-2">
             {renderingPopupParams.buttons.map((button) => (
               <Button
-                key={button.id || button.text || button.type}
+                key={button.id || button.type}
+                className="confirm-dialog-button"
                 color={button.type === 'destructive' ? 'danger' : 'primary'}
                 isText
-                fluid
                 size="smaller"
                 // eslint-disable-next-line react/jsx-no-bind
                 onClick={() => handlePopupClose(button.id)}
@@ -505,7 +507,7 @@ export default memo(withGlobal<OwnProps>(
     const bot = botId ? selectUser(global, botId) : undefined;
     const chat = selectCurrentChat(global);
     const theme = selectTheme(global);
-    const { isPaymentModalOpen, status } = global.payment;
+    const { isPaymentModalOpen, status } = selectTabState(global).payment;
 
     return {
       attachBot,

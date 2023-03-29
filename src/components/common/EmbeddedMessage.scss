@@ -36,7 +36,7 @@
       bottom: 0.625rem;
     }
 
-    img:not(.emoji) {
+    .embedded-thumb {
       margin-inline-start: 0.5rem;
     }
 
@@ -106,7 +106,7 @@
 
     .custom-emoji {
       // Custom emoji needs to be slightly bigger than normal emoji
-      --custom-emoji-size: calc(1.125 * var(--message-text-size, 1rem) + 1px);
+      --custom-emoji-size: max(calc(1.125 * var(--message-text-size, 1rem) + 1px), 20px);
       margin-inline-end: 1px;
 
       & > img {
@@ -120,17 +120,25 @@
     opacity: 0.75;
   }
 
-  img:not(.emoji) {
+  .embedded-thumb {
+    position: relative;
     width: 2rem;
     height: 2rem;
-    object-fit: cover;
     border-radius: 0.25rem;
     margin-left: 0.25rem;
     flex-shrink: 0;
 
+    overflow: hidden;
+
     &.round {
       border-radius: 1rem;
     }
+  }
+
+  .pictogram {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
 
   &.inside-input {
@@ -144,7 +152,7 @@
       bottom: 0.3125rem;
     }
 
-    img:not(.emoji) {
+    .embedded-thumb {
       margin-left: 0.125rem;
     }
 

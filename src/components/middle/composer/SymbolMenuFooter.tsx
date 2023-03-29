@@ -10,6 +10,8 @@ type OwnProps = {
   onSwitchTab: (tab: SymbolMenuTabs) => void;
   onRemoveSymbol: () => void;
   onSearchOpen: (type: 'stickers' | 'gifs') => void;
+  isAttachmentModal?: boolean;
+  canSendPlainText?: boolean;
 };
 
 export enum SymbolMenuTabs {
@@ -34,7 +36,8 @@ const SYMBOL_MENU_TAB_ICONS = {
 };
 
 const SymbolMenuFooter: FC<OwnProps> = ({
-  activeTab, onSwitchTab, onRemoveSymbol, onSearchOpen,
+  activeTab, onSwitchTab, onRemoveSymbol, onSearchOpen, isAttachmentModal,
+  canSendPlainText,
 }) => {
   const lang = useLang();
 
@@ -77,12 +80,12 @@ const SymbolMenuFooter: FC<OwnProps> = ({
         </Button>
       )}
 
-      {renderTabButton(SymbolMenuTabs.Emoji)}
-      {renderTabButton(SymbolMenuTabs.CustomEmoji)}
-      {renderTabButton(SymbolMenuTabs.Stickers)}
-      {renderTabButton(SymbolMenuTabs.GIFs)}
+      {canSendPlainText && renderTabButton(SymbolMenuTabs.Emoji)}
+      {canSendPlainText && renderTabButton(SymbolMenuTabs.CustomEmoji)}
+      {!isAttachmentModal && renderTabButton(SymbolMenuTabs.Stickers)}
+      {!isAttachmentModal && renderTabButton(SymbolMenuTabs.GIFs)}
 
-      {activeTab === SymbolMenuTabs.Emoji && (
+      {(activeTab === SymbolMenuTabs.Emoji || activeTab === SymbolMenuTabs.CustomEmoji) && (
         <Button
           className="symbol-delete-button"
           onClick={onRemoveSymbol}

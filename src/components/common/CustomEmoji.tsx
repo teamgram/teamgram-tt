@@ -1,5 +1,5 @@
 import React, {
-  memo, useCallback, useEffect, useRef, useState,
+  memo, useCallback, useRef, useState,
 } from '../../lib/teact/teact';
 import { getGlobal } from '../../global';
 
@@ -7,14 +7,12 @@ import type { FC, TeactNode } from '../../lib/teact/teact';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 import { ApiMessageEntityTypes } from '../../api/types';
 
-import { getPropertyHexColor } from '../../util/themeStyle';
-import { hexToRgb } from '../../util/switchTheme';
 import buildClassName from '../../util/buildClassName';
 import safePlay from '../../util/safePlay';
-import { selectIsDefaultEmojiStatusPack } from '../../global/selectors';
+import { selectIsAlwaysHighPriorityEmoji } from '../../global/selectors';
 
-import useEnsureCustomEmoji from '../../hooks/useEnsureCustomEmoji';
 import useCustomEmoji from './hooks/useCustomEmoji';
+import useDynamicColorListener from '../../hooks/useDynamicColorListener';
 
 import StickerView from './StickerView';
 
@@ -30,29 +28,37 @@ type OwnProps = {
   className?: string;
   loopLimit?: number;
   style?: string;
-  withSharedAnimation?: boolean;
+  isBig?: boolean;
   withGridFix?: boolean;
+  withSharedAnimation?: boolean;
+  sharedCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  sharedCanvasHqRef?: React.RefObject<HTMLCanvasElement>;
+  withTranslucentThumb?: boolean;
   shouldPreloadPreview?: boolean;
   forceOnHeavyAnimation?: boolean;
-  observeIntersection?: ObserveFn;
+  observeIntersectionForLoading?: ObserveFn;
   observeIntersectionForPlaying?: ObserveFn;
   onClick?: NoneToVoidFunction;
 };
 
-const STICKER_SIZE = 24;
+const STICKER_SIZE = 20;
 
 const CustomEmoji: FC<OwnProps> = ({
   ref,
   documentId,
   size = STICKER_SIZE,
+  isBig,
   className,
   loopLimit,
   style,
   withGridFix,
+  withSharedAnimation,
+  sharedCanvasRef,
+  sharedCanvasHqRef,
+  withTranslucentThumb,
   shouldPreloadPreview,
   forceOnHeavyAnimation,
-  withSharedAnimation,
-  observeIntersection,
+  observeIntersectionForLoading,
   observeIntersectionForPlaying,
   onClick,
 }) => {
@@ -64,27 +70,12 @@ const CustomEmoji: FC<OwnProps> = ({
 
   // An alternative to `withGlobal` to avoid adding numerous global containers
   const customEmoji = useCustomEmoji(documentId);
-  useEnsureCustomEmoji(documentId);
 
   const loopCountRef = useRef(0);
   const [shouldLoop, setShouldLoop] = useState(true);
 
-  const [customColor, setCustomColor] = useState<[number, number, number] | undefined>();
-  const hasCustomColor = customEmoji && selectIsDefaultEmojiStatusPack(getGlobal(), customEmoji.stickerSetInfo);
-
-  useEffect(() => {
-    if (!hasCustomColor || !containerRef.current) {
-      setCustomColor(undefined);
-      return;
-    }
-    const hexColor = getPropertyHexColor(getComputedStyle(containerRef.current), '--emoji-status-color');
-    if (!hexColor) {
-      setCustomColor(undefined);
-      return;
-    }
-    const customColorRgb = hexToRgb(hexColor);
-    setCustomColor([customColorRgb.r, customColorRgb.g, customColorRgb.b]);
-  }, [hasCustomColor]);
+  const hasCustomColor = customEmoji?.shouldUseTextColor;
+  const { rgbColor: customColor } = useDynamicColorListener(containerRef, !hasCustomColor);
 
   const handleVideoEnded = useCallback((e) => {
     if (!loopLimit) return;
@@ -111,6 +102,8 @@ const CustomEmoji: FC<OwnProps> = ({
     }
   }, [loopLimit]);
 
+  const isHq = customEmoji?.stickerSetInfo && selectIsAlwaysHighPriorityEmoji(getGlobal(), customEmoji.stickerSetInfo);
+
   return (
     <div
       ref={containerRef}
@@ -119,7 +112,6 @@ const CustomEmoji: FC<OwnProps> = ({
         className,
         'custom-emoji',
         'emoji',
-        hasCustomColor && 'custom-color',
         withGridFix && styles.withGridFix,
       )}
       onClick={onClick}
@@ -135,7 +127,7 @@ const CustomEmoji: FC<OwnProps> = ({
         <StickerView
           containerRef={containerRef}
           sticker={customEmoji}
-          isSmall
+          isSmall={!isBig}
           size={size}
           customColor={customColor}
           thumbClassName={styles.thumb}
@@ -143,10 +135,12 @@ const CustomEmoji: FC<OwnProps> = ({
           shouldLoop={shouldLoop}
           loopLimit={loopLimit}
           shouldPreloadPreview={shouldPreloadPreview}
-          observeIntersection={observeIntersection}
           forceOnHeavyAnimation={forceOnHeavyAnimation}
+          observeIntersectionForLoading={observeIntersectionForLoading}
           observeIntersectionForPlaying={observeIntersectionForPlaying}
           withSharedAnimation={withSharedAnimation}
+          sharedCanvasRef={isHq ? sharedCanvasHqRef : sharedCanvasRef}
+          withTranslucentThumb={withTranslucentThumb}
           onVideoEnded={handleVideoEnded}
           onAnimatedStickerLoop={handleStickerLoop}
         />

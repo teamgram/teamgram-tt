@@ -6,12 +6,12 @@ import { getActions } from '../../../global';
 import type { ActiveEmojiInteraction } from '../../../global/types';
 
 import safePlay from '../../../util/safePlay';
-import { selectLocalAnimatedEmojiEffectByName } from '../../../global/selectors';
 import buildStyle from '../../../util/buildStyle';
+import { REM } from '../helpers/mediaDimensions';
 
 import useMedia from '../../../hooks/useMedia';
 
-const SIZE = 104;
+const SIZE = 7 * REM;
 const INTERACTION_BUNCH_TIME = 1000;
 const MS_DIVIDER = 1000;
 const TIME_DEFAULT = 0;
@@ -22,15 +22,12 @@ export default function useAnimatedEmoji(
   soundId?: string,
   activeEmojiInteractions?: ActiveEmojiInteraction[],
   isOwn?: boolean,
-  localEffect?: string,
   emoji?: string,
   preferredSize?: number,
 ) {
   const {
     interactWithAnimatedEmoji, sendEmojiInteraction, sendWatchingEmojiInteraction,
   } = getActions();
-
-  const hasEffect = localEffect || emoji;
 
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);
@@ -41,7 +38,7 @@ export default function useAnimatedEmoji(
   const soundMediaData = useMedia(soundId ? `document${soundId}` : undefined, !soundId);
 
   const size = preferredSize || SIZE;
-  const style = buildStyle(`width: ${size}px`, `height: ${size}px`, (emoji || localEffect) && 'cursor: pointer');
+  const style = buildStyle(`width: ${size}px`, `height: ${size}px`, emoji && 'cursor: pointer');
 
   const interactions = useRef<number[] | undefined>(undefined);
   const startedInteractions = useRef<number | undefined>(undefined);
@@ -51,15 +48,14 @@ export default function useAnimatedEmoji(
     if (!container) return;
 
     sendEmojiInteraction({
-      chatId,
-      messageId,
-      localEffect,
-      emoji,
-      interactions: interactions.current,
+      chatId: chatId!,
+      messageId: messageId!,
+      emoji: emoji!,
+      interactions: interactions.current!,
     });
     startedInteractions.current = undefined;
     interactions.current = undefined;
-  }, [sendEmojiInteraction, chatId, messageId, localEffect, emoji]);
+  }, [sendEmojiInteraction, chatId, messageId, emoji]);
 
   const play = useCallback(() => {
     const audio = audioRef.current;
@@ -82,15 +78,14 @@ export default function useAnimatedEmoji(
 
     const container = ref.current;
 
-    if (!hasEffect || !container || !messageId || !chatId) {
+    if (!emoji || !container || !messageId || !chatId) {
       return;
     }
 
     const { x, y } = container.getBoundingClientRect();
 
     interactWithAnimatedEmoji({
-      localEffect,
-      emoji,
+      emoji: emoji!,
       x,
       y,
       startSize: size,
@@ -106,10 +101,7 @@ export default function useAnimatedEmoji(
     interactions.current.push(startedInteractions.current
       ? (performance.now() - startedInteractions.current) / MS_DIVIDER
       : TIME_DEFAULT);
-  }, [
-    chatId, emoji, hasEffect, interactWithAnimatedEmoji, isOwn,
-    localEffect, messageId, play, sendInteractionBunch, size,
-  ]);
+  }, [chatId, emoji, interactWithAnimatedEmoji, isOwn, messageId, play, sendInteractionBunch, size]);
 
   // Set an end anchor for remote activated interaction
   useEffect(() => {
@@ -130,8 +122,8 @@ export default function useAnimatedEmoji(
 
       sendWatchingEmojiInteraction({
         id,
-        chatId,
-        emoticon: localEffect ? selectLocalAnimatedEmojiEffectByName(localEffect) : emoji,
+        chatId: chatId!,
+        emoticon: emoji!,
         startSize: size,
         x,
         y,
@@ -139,9 +131,7 @@ export default function useAnimatedEmoji(
       });
       play();
     });
-  }, [
-    activeEmojiInteractions, chatId, emoji, isOwn, localEffect, messageId, play, sendWatchingEmojiInteraction, size,
-  ]);
+  }, [activeEmojiInteractions, chatId, emoji, isOwn, messageId, play, sendWatchingEmojiInteraction, size]);
 
   return {
     ref,

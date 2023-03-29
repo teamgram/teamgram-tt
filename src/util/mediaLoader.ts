@@ -15,7 +15,7 @@ import * as cacheApi from './cacheApi';
 import { fetchBlob } from './files';
 import {
   IS_OPUS_SUPPORTED, IS_PROGRESSIVE_SUPPORTED, isWebpSupported,
-} from './environment';
+} from './windowEnvironment';
 import { oggToWav } from './oggToWav';
 import { webpToPng } from './webpToPng';
 
@@ -186,7 +186,8 @@ async function fetchFromCacheOrRemote(
     throw new Error(`Failed to fetch media ${url}`);
   }
 
-  let { prepared, mimeType } = remote;
+  let { mimeType } = remote;
+  let prepared = prepareMedia(remote.dataBlob);
 
   if (mimeType === 'audio/ogg' && !IS_OPUS_SUPPORTED) {
     const blob = await fetchBlob(prepared as string);

@@ -6,6 +6,7 @@ import { getActions, withGlobal } from '../../../global';
 
 import { GlobalSearchContent } from '../../../types';
 
+import { selectTabState } from '../../../global/selectors';
 import { parseDateString } from '../../../util/dateFormat';
 import useKeyboardListNavigation from '../../../hooks/useKeyboardListNavigation';
 import useLang from '../../../hooks/useLang';
@@ -14,7 +15,7 @@ import useHistoryBack from '../../../hooks/useHistoryBack';
 import TabList from '../../ui/TabList';
 import Transition from '../../ui/Transition';
 import ChatResults from './ChatResults';
-import UserChatResults from './ChatMessageResults';
+import ChatMessageResults from './ChatMessageResults';
 import MediaResults from './MediaResults';
 import LinkResults from './LinkResults';
 import FileResults from './FileResults';
@@ -99,7 +100,7 @@ const LeftSearch: FC<OwnProps & StateProps> = ({
             case GlobalSearchContent.ChatList:
               if (chatId) {
                 return (
-                  <UserChatResults
+                  <ChatMessageResults
                     searchQuery={searchQuery}
                     dateSearchQuery={dateSearchQuery}
                     onReset={onReset}
@@ -148,7 +149,7 @@ const LeftSearch: FC<OwnProps & StateProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   (global): StateProps => {
-    const { currentContent, chatId } = global.globalSearch;
+    const { currentContent, chatId } = selectTabState(global).globalSearch;
 
     return { currentContent, chatId };
   },

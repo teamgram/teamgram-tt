@@ -33,6 +33,14 @@
       padding-bottom: 1px;
       border-bottom: 0;
       z-index: 1;
+
+      opacity: 1;
+      transition: opacity var(--layer-transition);
+    }
+
+    &--tabs-hidden .TabList {
+      pointer-events: none;
+      opacity: 0.25;
     }
 
     .Tab {

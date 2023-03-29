@@ -11,8 +11,8 @@ import { callApi } from '../api/gramjs';
 import { createCallbackManager } from './callbacks';
 import { formatInteger } from './textFormat';
 
-interface LangFn {
-  (key: string, value?: any, format?: 'i'): any;
+export interface LangFn {
+  (key: string, value?: any, format?: 'i', pluralValue?: number): string;
 
   isRtl?: boolean;
   code?: LangCode;
@@ -94,30 +94,42 @@ export { addCallback, removeCallback };
 let currentLangCode: string | undefined;
 let currentTimeFormat: TimeFormat | undefined;
 
-export const getTranslation: LangFn = (key: string, value?: any, format?: 'i') => {
-  if (value !== undefined) {
-    const cacheValue = Array.isArray(value) ? JSON.stringify(value) : value;
-    const cached = cache.get(`${key}_${cacheValue}_${format}`);
-    if (cached) {
-      return cached;
-    }
-  }
-
-  if (!langPack && !fallbackLangPack) {
-    return key;
-  }
-
-  const langString = (langPack?.[key]) || (fallbackLangPack?.[key]);
-  if (!langString) {
-    if (!fallbackLangPack) {
-      void importFallbackLangPack();
+function createLangFn() {
+  return (key: string, value?: any, format?: 'i', pluralValue?: number) => {
+    if (value !== undefined) {
+      const cacheValue = Array.isArray(value) ? JSON.stringify(value) : value;
+      const cached = cache.get(`${key}_${cacheValue}_${format}${pluralValue ? `_${pluralValue}` : ''}`);
+      if (cached) {
+        return cached;
+      }
     }
 
-    return key;
-  }
+    if (!langPack && !fallbackLangPack) {
+      return key;
+    }
 
-  return processTranslation(langString, key, value, format);
-};
+    const langString = (langPack?.[key]) || (fallbackLangPack?.[key]);
+    if (!langString) {
+      if (!fallbackLangPack) {
+        void importFallbackLangPack();
+      }
+
+      return key;
+    }
+
+    return processTranslation(langString, key, value, format, pluralValue);
+  };
+}
+
+let translationFn: LangFn = createLangFn();
+
+export function translate(...args: Parameters<LangFn>) {
+  return translationFn(...args);
+}
+
+export function getTranslationFn(): LangFn {
+  return translationFn;
+}
 
 export async function getTranslationForLangString(langCode: string, key: string) {
   let translateString: ApiLangString | undefined = await cacheApi.fetch(
@@ -161,11 +173,12 @@ export async function setLanguage(langCode: LangCode, callback?: NoneToVoidFunct
   document.documentElement.lang = langCode;
 
   const { languages, timeFormat } = getGlobal().settings.byKey;
-  const langInfo = languages?.find((l) => l.langCode === langCode);
-  getTranslation.isRtl = Boolean(langInfo?.rtl);
-  getTranslation.code = langCode;
-  getTranslation.langName = langInfo?.nativeName;
-  getTranslation.timeFormat = timeFormat;
+  const langInfo = languages?.find((lang) => lang.langCode === langCode);
+  translationFn = createLangFn();
+  translationFn.isRtl = Boolean(langInfo?.rtl);
+  translationFn.code = langCode.replace('-raw', '') as LangCode;
+  translationFn.langName = langInfo?.nativeName;
+  translationFn.timeFormat = timeFormat;
 
   if (callback) {
     callback();
@@ -180,7 +193,7 @@ export function setTimeFormat(timeFormat: TimeFormat) {
   }
 
   currentTimeFormat = timeFormat;
-  getTranslation.timeFormat = timeFormat;
+  translationFn.timeFormat = timeFormat;
 
   runCallbacks();
 }
@@ -241,8 +254,12 @@ function processTemplate(template: string, value: any) {
   }, initialValue || '');
 }
 
-function processTranslation(langString: ApiLangString | undefined, key: string, value?: any, format?: 'i') {
-  const preferredPluralOption = typeof value === 'number' ? getPluralOption(value) : 'value';
+function processTranslation(
+  langString: ApiLangString | undefined, key: string, value?: any, format?: 'i', pluralValue?: number,
+) {
+  const preferredPluralOption = typeof value === 'number' || pluralValue !== undefined
+    ? getPluralOption(pluralValue ?? value)
+    : 'value';
   const template = langString ? (
     langString[preferredPluralOption] || langString.otherValue || langString.value
   ) : undefined;
@@ -256,7 +273,7 @@ function processTranslation(langString: ApiLangString | undefined, key: string, 
     const formattedValue = format === 'i' ? formatInteger(value) : value;
     const result = processTemplate(template, formattedValue);
     const cacheValue = Array.isArray(value) ? JSON.stringify(value) : value;
-    cache.set(`${key}_${cacheValue}_${format}`, result);
+    cache.set(`${key}_${cacheValue}_${format}${pluralValue ? `_${pluralValue}` : ''}`, result);
     return result;
   }
 

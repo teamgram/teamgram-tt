@@ -6,11 +6,19 @@
     "airbnb-typescript"
   ],
   "plugins": [
+    "jsx-expressions",
     "no-async-without-await",
     "teactn",
-    "no-null"
+    "no-null",
+    "react-hooks-static-deps",
+    "eslint-multitab-tt"
   ],
   "rules": {
+    "eslint-multitab-tt/no-immediate-global": "error",
+    "eslint-multitab-tt/must-update-global-after-await": "off",
+    "eslint-multitab-tt/set-global-only-variable": "error",
+    "eslint-multitab-tt/no-getactions-in-actions": "error",
+    "eslint-multitab-tt/must-specify-action-handler-return-type": "error",
     "indent": [
       "error",
       2,
@@ -20,7 +28,10 @@
     ],
     "max-len": [
       "error",
-      120
+      {
+        "code": 120,
+        "ignoreComments": true
+      }
     ],
     "array-bracket-newline": [
       2,
@@ -30,7 +41,19 @@
     "no-console": "error",
     "semi": "error",
     "no-implicit-coercion": "error",
-    "react-hooks/exhaustive-deps": "error",
+    "react-hooks/exhaustive-deps": "off",
+    "react-hooks-static-deps/exhaustive-deps": [
+      "error",
+      {
+        "additionalHooks": "(useSyncEffect|useAsync|useDebouncedCallback|useThrottledCallback|useEffectWithPrevDeps|useLayoutEffectWithPrevDeps|useDerivedState|useDerivedSignal|useThrottledResolver|useDebouncedResolver)$",
+        "staticHooks": {
+          "getActions": true,
+          "useFlag": [false, true, true],
+          "useForceUpdate": true,
+          "useReducer": [false, true]
+        }
+      }
+    ],
     "arrow-body-style": "off",
     "no-else-return": "off",
     "no-plusplus": "off",
@@ -41,7 +64,10 @@
     "no-prototype-builtins": "off",
     "no-await-in-loop": "off",
     "no-nested-ternary": "off",
-    "function-paren-newline": ["error", "consistent"],
+    "function-paren-newline": [
+      "error",
+      "consistent"
+    ],
     "prefer-destructuring": "off",
     // Allow for...of. Edited from:
     // https://github.com/airbnb/javascript/blob/b4377fb03089dd7f08955242695860d47f9caab4/packages/eslint-config-airbnb-base/rules/style.js#L333
@@ -71,13 +97,23 @@
     "react/function-component-definition": "off",
     // Teact feature
     "react/style-prop-object": "off",
-    "react/jsx-no-bind": ["error", {
-      "ignoreRefs": true,
-      "allowArrowFunctions": false,
-      "allowFunctions": false,
-      "allowBind": false,
-      "ignoreDOMComponents": true
-    }],
+    "react/no-unknown-property": "off",
+    "react/jsx-no-bind": [
+      "error",
+      {
+        "ignoreRefs": true,
+        "allowArrowFunctions": false,
+        "allowFunctions": false,
+        "allowBind": false,
+        "ignoreDOMComponents": true
+      }
+    ],
+    "jsx-expressions/strict-logical-expressions": [
+      "error",
+      {
+        "allowString": true
+      }
+    ],
     "jsx-a11y/click-events-have-key-events": "off",
     "jsx-a11y/no-static-element-interactions": "off",
     "jsx-a11y/label-has-associated-control": "off",
@@ -94,7 +130,10 @@
     "@typescript-eslint/camelcase": "off",
     "@typescript-eslint/member-delimiter-style": "error",
     "@typescript-eslint/default-param-last": "off",
-    "@typescript-eslint/return-await": ["error", "in-try-catch"],
+    "@typescript-eslint/return-await": [
+      "error",
+      "in-try-catch"
+    ],
     "@typescript-eslint/consistent-type-imports": [
       "error",
       {
@@ -106,7 +145,11 @@
   },
   "settings": {
     "import/resolver": "webpack",
-    "import/core-modules": ["fs", "path"]
+    "import/core-modules": [
+      "fs",
+      "path",
+      "crypto"
+    ]
   },
   "parserOptions": {
     "project": "./tsconfig.json"

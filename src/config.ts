@@ -19,8 +19,8 @@ export const BETA_CHANGELOG_URL = 'https://www2.teamgram.net/WebZ-Beta-04-01';
 export const DEBUG_ALERT_MSG = 'Shoot!\nSomething went wrong, please see the error details in Dev Tools Console.';
 export const DEBUG_GRAMJS = false;
 
-export const PAGE_TITLE = 'Teamgram';
-export const INACTIVE_MARKER = ' [Inactive]';
+export const PAGE_TITLE = process.env.APP_TITLE!;
+export const INACTIVE_MARKER = '[Inactive]';
 
 export const DEBUG_PAYMENT_SMART_GLOCAL = false;
 
@@ -44,9 +44,12 @@ export const CUSTOM_EMOJI_PREVIEW_CACHE_DISABLED = false;
 export const CUSTOM_EMOJI_PREVIEW_CACHE_NAME = 'tt-custom-emoji-preview';
 export const MEDIA_CACHE_MAX_BYTES = 512 * 1024; // 512 KB
 export const CUSTOM_BG_CACHE_NAME = 'tt-custom-bg';
-export const LANG_CACHE_NAME = 'tt-lang-packs-v14';
+export const LANG_CACHE_NAME = 'tt-lang-packs-v17';
 export const ASSET_CACHE_NAME = 'tt-assets';
 export const AUTODOWNLOAD_FILESIZE_MB_LIMITS = [1, 5, 10, 50, 100, 500];
+export const DATA_BROADCAST_CHANNEL_NAME = 'tt-global';
+export const ESTABLISH_BROADCAST_CHANNEL_NAME = 'tt-establish';
+export const MULTITAB_LOCALSTORAGE_KEY = 'tt-multitab';
 
 export const DOWNLOAD_WORKERS = 16;
 export const UPLOAD_WORKERS = 16;
@@ -58,23 +61,29 @@ export const MIN_PASSWORD_LENGTH = 1;
 export const MESSAGE_LIST_SLICE = isBigScreen ? 60 : 40;
 export const MESSAGE_LIST_VIEWPORT_LIMIT = MESSAGE_LIST_SLICE * 2;
 
+export const ARCHIVE_MINIMIZED_HEIGHT = 36;
 export const CHAT_HEIGHT_PX = 72;
+export const TOPIC_HEIGHT_PX = 65;
 export const CHAT_LIST_SLICE = isBigScreen ? 30 : 25;
 export const CHAT_LIST_LOAD_SLICE = 100;
 export const SHARED_MEDIA_SLICE = 42;
 export const MESSAGE_SEARCH_SLICE = 42;
 export const GLOBAL_SEARCH_SLICE = 20;
+export const GLOBAL_TOPIC_SEARCH_SLICE = 5;
 export const MEMBERS_SLICE = 30;
 export const MEMBERS_LOAD_SLICE = 200;
 export const PINNED_MESSAGES_LIMIT = 50;
 export const BLOCKED_LIST_LIMIT = 100;
 export const PROFILE_PHOTOS_LIMIT = 40;
 export const PROFILE_SENSITIVE_AREA = 500;
+export const TOPIC_LIST_SENSITIVE_AREA = 600;
 export const COMMON_CHATS_LIMIT = 100;
 export const GROUP_CALL_PARTICIPANTS_LIMIT = 100;
 export const REACTION_LIST_LIMIT = 100;
 export const REACTION_UNREAD_SLICE = 100;
 export const MENTION_UNREAD_SLICE = 100;
+export const TOPICS_SLICE = 20;
+export const TOPICS_SLICE_SECOND_LOAD = 500;
 
 export const TOP_CHAT_MESSAGES_PRELOAD_LIMIT = 20;
 
@@ -95,13 +104,18 @@ export const MACOS_DEFAULT_MESSAGE_TEXT_SIZE_PX = 15;
 
 export const DRAFT_DEBOUNCE = 10000; // 10s
 export const SEND_MESSAGE_ACTION_INTERVAL = 3000; // 3s
+// 10000s from https://corefork.telegram.org/api/url-authorization#automatic-authorization
+export const APP_CONFIG_REFETCH_INTERVAL = 10000 * 1000;
 
 export const EDITABLE_INPUT_ID = 'editable-message-text';
 export const EDITABLE_INPUT_MODAL_ID = 'editable-message-text-modal';
 // eslint-disable-next-line max-len
 export const EDITABLE_INPUT_CSS_SELECTOR = `.messages-layout .Transition__slide--active #${EDITABLE_INPUT_ID}, .messages-layout .Transition > .to #${EDITABLE_INPUT_ID}`;
+export const EDITABLE_INPUT_MODAL_CSS_SELECTOR = `#${EDITABLE_INPUT_MODAL_ID}`;
 
 export const CUSTOM_APPENDIX_ATTRIBUTE = 'data-has-custom-appendix';
+export const MESSAGE_CONTENT_CLASS_NAME = 'message-content';
+export const MESSAGE_CONTENT_SELECTOR = '.message-content';
 
 // Screen width where Pinned Message / Audio Player in the Middle Header can be safely displayed
 export const SAFE_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN = 1440; // px
@@ -115,7 +129,8 @@ export const MOBILE_SCREEN_MAX_WIDTH = 600; // px
 export const MOBILE_SCREEN_LANDSCAPE_MAX_WIDTH = 950; // px
 export const MOBILE_SCREEN_LANDSCAPE_MAX_HEIGHT = 450; // px
 
-export const LOCAL_MESSAGE_MIN_ID = 1e11; // `Date.now()` is always used as base
+export const LOCAL_MESSAGE_MIN_ID = 5e9;
+export const MAX_INT_32 = 2 ** 31 - 1;
 export const TMP_CHAT_ID = '0';
 
 export const ANIMATION_END_DELAY = 100;
@@ -142,6 +157,7 @@ export const EMOJI_SIZE_PICKER = 40;
 export const COMPOSER_EMOJI_SIZE_PICKER = 32;
 export const STICKER_SIZE_GENERAL_SETTINGS = 48;
 export const STICKER_SIZE_PICKER_HEADER = 32;
+export const STICKER_PICKER_MAX_SHARED_COVERS = 20;
 export const STICKER_SIZE_SEARCH = 64;
 export const STICKER_SIZE_MODAL = 64;
 export const EMOJI_SIZE_MODAL = 40;
@@ -153,12 +169,15 @@ export const STICKER_SIZE_INLINE_BOT_RESULT = 100;
 export const STICKER_SIZE_JOIN_REQUESTS = 140;
 export const STICKER_SIZE_INVITES = 140;
 export const RECENT_STICKERS_LIMIT = 20;
+export const RECENT_STATUS_LIMIT = 20;
 export const EMOJI_STATUS_LOOP_LIMIT = 2;
 export const EMOJI_SIZES = 7;
 export const RECENT_SYMBOL_SET_ID = 'recent';
 export const FAVORITE_SYMBOL_SET_ID = 'favorite';
 export const CHAT_STICKER_SET_ID = 'chatStickers';
 export const PREMIUM_STICKER_SET_ID = 'premium';
+export const DEFAULT_TOPIC_ICON_STICKER_ID = 'topic-default-icon';
+export const DEFAULT_STATUS_ICON_ID = 'status-default-icon';
 export const EMOJI_IMG_REGEX = /<img[^>]+alt="([^"]+)"(?![^>]*data-document-id)[^>]*>/gm;
 
 export const BASE_EMOJI_KEYWORD_LANG = 'en';
@@ -169,8 +188,10 @@ export const SLIDE_TRANSITION_DURATION = 450;
 export const VIDEO_MOV_TYPE = 'video/quicktime';
 export const VIDEO_WEBM_TYPE = 'video/webm';
 
+export const GIF_MIME_TYPE = 'image/gif';
+
 export const SUPPORTED_IMAGE_CONTENT_TYPES = new Set([
-  'image/png', 'image/gif', 'image/jpeg',
+  'image/png', 'image/jpeg', GIF_MIME_TYPE,
 ]);
 
 export const SUPPORTED_VIDEO_CONTENT_TYPES = new Set([
@@ -196,13 +217,35 @@ export const CONTENT_TYPES_WITH_PREVIEW = new Set([
 
 export const CONTENT_NOT_SUPPORTED = 'The message is not supported on this version of Teamgram.';
 
+// Taken from https://github.com/telegramdesktop/tdesktop/blob/41d9a9fcbd0c809c60ddbd9350791b1436aff7d9/Telegram/SourceFiles/ui/boxes/choose_language_box.cpp#L28
+export const SUPPORTED_TRANSLATION_LANGUAGES = [
+  // Official
+  'en', 'ar', 'be', 'ca', 'zh', 'nl', 'fr', 'de', 'id',
+  'it', 'ja', 'ko', 'pl', 'pt', 'ru', 'es', 'uk',
+  // Unnofficial
+  'af', 'sq', 'am', 'hy', 'az', 'eu', 'bn', 'bs', 'bg',
+  'ceb', 'zh-CN', 'zh-TW', 'co', 'hr', 'cs', 'da', 'eo',
+  'et', 'fi', 'fy', 'gl', 'ka', 'el', 'gu', 'ht', 'ha',
+  'haw', 'he', 'iw', 'hi', 'hmn', 'hu', 'is', 'ig', 'ga',
+  'jv', 'kn', 'kk', 'km', 'rw', 'ku', 'ky', 'lo', 'la',
+  'lv', 'lt', 'lb', 'mk', 'mg', 'ms', 'ml', 'mt', 'mi',
+  'mr', 'mn', 'my', 'ne', 'no', 'ny', 'or', 'ps', 'fa',
+  'pa', 'ro', 'sm', 'gd', 'sr', 'st', 'sn', 'sd', 'si',
+  'sk', 'sl', 'so', 'su', 'sw', 'sv', 'tl', 'tg', 'ta',
+  'tt', 'te', 'th', 'tr', 'tk', 'ur', 'ug', 'uz', 'vi',
+  'cy', 'xh', 'yi', 'yo', 'zu',
+];
+
 // eslint-disable-next-line max-len
 export const RE_LINK_TEMPLATE = '((ftp|https?):\\/\\/)?((www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z0-9()]{1,63})\\b([-a-zA-Z0-9()@:%_+.~#?&/=]*)';
 export const RE_MENTION_TEMPLATE = '(@[\\w\\d_-]+)';
-export const RE_TG_LINK = /^tg2:(\/\/)?/;
-export const RE_TME_LINK = /^(https?:\/\/)?([-a-zA-Z0-9@:%_+~#=]{1,32}\.)?teamgram\.me/;
-export const RE_TELEGRAM_LINK = /^(https?:\/\/)?teamgram\.net\//;
+export const RE_TG_LINK = /^tg2:(\/\/)?/i;
+export const RE_TME_LINK = /^(https?:\/\/)?([-a-zA-Z0-9@:%_+~#=]{1,32}\.)?teamgram\.me/i;
+export const RE_TELEGRAM_LINK = /^(https?:\/\/)?teamgram\.net\//i;
 export const TME_LINK_PREFIX = 'https://teamgram.me/';
+export const USERNAME_PURCHASE_ERROR = 'USERNAME_PURCHASE_AVAILABLE';
+export const PURCHASE_USERNAME = 'auction';
+export const TME_WEB_DOMAINS = new Set(['teamgram.me', 'web.teamgram.me', 'k.teamgram.me', 'z.teamgram.me']);
 
 // eslint-disable-next-line max-len
 export const COUNTRIES_WITH_12H_TIME_FORMAT = new Set(['AU', 'BD', 'CA', 'CO', 'EG', 'HN', 'IE', 'IN', 'JO', 'MX', 'MY', 'NI', 'NZ', 'PH', 'PK', 'SA', 'SV', 'US']);
@@ -213,6 +256,7 @@ export const API_CHAT_TYPES = ['bots', 'channels', 'chats', 'users'] as const;
 export const SERVICE_NOTIFICATIONS_USER_ID = '777000';
 export const REPLIES_USER_ID = '1271266957'; // TODO For Test connection ID must be equal to 708513
 export const RESTRICTED_EMOJI_SET_ID = '7173162320003080';
+export const DEFAULT_GIF_SEARCH_BOT_USERNAME = 'gif';
 export const ALL_FOLDER_ID = 0;
 export const ARCHIVED_FOLDER_ID = 1;
 export const DELETED_COMMENTS_CHANNEL_ID = '-777';
@@ -222,7 +266,8 @@ export const SCHEDULED_WHEN_ONLINE = 0x7FFFFFFE;
 export const DEFAULT_LANG_CODE = 'en';
 export const DEFAULT_LANG_PACK = 'android';
 export const LANG_PACKS = ['android', 'ios', 'tdesktop', 'macos'] as const;
-export const FEEDBACK_URL = 'https://www2.teamgram.net/bugs/?tag_ids=41&sort=time';
+export const FEEDBACK_URL = 'https://www2.teamgram.net/?tag_ids=41&sort=time';
+export const GENERAL_TOPIC_ID = 1;
 
 export const LIGHT_THEME_BG_COLOR = '#99BA92';
 export const DARK_THEME_BG_COLOR = '#0F0F0F';

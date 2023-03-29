@@ -7,7 +7,7 @@ import { getActions, withGlobal } from '../../../global';
 
 import type { ApiChat, ApiSponsoredMessage, ApiUser } from '../../../api/types';
 
-import { IS_ANDROID, IS_TOUCH_ENV } from '../../../util/environment';
+import { IS_ANDROID, IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { renderTextWithEntities } from '../../common/helpers/renderTextWithEntities';
 import { selectChat, selectSponsoredMessage, selectUser } from '../../../global/selectors';
 import { getChatTitle, getUserFullName } from '../../../global/helpers';
@@ -89,7 +89,7 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
     if (message.chatInviteHash) {
       openChatByInvite({ hash: message.chatInviteHash });
     } else if (message.channelPostId) {
-      focusMessage({ chatId: message.chatId, messageId: message.channelPostId });
+      focusMessage({ chatId: message.chatId!, messageId: message.channelPostId });
     } else {
       openChat({ id: message.chatId });
 
@@ -118,7 +118,7 @@ const SponsoredMessage: FC<OwnProps & StateProps> = ({
         <div className="content-inner" dir="auto">
           <div className="message-title" dir="ltr">
             {bot && renderText(getUserFullName(bot) || '')}
-            {channel && renderText(message.chatInviteTitle || getChatTitle(lang, channel, bot) || '')}
+            {channel && renderText(message.chatInviteTitle || getChatTitle(lang, channel) || '')}
           </div>
 
           <div className="text-content with-meta" dir="auto" ref={contentRef}>

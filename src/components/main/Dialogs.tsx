@@ -7,6 +7,7 @@ import type {
 } from '../../api/types';
 import type { AnimationLevel } from '../../types';
 
+import { selectTabState } from '../../global/selectors';
 import getReadableErrorText from '../../util/getReadableErrorText';
 import { pick } from '../../util/iteratees';
 import renderText from '../common/helpers/renderText';
@@ -20,7 +21,7 @@ import Avatar from '../common/Avatar';
 import './Dialogs.scss';
 
 type StateProps = {
-  dialogs: (ApiError | ApiInviteInfo)[];
+  dialogs: (ApiError | ApiInviteInfo | ApiContact)[];
   animationLevel: AnimationLevel;
 };
 
@@ -101,15 +102,17 @@ const Dialogs: FC<StateProps> = ({ dialogs, animationLevel }) => {
               : lang('MemberRequests.RequestToJoinDescriptionGroup')}
           </p>
         )}
-        <Button
-          isText
-          className="confirm-dialog-button"
-          // eslint-disable-next-line react/jsx-no-bind
-          onClick={handleJoinClick}
-        >
-          {isRequestNeeded ? requestToJoinText : joinText}
-        </Button>
-        <Button isText className="confirm-dialog-button" onClick={closeModal}>{lang('Cancel')}</Button>
+        <div className="dialog-buttons mt-2">
+          <Button
+            isText
+            className="confirm-dialog-button"
+            // eslint-disable-next-line react/jsx-no-bind
+            onClick={handleJoinClick}
+          >
+            {isRequestNeeded ? requestToJoinText : joinText}
+          </Button>
+          <Button isText className="confirm-dialog-button" onClick={closeModal}>{lang('Cancel')}</Button>
+        </div>
       </Modal>
     );
   };
@@ -131,7 +134,7 @@ const Dialogs: FC<StateProps> = ({ dialogs, animationLevel }) => {
         onCloseAnimationEnd={dismissDialog}
       >
         {lang('AreYouSureShareMyContactInfoBot')}
-        <div>
+        <div className="dialog-buttons mt-2">
           <Button
             className="confirm-dialog-button"
             isText
@@ -157,7 +160,7 @@ const Dialogs: FC<StateProps> = ({ dialogs, animationLevel }) => {
       >
         {error.hasErrorKey ? getReadableErrorText(error)
           : renderText(error.message!, ['simple_markdown', 'emoji', 'br'])}
-        <div>
+        <div className="dialog-buttons mt-2">
           <Button isText onClick={closeModal}>{lang('OK')}</Button>
         </div>
       </Modal>
@@ -198,7 +201,7 @@ function getErrorHeader(error: ApiError) {
 export default memo(withGlobal(
   (global): StateProps => {
     return {
-      dialogs: global.dialogs,
+      dialogs: selectTabState(global).dialogs,
       animationLevel: global.settings.byKey.animationLevel,
     };
   },

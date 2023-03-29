@@ -1,8 +1,10 @@
+/* eslint-disable eslint-multitab-tt/no-immediate-global */
 import { addCallback, removeCallback } from '../lib/teact/teactn';
 
 import { addActionHandler, getGlobal } from './index';
 
-import type { GlobalState } from './types';
+import type { ActionReturnType, GlobalState, MessageList } from './types';
+import type { ApiChat, ApiUser } from '../api/types';
 import { MAIN_THREAD_ID } from '../api/types';
 
 import { onBeforeUnload, onIdle, throttle } from '../util/schedulers';
@@ -16,23 +18,20 @@ import {
   GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT,
   ALL_FOLDER_ID,
   ARCHIVED_FOLDER_ID,
-  MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN,
-  DEFAULT_VOLUME,
-  DEFAULT_PLAYBACK_RATE,
   DEFAULT_PATTERN_COLOR,
   DEFAULT_LIMITS,
 } from '../config';
-import { IS_SINGLE_COLUMN_LAYOUT } from '../util/environment';
 import { isHeavyAnimating } from '../hooks/useHeavyAnimationCheck';
-import { pick, unique } from '../util/iteratees';
 import {
-  selectCurrentChat,
-  selectCurrentMessageList,
+  compact, pick, pickTruthy, unique,
+} from '../util/iteratees';
+import {
+  selectChat,
+  selectCurrentMessageList, selectThreadOriginChat,
   selectVisibleUsers,
 } from './selectors';
 import { hasStoredSession } from '../util/sessions';
-import { INITIAL_STATE } from './initialState';
-import { parseLocationHash } from '../util/routing';
+import { INITIAL_GLOBAL_STATE } from './initialState';
 import { isUserId } from './helpers';
 import { getOrderedIds } from '../util/folderManager';
 import { clearGlobalForLockScreen } from './reducers';
@@ -60,7 +59,7 @@ export function initCache() {
     clearCaching();
   };
 
-  addActionHandler('saveSession', () => {
+  addActionHandler('saveSession', (): ActionReturnType => {
     if (isCaching) {
       return;
     }
@@ -89,14 +88,14 @@ export function loadCache(initialState: GlobalState): GlobalState | undefined {
   }
 }
 
-function setupCaching() {
+export function setupCaching() {
   isCaching = true;
   unsubscribeFromBeforeUnload = onBeforeUnload(updateCache, true);
   window.addEventListener('blur', updateCache);
   addCallback(updateCacheThrottled);
 }
 
-function clearCaching() {
+export function clearCaching() {
   isCaching = false;
   removeCallback(updateCacheThrottled);
   window.removeEventListener('blur', updateCache);
@@ -128,45 +127,19 @@ function readCache(initialState: GlobalState): GlobalState {
     ...cached,
   };
 
-  const parsedMessageList = !IS_SINGLE_COLUMN_LAYOUT ? parseLocationHash() : undefined;
-
-  return {
-    ...newState,
-    messages: {
-      ...newState.messages,
-      messageLists: parsedMessageList ? [parsedMessageList] : [],
-    },
-  };
+  return newState;
 }
 
 export function migrateCache(cached: GlobalState, initialState: GlobalState) {
-  // Migrate from legacy setting names
-  if ('shouldAutoDownloadMediaFromContacts' in cached.settings.byKey) {
-    const {
-      shouldAutoDownloadMediaFromContacts,
-      shouldAutoDownloadMediaInPrivateChats,
-      shouldAutoDownloadMediaInGroups,
-      shouldAutoDownloadMediaInChannels,
-      shouldAutoPlayVideos,
-      shouldAutoPlayGifs,
-      ...rest
-    } = cached.settings.byKey;
-
-    cached.settings.byKey = {
-      ...rest,
-      canAutoLoadPhotoFromContacts: shouldAutoDownloadMediaFromContacts,
-      canAutoLoadVideoFromContacts: shouldAutoDownloadMediaFromContacts,
-      canAutoLoadPhotoInPrivateChats: shouldAutoDownloadMediaInPrivateChats,
-      canAutoLoadVideoInPrivateChats: shouldAutoDownloadMediaInPrivateChats,
-      canAutoLoadPhotoInGroups: shouldAutoDownloadMediaInGroups,
-      canAutoLoadVideoInGroups: shouldAutoDownloadMediaInGroups,
-      canAutoLoadPhotoInChannels: shouldAutoDownloadMediaInChannels,
-      canAutoLoadVideoInChannels: shouldAutoDownloadMediaInChannels,
-      canAutoPlayVideos: shouldAutoPlayVideos,
-      canAutoPlayGifs: shouldAutoPlayGifs,
-    };
+  try {
+    unsafeMigrateCache(cached, initialState);
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error(err);
   }
+}
 
+function unsafeMigrateCache(cached: GlobalState, initialState: GlobalState) {
   // Pre-fill settings with defaults
   cached.settings.byKey = {
     ...initialState.settings.byKey,
@@ -183,60 +156,8 @@ export function migrateCache(cached: GlobalState, initialState: GlobalState) {
     ...cached.chatFolders,
   };
 
-  if (!cached.stickers.greeting) {
-    cached.stickers.greeting = initialState.stickers.greeting;
-  }
-
   if (!cached.stickers.premium) {
     cached.stickers.premium = initialState.stickers.premium;
-  }
-
-  if (!cached.activeDownloads) {
-    cached.activeDownloads = {
-      byChatId: {},
-    };
-  }
-
-  if (!cached.serviceNotifications) {
-    cached.serviceNotifications = [];
-  }
-
-  if (cached.audioPlayer.volume === undefined) {
-    cached.audioPlayer.volume = DEFAULT_VOLUME;
-  }
-
-  if (cached.audioPlayer.playbackRate === undefined) {
-    cached.audioPlayer.playbackRate = DEFAULT_PLAYBACK_RATE;
-  }
-
-  if (cached.mediaViewer.volume === undefined) {
-    cached.mediaViewer.volume = DEFAULT_VOLUME;
-  }
-
-  if (cached.mediaViewer.playbackRate === undefined) {
-    cached.mediaViewer.playbackRate = DEFAULT_PLAYBACK_RATE;
-  }
-
-  if (!cached.groupCalls) {
-    cached.groupCalls = initialState.groupCalls;
-  }
-
-  if (!cached.users.statusesById) {
-    cached.users.statusesById = {};
-  }
-
-  if (!cached.messages.sponsoredByChatId) {
-    cached.messages.sponsoredByChatId = {};
-  }
-
-  if (!cached.activeReactions) {
-    cached.activeReactions = {};
-  }
-
-  if (!cached.pollModal) {
-    cached.pollModal = {
-      isOpen: false,
-    };
   }
 
   if (!cached.attachMenu) {
@@ -281,15 +202,16 @@ export function migrateCache(cached: GlobalState, initialState: GlobalState) {
       byId: {},
       lastRendered: [],
       forEmoji: {},
+      statusRecent: {},
     };
+  }
+
+  if (!cached.customEmojis.statusRecent) {
+    cached.customEmojis.statusRecent = {};
   }
 
   if (!cached.recentCustomEmojis) {
     cached.recentCustomEmojis = [];
-  }
-
-  if (cached.settings.byKey.shouldSuggestCustomEmoji === undefined) {
-    cached.settings.byKey.shouldSuggestCustomEmoji = true;
   }
 
   if (!cached.stickers.premiumSet) {
@@ -317,6 +239,56 @@ export function migrateCache(cached: GlobalState, initialState: GlobalState) {
       notification.isDeleted = isHidden;
     }
   });
+
+  // TODO Remove in Mar 2023 (this was re-designed but can be hardcoded in cache)
+  if (cached.users.byId && Object.values(cached.users.byId).some((u) => 'username' in u)) {
+    cached.users.byId = Object.entries(cached.users.byId).reduce((acc, [id, user]) => {
+      if ('username' in user) {
+        delete user.username;
+      }
+      acc[id] = user;
+
+      return acc;
+    }, {} as Record<string, ApiUser>);
+  }
+
+  // TODO Remove in Mar 2023 (this was re-designed but can be hardcoded in cache)
+  if (cached.chats.byId && Object.values(cached.chats.byId).some((c) => 'username' in c)) {
+    cached.chats.byId = Object.entries(cached.chats.byId).reduce((acc, [id, user]) => {
+      if ('username' in user) {
+        delete user.username;
+      }
+      acc[id] = user;
+
+      return acc;
+    }, {} as Record<string, ApiChat>);
+  }
+
+  // TODO Remove in Apr 2023 (this was re-designed but can be hardcoded in cache)
+  if (cached.messages.byChatId) {
+    const wasUpdated = Object.values(cached.messages.byChatId)
+      .some((messages) => Object.values(messages.byId).some(({ reactions }) => {
+        return reactions?.results[0]?.reaction && typeof reactions.results[0].reaction !== 'string';
+      }));
+    if (!wasUpdated) {
+      for (const messages of Object.values(cached.messages.byChatId)) {
+        for (const message of Object.values(messages.byId)) {
+          delete message.reactions;
+        }
+      }
+    }
+  }
+  if (typeof cached.config?.defaultReaction === 'string') {
+    cached.config.defaultReaction = { emoticon: cached.config.defaultReaction };
+  }
+  if (typeof cached.availableReactions?.[0].reaction === 'string') {
+    cached.availableReactions = cached.availableReactions
+      .map((r) => ({ ...r, reaction: { emoticon: r.reaction as unknown as string } }));
+  }
+
+  if (!cached.archiveSettings) {
+    cached.archiveSettings = initialState.archiveSettings;
+  }
 }
 
 function updateCache() {
@@ -338,7 +310,7 @@ export function forceUpdateCache(noEncrypt = false) {
       void encryptSession(undefined, serializedGlobal);
     }
 
-    const serializedGlobalClean = JSON.stringify(clearGlobalForLockScreen(global));
+    const serializedGlobalClean = JSON.stringify(clearGlobalForLockScreen(global, false));
     localStorage.setItem(GLOBAL_STATE_CACHE_KEY, serializedGlobalClean);
 
     return;
@@ -347,9 +319,9 @@ export function forceUpdateCache(noEncrypt = false) {
   localStorage.setItem(GLOBAL_STATE_CACHE_KEY, serializedGlobal);
 }
 
-export function serializeGlobal(global: GlobalState) {
+export function serializeGlobal<T extends GlobalState>(global: T) {
   const reducedGlobal: GlobalState = {
-    ...INITIAL_STATE,
+    ...INITIAL_GLOBAL_STATE,
     ...pick(global, [
       'appConfig',
       'authState',
@@ -363,33 +335,23 @@ export function serializeGlobal(global: GlobalState) {
       'recentEmojis',
       'recentCustomEmojis',
       'push',
-      'shouldShowContextMenuHint',
-      'leftColumnWidth',
       'serviceNotifications',
+      'attachmentSettings',
+      'leftColumnWidth',
+      'lastIsChatInfoShown',
+      'archiveSettings',
+      'mediaViewer',
+      'audioPlayer',
     ]),
-    audioPlayer: {
-      volume: global.audioPlayer.volume,
-      playbackRate: global.audioPlayer.playbackRate,
-      isMuted: global.audioPlayer.isMuted,
-    },
     customEmojis: reduceCustomEmojis(global),
-    mediaViewer: {
-      volume: global.mediaViewer.volume,
-      playbackRate: global.mediaViewer.playbackRate,
-      isMuted: global.mediaViewer.isMuted,
-    },
-    isChatInfoShown: reduceShowChatInfo(global),
     users: reduceUsers(global),
     chats: reduceChats(global),
     messages: reduceMessages(global),
-    globalSearch: {
-      recentlyFoundChatIds: global.globalSearch.recentlyFoundChatIds,
-    },
+    recentlyFoundChatIds: global.recentlyFoundChatIds,
     settings: reduceSettings(global),
     chatFolders: reduceChatFolders(global),
     groupCalls: reduceGroupCalls(global),
     availableReactions: reduceAvailableReactions(global),
-    isCallPanelVisible: undefined,
     trustedBotIds: global.trustedBotIds,
     passcode: pick(global.passcode, [
       'isScreenLocked',
@@ -401,7 +363,7 @@ export function serializeGlobal(global: GlobalState) {
   return JSON.stringify(reducedGlobal);
 }
 
-function reduceCustomEmojis(global: GlobalState): GlobalState['customEmojis'] {
+function reduceCustomEmojis<T extends GlobalState>(global: T): GlobalState['customEmojis'] {
   const { lastRendered, byId } = global.customEmojis;
   const idsToSave = lastRendered.slice(0, GLOBAL_STATE_CACHE_CUSTOM_EMOJI_LIMIT);
   const byIdToSave = pick(byId, idsToSave);
@@ -411,29 +373,29 @@ function reduceCustomEmojis(global: GlobalState): GlobalState['customEmojis'] {
     lastRendered: idsToSave,
     forEmoji: {},
     added: {},
+    statusRecent: {},
   };
 }
 
-function reduceShowChatInfo(global: GlobalState): boolean {
-  return window.innerWidth > MIN_SCREEN_WIDTH_FOR_STATIC_RIGHT_COLUMN
-    ? global.isChatInfoShown
-    : false;
-}
-
-function reduceUsers(global: GlobalState): GlobalState['users'] {
+function reduceUsers<T extends GlobalState>(global: T): GlobalState['users'] {
   const { users: { byId, statusesById }, currentUserId } = global;
-  const { chatId: currentChatId } = selectCurrentMessageList(global) || {};
-  const visibleUserIds = selectVisibleUsers(global)?.map(({ id }) => id);
+  const currentChatIds = compact(
+    Object.values(global.byTabId)
+      .map(({ id: tabId }) => selectCurrentMessageList(global, tabId)),
+  ).map(({ chatId }) => chatId).filter((chatId) => isUserId(chatId));
+
+  const visibleUserIds = unique(compact(Object.values(global.byTabId)
+    .flatMap(({ id: tabId }) => selectVisibleUsers(global, tabId)?.map((u) => u.id) || [])));
 
   const idsToSave = unique([
     ...currentUserId ? [currentUserId] : [],
-    ...currentChatId && isUserId(currentChatId) ? [currentChatId] : [],
+    ...currentChatIds,
     ...visibleUserIds || [],
     ...global.topPeers.userIds || [],
     ...getOrderedIds(ALL_FOLDER_ID)?.filter(isUserId) || [],
     ...getOrderedIds(ARCHIVED_FOLDER_ID)?.filter(isUserId) || [],
     ...global.contactList?.userIds || [],
-    ...global.globalSearch.recentlyFoundChatIds?.filter(isUserId) || [],
+    ...global.recentlyFoundChatIds?.filter(isUserId) || [],
     ...Object.keys(byId),
   ]).slice(0, GLOBAL_STATE_CACHE_USER_LIST_LIMIT);
 
@@ -443,15 +405,30 @@ function reduceUsers(global: GlobalState): GlobalState['users'] {
   };
 }
 
-function reduceChats(global: GlobalState): GlobalState['chats'] {
+function reduceChats<T extends GlobalState>(global: T): GlobalState['chats'] {
   const { chats: { byId }, currentUserId } = global;
-  const currentChat = selectCurrentChat(global);
+  const currentChatIds = compact(
+    Object.values(global.byTabId)
+      .flatMap(({ id: tabId }): MessageList[] | undefined => {
+        const messageList = selectCurrentMessageList(global, tabId);
+        if (!messageList) return undefined;
+
+        const { chatId, threadId } = messageList;
+        const origin = selectThreadOriginChat(global, chatId, threadId);
+        return origin ? [{
+          chatId: origin.id,
+          threadId: MAIN_THREAD_ID,
+          type: 'thread',
+        }, messageList] : [messageList];
+      }),
+  ).map(({ chatId }) => chatId);
+
   const idsToSave = unique([
     ...currentUserId ? [currentUserId] : [],
-    ...currentChat ? [currentChat.id] : [],
+    ...currentChatIds,
     ...getOrderedIds(ALL_FOLDER_ID) || [],
     ...getOrderedIds(ARCHIVED_FOLDER_ID) || [],
-    ...global.globalSearch.recentlyFoundChatIds || [],
+    ...global.recentlyFoundChatIds || [],
     ...Object.keys(byId),
   ]).slice(0, GLOBAL_STATE_CACHE_CHAT_LIST_LIMIT);
 
@@ -462,15 +439,23 @@ function reduceChats(global: GlobalState): GlobalState['chats'] {
   };
 }
 
-function reduceMessages(global: GlobalState): GlobalState['messages'] {
+function reduceMessages<T extends GlobalState>(global: T): GlobalState['messages'] {
   const { currentUserId } = global;
   const byChatId: GlobalState['messages']['byChatId'] = {};
-  const { chatId: currentChatId, threadId, type } = selectCurrentMessageList(global) || {};
-  const chatIdsToSave = [
-    ...currentChatId ? [currentChatId] : [],
+  const currentChatIds = compact(
+    Object.values(global.byTabId)
+      .map(({ id: tabId }) => selectCurrentMessageList(global, tabId)),
+  ).map(({ chatId }) => chatId);
+  const forumPanelChatIds = compact(
+    Object.values(global.byTabId)
+      .map(({ forumPanelChatId }) => forumPanelChatId),
+  );
+  const chatIdsToSave = unique([
+    ...currentChatIds,
     ...currentUserId ? [currentUserId] : [],
+    ...forumPanelChatIds,
     ...getOrderedIds(ALL_FOLDER_ID)?.slice(0, GLOBAL_STATE_CACHE_CHATS_WITH_MESSAGES_LIMIT) || [],
-  ];
+  ]);
 
   chatIdsToSave.forEach((chatId) => {
     const current = global.messages.byChatId[chatId];
@@ -478,27 +463,49 @@ function reduceMessages(global: GlobalState): GlobalState['messages'] {
       return;
     }
 
-    const mainThread = current.threadsById[MAIN_THREAD_ID];
-    if (!mainThread || !mainThread.viewportIds) {
+    const chat = selectChat(global, chatId);
+
+    const threadIds = compact(Object.values(global.byTabId).map(({ id: tabId }) => {
+      const { chatId: tabChatId, threadId } = selectCurrentMessageList(global, tabId) || {};
+      if (!tabChatId || tabChatId !== chatId || !threadId || threadId === MAIN_THREAD_ID) {
+        return undefined;
+      }
+
+      return threadId;
+    }));
+
+    const threadIdsToSave = threadIds.length ? [MAIN_THREAD_ID, ...threadIds] : [MAIN_THREAD_ID];
+    const threadsToSave = pickTruthy(current.threadsById, threadIdsToSave);
+    if (!Object.keys(threadsToSave).length) {
       return;
     }
 
+    const viewportIdsToSave = unique(Object.values(threadsToSave).flatMap((thread) => thread.lastViewportIds || []));
+    const lastMessageIdsToSave = chat?.topics
+      ? Object.values(chat.topics).map(({ lastMessageId }) => lastMessageId) : [];
+    const byId = pick(current.byId, viewportIdsToSave.concat(lastMessageIdsToSave));
+    const threadsById = Object.keys(threadsToSave).reduce((acc, key) => {
+      const t = threadsToSave[Number(key)];
+      acc[Number(key)] = {
+        ...t,
+        listedIds: t.lastViewportIds,
+      };
+      return acc;
+    }, {} as GlobalState['messages']['byChatId'][string]['threadsById']);
+
     byChatId[chatId] = {
-      byId: pick(current.byId, mainThread.viewportIds),
-      threadsById: {
-        [MAIN_THREAD_ID]: mainThread,
-      },
+      byId,
+      threadsById,
     };
   });
 
   return {
     byChatId,
-    messageLists: currentChatId && threadId && type ? [{ chatId: currentChatId, threadId, type }] : [],
     sponsoredByChatId: {},
   };
 }
 
-function reduceSettings(global: GlobalState): GlobalState['settings'] {
+function reduceSettings<T extends GlobalState>(global: T): GlobalState['settings'] {
   const { byKey, themes } = global.settings;
 
   return {
@@ -509,14 +516,13 @@ function reduceSettings(global: GlobalState): GlobalState['settings'] {
   };
 }
 
-function reduceChatFolders(global: GlobalState): GlobalState['chatFolders'] {
+function reduceChatFolders<T extends GlobalState>(global: T): GlobalState['chatFolders'] {
   return {
     ...global.chatFolders,
-    activeChatFolder: 0,
   };
 }
 
-function reduceGroupCalls(global: GlobalState): GlobalState['groupCalls'] {
+function reduceGroupCalls<T extends GlobalState>(global: T): GlobalState['groupCalls'] {
   return {
     ...global.groupCalls,
     byId: {},

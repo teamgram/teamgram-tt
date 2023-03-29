@@ -1,7 +1,9 @@
 import type { FC } from '../../lib/teact/teact';
 import React, { useRef } from '../../lib/teact/teact';
 
-import type { ApiUser, ApiMessage, ApiChat } from '../../api/types';
+import type {
+  ApiUser, ApiMessage, ApiChat,
+} from '../../api/types';
 
 import {
   getMessageMediaHash,
@@ -9,11 +11,11 @@ import {
   getSenderTitle,
   getMessageRoundVideo,
   getUserColorKey,
+  getMessageIsSpoiler,
 } from '../../global/helpers';
 import renderText from './helpers/renderText';
 import { getPictogramDimensions } from './helpers/mediaDimensions';
 import buildClassName from '../../util/buildClassName';
-import { renderMessageSummary } from './helpers/renderMessageText';
 
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 import { useIsIntersecting } from '../../hooks/useIntersectionObserver';
@@ -22,11 +24,12 @@ import useThumbnail from '../../hooks/useThumbnail';
 import useLang from '../../hooks/useLang';
 
 import ActionMessage from '../middle/ActionMessage';
+import MessageSummary from './MessageSummary';
+import MediaSpoiler from './MediaSpoiler';
 
 import './EmbeddedMessage.scss';
 
 type OwnProps = {
-  observeIntersection?: ObserveFn;
   className?: string;
   message?: ApiMessage;
   sender?: ApiUser | ApiChat;
@@ -35,6 +38,8 @@ type OwnProps = {
   noUserColors?: boolean;
   isProtected?: boolean;
   hasContextMenu?: boolean;
+  observeIntersectionForLoading?: ObserveFn;
+  observeIntersectionForPlaying?: ObserveFn;
   onClick: NoneToVoidFunction;
 };
 
@@ -49,16 +54,18 @@ const EmbeddedMessage: FC<OwnProps> = ({
   isProtected,
   noUserColors,
   hasContextMenu,
-  observeIntersection,
+  observeIntersectionForLoading,
+  observeIntersectionForPlaying,
   onClick,
 }) => {
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);
-  const isIntersecting = useIsIntersecting(ref, observeIntersection);
+  const isIntersecting = useIsIntersecting(ref, observeIntersectionForLoading);
 
   const mediaBlobUrl = useMedia(message && getMessageMediaHash(message, 'pictogram'), !isIntersecting);
   const mediaThumbnail = useThumbnail(message);
   const isRoundVideo = Boolean(message && getMessageRoundVideo(message));
+  const isSpoiler = Boolean(message && getMessageIsSpoiler(message));
 
   const lang = useLang();
 
@@ -74,15 +81,26 @@ const EmbeddedMessage: FC<OwnProps> = ({
       )}
       onClick={message ? onClick : undefined}
     >
-      {mediaThumbnail && renderPictogram(mediaThumbnail, mediaBlobUrl, isRoundVideo, isProtected)}
+      {mediaThumbnail && renderPictogram(mediaThumbnail, mediaBlobUrl, isRoundVideo, isProtected, isSpoiler)}
       <div className="message-text">
         <p dir="auto">
           {!message ? (
             customText || NBSP
           ) : isActionMessage(message) ? (
-            <ActionMessage message={message} isEmbedded />
+            <ActionMessage
+              message={message}
+              isEmbedded
+              observeIntersectionForLoading={observeIntersectionForLoading}
+              observeIntersectionForPlaying={observeIntersectionForPlaying}
+            />
           ) : (
-            renderMessageSummary(lang, message, Boolean(mediaThumbnail))
+            <MessageSummary
+              lang={lang}
+              message={message}
+              noEmoji={Boolean(mediaThumbnail)}
+              observeIntersectionForLoading={observeIntersectionForLoading}
+              observeIntersectionForPlaying={observeIntersectionForPlaying}
+            />
           )}
         </p>
         <div className="message-title" dir="auto">{renderText(senderTitle || title || NBSP)}</div>
@@ -97,21 +115,27 @@ function renderPictogram(
   blobUrl?: string,
   isRoundVideo?: boolean,
   isProtected?: boolean,
+  isSpoiler?: boolean,
 ) {
   const { width, height } = getPictogramDimensions();
 
+  const srcUrl = blobUrl || thumbDataUri;
+
   return (
-    <>
-      <img
-        src={blobUrl || thumbDataUri}
-        width={width}
-        height={height}
-        alt=""
-        className={isRoundVideo ? 'round' : ''}
-        draggable={!isProtected}
-      />
+    <div className={buildClassName('embedded-thumb', isRoundVideo && 'round')}>
+      {!isSpoiler && (
+        <img
+          src={srcUrl}
+          width={width}
+          height={height}
+          alt=""
+          className="pictogram"
+          draggable={false}
+        />
+      )}
+      <MediaSpoiler thumbDataUri={srcUrl} isVisible={Boolean(isSpoiler)} width={width} height={height} />
       {isProtected && <span className="protector" />}
-    </>
+    </div>
   );
 }
 

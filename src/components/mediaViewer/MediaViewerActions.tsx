@@ -6,7 +6,9 @@ import React, {
 import { getActions, withGlobal } from '../../global';
 
 import type { FC } from '../../lib/teact/teact';
-import type { ApiMessage } from '../../api/types';
+import type {
+  ApiMessage, ApiPhoto, ApiChat, ApiUser,
+} from '../../api/types';
 import type { MessageListType } from '../../global/types';
 import type { MenuItemProps } from '../ui/MenuItem';
 
@@ -17,18 +19,19 @@ import {
   selectCurrentMessageList,
   selectIsChatProtected,
 } from '../../global/selectors';
-import { IS_SINGLE_COLUMN_LAYOUT } from '../../util/environment';
-import { getMessageMediaFormat, getMessageMediaHash } from '../../global/helpers';
+import { getMessageMediaFormat, getMessageMediaHash, isUserId } from '../../global/helpers';
 
 import useLang from '../../hooks/useLang';
 import useMediaWithLoadProgress from '../../hooks/useMediaWithLoadProgress';
 import useFlag from '../../hooks/useFlag';
+import useAppLayout from '../../hooks/useAppLayout';
 
 import Button from '../ui/Button';
 import DropdownMenu from '../ui/DropdownMenu';
 import MenuItem from '../ui/MenuItem';
 import ProgressSpinner from '../ui/ProgressSpinner';
 import DeleteMessageModal from '../common/DeleteMessageModal';
+import DeleteProfilePhotoModal from '../common/DeleteProfilePhotoModal';
 
 import './MediaViewerActions.scss';
 
@@ -37,7 +40,9 @@ type StateProps = {
   isProtected?: boolean;
   isChatProtected?: boolean;
   canDelete?: boolean;
+  canUpdate?: boolean;
   messageListType?: MessageListType;
+  avatarOwnerId?: string;
 };
 
 type OwnProps = {
@@ -45,9 +50,15 @@ type OwnProps = {
   isVideo: boolean;
   zoomLevelChange: number;
   message?: ApiMessage;
+  canUpdateMedia?: boolean;
+  isSingleMedia?: boolean;
+  avatarPhoto?: ApiPhoto;
+  avatarOwner?: ApiChat | ApiUser;
   fileName?: string;
   canReport?: boolean;
+  selectMedia: (mediaId?: number) => void;
   onReport: NoneToVoidFunction;
+  onBeforeDelete: NoneToVoidFunction;
   onCloseMediaViewer: NoneToVoidFunction;
   onForward: NoneToVoidFunction;
   setZoomLevelChange: (change: number) => void;
@@ -57,6 +68,8 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
   mediaData,
   isVideo,
   message,
+  avatarPhoto,
+  avatarOwnerId,
   fileName,
   isChatProtected,
   isDownloading,
@@ -64,17 +77,23 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
   canReport,
   zoomLevelChange,
   canDelete,
+  canUpdate,
   messageListType,
+  selectMedia,
   onReport,
   onCloseMediaViewer,
+  onBeforeDelete,
   onForward,
   setZoomLevelChange,
 }) => {
   const [isDeleteModalOpen, openDeleteModal, closeDeleteModal] = useFlag(false);
+  const { isMobile } = useAppLayout();
 
   const {
     downloadMessageMedia,
     cancelMessageMediaDownload,
+    updateProfilePhoto,
+    updateChatPhoto,
   } = getActions();
 
   const { loadProgress: downloadProgress } = useMediaWithLoadProgress(
@@ -101,6 +120,16 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
     setZoomLevelChange(change + 1);
   }, [setZoomLevelChange, zoomLevelChange]);
 
+  const handleUpdate = useCallback(() => {
+    if (!avatarPhoto || !avatarOwnerId) return;
+    if (isUserId(avatarOwnerId)) {
+      updateProfilePhoto({ photo: avatarPhoto });
+    } else {
+      updateChatPhoto({ chatId: avatarOwnerId, photo: avatarPhoto });
+    }
+    selectMedia(0);
+  }, [avatarPhoto, avatarOwnerId, selectMedia, updateProfilePhoto, updateChatPhoto]);
+
   const lang = useLang();
 
   const MenuButton: FC<{ onTrigger: () => void; isOpen?: boolean }> = useMemo(() => {
@@ -117,6 +146,28 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
       </Button>
     );
   }, []);
+
+  function renderDeleteModals() {
+    return message
+      ? (
+        <DeleteMessageModal
+          isOpen={isDeleteModalOpen}
+          isSchedule={messageListType === 'scheduled'}
+          onClose={closeDeleteModal}
+          onConfirm={onBeforeDelete}
+          message={message}
+        />
+      )
+      : (avatarOwnerId && avatarPhoto) ? (
+        <DeleteProfilePhotoModal
+          isOpen={isDeleteModalOpen}
+          onClose={closeDeleteModal}
+          onConfirm={onBeforeDelete}
+          profileId={avatarOwnerId}
+          photo={avatarPhoto}
+        />
+      ) : undefined;
+  }
 
   function renderDownloadButton() {
     if (isProtected) {
@@ -151,7 +202,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
     );
   }
 
-  if (IS_SINGLE_COLUMN_LAYOUT) {
+  if (isMobile) {
     const menuItems: MenuItemProps[] = [];
     if (!message?.isForwardingAllowed && !isChatProtected) {
       menuItems.push({
@@ -182,6 +233,14 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
         icon: 'report',
         onClick: onReport,
         children: lang('ReportPeer.Report'),
+      });
+    }
+
+    if (canUpdate) {
+      menuItems.push({
+        icon: 'copy-media',
+        onClick: handleUpdate,
+        children: lang('ProfilePhoto.SetMainPhoto'),
       });
     }
 
@@ -218,14 +277,7 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
           ))}
         </DropdownMenu>
         {isDownloading && <ProgressSpinner progress={downloadProgress} size="s" noCross />}
-        {message && canDelete && (
-          <DeleteMessageModal
-            isOpen={isDeleteModalOpen}
-            isSchedule={messageListType === 'scheduled'}
-            onClose={closeDeleteModal}
-            message={message}
-          />
-        )}
+        {canDelete && renderDeleteModals()}
       </div>
     );
   }
@@ -273,6 +325,17 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
           <i className="icon-flag" />
         </Button>
       )}
+      {canUpdate && (
+        <Button
+          round
+          size="smaller"
+          color="translucent-white"
+          ariaLabel={lang('ProfilePhoto.SetMainPhoto')}
+          onClick={handleUpdate}
+        >
+          <i className="icon-copy-media" />
+        </Button>
+      )}
       {canDelete && (
         <Button
           round
@@ -293,26 +356,26 @@ const MediaViewerActions: FC<OwnProps & StateProps> = ({
       >
         <i className="icon-close" />
       </Button>
-      {message && canDelete && (
-        <DeleteMessageModal
-          isOpen={isDeleteModalOpen}
-          isSchedule={messageListType === 'scheduled'}
-          onClose={closeDeleteModal}
-          message={message}
-        />
-      )}
+      {canDelete && renderDeleteModals()}
     </div>
   );
 };
 
 export default memo(withGlobal<OwnProps>(
-  (global, { message }): StateProps => {
+  (global, {
+    message, canUpdateMedia, avatarPhoto, avatarOwner,
+  }): StateProps => {
     const currentMessageList = selectCurrentMessageList(global);
     const { threadId } = selectCurrentMessageList(global) || {};
     const isDownloading = message ? selectIsDownloading(global, message) : false;
     const isProtected = selectIsMessageProtected(global, message);
     const isChatProtected = message && selectIsChatProtected(global, message?.chatId);
-    const { canDelete } = (threadId && message && selectAllowedMessageActions(global, message, threadId)) || {};
+    const { canDelete: canDeleteMessage } = (threadId
+      && message && selectAllowedMessageActions(global, message, threadId)) || {};
+    const isCurrentAvatar = avatarPhoto && (avatarPhoto.id === avatarOwner?.avatarHash);
+    const canDeleteAvatar = canUpdateMedia && !!avatarPhoto;
+    const canDelete = canDeleteMessage || canDeleteAvatar;
+    const canUpdate = canUpdateMedia && !!avatarPhoto && !isCurrentAvatar;
     const messageListType = currentMessageList?.type;
 
     return {
@@ -320,7 +383,9 @@ export default memo(withGlobal<OwnProps>(
       isProtected,
       isChatProtected,
       canDelete,
+      canUpdate,
       messageListType,
+      avatarOwnerId: avatarOwner?.id,
     };
   },
 )(MediaViewerActions));

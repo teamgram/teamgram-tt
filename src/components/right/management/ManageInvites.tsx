@@ -1,25 +1,25 @@
-import type { FC } from '../../../lib/teact/teact';
 import React, {
   memo, useCallback, useMemo, useState,
 } from '../../../lib/teact/teact';
 import { getActions, withGlobal } from '../../../global';
 
+import type { FC } from '../../../lib/teact/teact';
 import type { ApiChat, ApiExportedInvite } from '../../../api/types';
 import { ManagementScreens } from '../../../types';
 
 import { STICKER_SIZE_INVITES, TME_LINK_PREFIX } from '../../../config';
 import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
+import { formatCountdown, MILLISECONDS_IN_DAY } from '../../../util/dateFormat';
+import { getMainUsername, isChatChannel } from '../../../global/helpers';
+import { selectChat, selectTabState } from '../../../global/selectors';
+import { copyTextToClipboard } from '../../../util/clipboard';
+import { getServerTime } from '../../../util/serverTime';
 import useHistoryBack from '../../../hooks/useHistoryBack';
 import useLang from '../../../hooks/useLang';
-import { formatCountdown, MILLISECONDS_IN_DAY } from '../../../util/dateFormat';
 import useInterval from '../../../hooks/useInterval';
 import useForceUpdate from '../../../hooks/useForceUpdate';
-import { selectChat } from '../../../global/selectors';
-import { copyTextToClipboard } from '../../../util/clipboard';
-import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
-import { getServerTime } from '../../../util/serverTime';
 import useFlag from '../../../hooks/useFlag';
-import { isChatChannel } from '../../../global/helpers';
+import useAppLayout from '../../../hooks/useAppLayout';
 
 import ListItem from '../../ui/ListItem';
 import NothingFound from '../../common/NothingFound';
@@ -41,7 +41,6 @@ type StateProps = {
   isChannel?: boolean;
   exportedInvites?: ApiExportedInvite[];
   revokedExportedInvites?: ApiExportedInvite[];
-  serverTimeOffset: number;
 };
 
 const BULLET = '\u2022';
@@ -61,7 +60,6 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
   revokedExportedInvites,
   isActive,
   isChannel,
-  serverTimeOffset,
   onClose,
   onScreenSelect,
 }) => {
@@ -81,6 +79,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
   const [revokingInvite, setRevokingInvite] = useState<ApiExportedInvite | undefined>();
   const [isDeleteDialogOpen, openDeleteDialog, closeDeleteDialog] = useFlag();
   const [deletingInvite, setDeletingInvite] = useState<ApiExportedInvite | undefined>();
+  const { isMobile } = useAppLayout();
 
   useHistoryBack({
     isActive,
@@ -91,20 +90,21 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
     if (!exportedInvites) return undefined;
     return exportedInvites
       .some(({ expireDate }) => (
-        expireDate && (expireDate - getServerTime(serverTimeOffset) < MILLISECONDS_IN_DAY / 1000)
+        expireDate && (expireDate - getServerTime() < MILLISECONDS_IN_DAY / 1000)
       ));
-  }, [exportedInvites, serverTimeOffset]);
+  }, [exportedInvites]);
   const forceUpdate = useForceUpdate();
   useInterval(() => {
     forceUpdate();
   }, hasDetailedCountdown ? 1000 : undefined);
 
+  const chatMainUsername = useMemo(() => chat && getMainUsername(chat), [chat]);
   const primaryInvite = exportedInvites?.find(({ isPermanent }) => isPermanent);
-  const primaryInviteLink = chat?.username ? `${TME_LINK_PREFIX}${chat.username}` : primaryInvite?.link;
+  const primaryInviteLink = chatMainUsername ? `${TME_LINK_PREFIX}${chatMainUsername}` : primaryInvite?.link;
   const temporalInvites = useMemo(() => {
-    const invites = chat?.username ? exportedInvites : exportedInvites?.filter(({ isPermanent }) => !isPermanent);
+    const invites = chat?.usernames ? exportedInvites : exportedInvites?.filter(({ isPermanent }) => !isPermanent);
     return invites?.sort(inviteComparator);
-  }, [chat?.username, exportedInvites]);
+  }, [chat?.usernames, exportedInvites]);
 
   const editInvite = (invite: ApiExportedInvite) => {
     setEditingExportedInvite({ chatId, invite });
@@ -210,7 +210,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
     if (usageLimit !== undefined && usage === usageLimit) {
       text += ` ${BULLET} ${lang('LinkLimitReached')}`;
     } else if (expireDate) {
-      const diff = (expireDate - getServerTime(serverTimeOffset)) * 1000;
+      const diff = (expireDate - getServerTime()) * 1000;
       text += ` ${BULLET} `;
       if (diff > 0) {
         text += lang('InviteLink.ExpiresIn', formatCountdown(lang, diff));
@@ -235,7 +235,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
       return 'link-status-icon-green';
     }
     if (expireDate) {
-      const diff = (expireDate - getServerTime(serverTimeOffset)) * 1000;
+      const diff = (expireDate - getServerTime()) * 1000;
       if (diff <= 0) {
         return 'link-status-icon-red';
       }
@@ -281,7 +281,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
     return ({ onTrigger, isOpen }) => (
       <Button
         round
-        ripple={!IS_SINGLE_COLUMN_LAYOUT}
+        ripple={!isMobile}
         size="smaller"
         color="translucent"
         className={isOpen ? 'active' : ''}
@@ -291,7 +291,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
         <i className="icon-more" />
       </Button>
     );
-  }, []);
+  }, [isMobile]);
 
   return (
     <div className="Management ManageInvites">
@@ -307,7 +307,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
         {primaryInviteLink && (
           <div className="section">
             <p className="text-muted">
-              {chat?.username ? lang('PublicLink') : lang('lng_create_permanent_link_title')}
+              {chat?.usernames ? lang('PublicLink') : lang('lng_create_permanent_link_title')}
             </p>
             <div className="primary-link">
               <input
@@ -322,7 +322,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
                 positionX="right"
               >
                 <MenuItem icon="copy" onClick={handleCopyPrimaryClicked}>{lang('Copy')}</MenuItem>
-                {!chat?.username && (
+                {!chat?.usernames && (
                   <MenuItem icon="delete" onClick={handlePrimaryRevoke} destructive>{lang('RevokeButton')}</MenuItem>
                 )}
               </DropdownMenu>
@@ -416,7 +416,7 @@ const ManageInvites: FC<OwnProps & StateProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   (global, { chatId }): StateProps => {
-    const { invites, revokedInvites } = global.management.byChatId[chatId];
+    const { invites, revokedInvites } = selectTabState(global).management.byChatId[chatId];
     const chat = selectChat(global, chatId);
     const isChannel = chat && isChatChannel(chat);
 
@@ -424,7 +424,6 @@ export default memo(withGlobal<OwnProps>(
       exportedInvites: invites,
       revokedExportedInvites: revokedInvites,
       chat,
-      serverTimeOffset: global.serverTimeOffset,
       isChannel,
     };
   },

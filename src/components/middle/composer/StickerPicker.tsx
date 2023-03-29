@@ -12,10 +12,10 @@ import {
   FAVORITE_SYMBOL_SET_ID,
   PREMIUM_STICKER_SET_ID,
   RECENT_SYMBOL_SET_ID,
-  SLIDE_TRANSITION_DURATION,
+  SLIDE_TRANSITION_DURATION, STICKER_PICKER_MAX_SHARED_COVERS,
   STICKER_SIZE_PICKER_HEADER,
 } from '../../../config';
-import { IS_TOUCH_ENV } from '../../../util/environment';
+import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import fastSmoothScroll from '../../../util/fastSmoothScroll';
 import buildClassName from '../../../util/buildClassName';
@@ -44,8 +44,10 @@ type OwnProps = {
   threadId?: number;
   className: string;
   loadAndPlay: boolean;
-  canSendStickers: boolean;
-  onStickerSelect: (sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean) => void;
+  canSendStickers?: boolean;
+  onStickerSelect: (
+    sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean, shouldUpdateStickerSetsOrder?: boolean,
+  ) => void;
 };
 
 type StateProps = {
@@ -94,6 +96,9 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
   const headerRef = useRef<HTMLDivElement>(null);
+  // eslint-disable-next-line no-null/no-null
+  const sharedCanvasRef = useRef<HTMLCanvasElement>(null);
+
   const [activeSetIndex, setActiveSetIndex] = useState<number>(0);
 
   const sendMessageAction = useSendMessageAction(chat!.id, threadId);
@@ -140,6 +145,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
     if (favoriteStickers.length) {
       defaultSets.push({
         id: FAVORITE_SYMBOL_SET_ID,
+        accessHash: '0',
         title: lang('FavoriteStickers'),
         stickers: favoriteStickers,
         count: favoriteStickers.length,
@@ -149,6 +155,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
     if (recentStickers.length) {
       defaultSets.push({
         id: RECENT_SYMBOL_SET_ID,
+        accessHash: '0',
         title: lang('RecentStickers'),
         stickers: recentStickers,
         count: recentStickers.length,
@@ -157,7 +164,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
 
     if (isCurrentUserPremium) {
       const addedPremiumStickers = existingAddedSetIds
-        .map((l) => l.stickers?.filter((sticker) => sticker.hasEffect))
+        .map(({ stickers }) => stickers?.filter((sticker) => sticker.hasEffect))
         .flat()
         .filter(Boolean);
 
@@ -166,6 +173,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
       if (totalPremiumStickers.length) {
         defaultSets.push({
           id: PREMIUM_STICKER_SET_ID,
+          accessHash: '0',
           title: lang('PremiumStickers'),
           stickers: totalPremiumStickers,
           count: totalPremiumStickers.length,
@@ -178,6 +186,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
       if (fullSet) {
         defaultSets.push({
           id: CHAT_STICKER_SET_ID,
+          accessHash: fullSet.accessHash,
           title: lang('GroupStickers'),
           stickers: fullSet.stickers,
           count: fullSet.stickers!.length,
@@ -205,7 +214,10 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
     sendMessageAction({ type: 'chooseSticker' });
   }, [canSendStickers, loadAndPlay, loadRecentStickers, sendMessageAction]);
 
-  useHorizontalScroll(headerRef.current);
+  const canRenderContents = useAsyncRendering([], SLIDE_TRANSITION_DURATION);
+  const shouldRenderContents = areAddedLoaded && canRenderContents && !noPopulatedSets && canSendStickers;
+
+  useHorizontalScroll(headerRef, !shouldRenderContents);
 
   // Scroll container and header when active set changes
   useEffect(() => {
@@ -230,7 +242,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
   }, []);
 
   const handleStickerSelect = useCallback((sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean) => {
-    onStickerSelect(sticker, isSilent, shouldSchedule);
+    onStickerSelect(sticker, isSilent, shouldSchedule, true);
     addRecentSticker({ sticker });
   }, [addRecentSticker, onStickerSelect]);
 
@@ -251,8 +263,6 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
     removeRecentSticker({ sticker });
   }, [removeRecentSticker]);
 
-  const canRenderContents = useAsyncRendering([], SLIDE_TRANSITION_DURATION);
-
   function renderCover(stickerSet: StickerSetOrRecent, index: number) {
     const firstSticker = stickerSet.stickers?.[0];
     const buttonClassName = buildClassName(
@@ -260,12 +270,15 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
       index === activeSetIndex && 'activated',
     );
 
+    const withSharedCanvas = index < STICKER_PICKER_MAX_SHARED_COVERS;
+
     if (stickerSet.id === RECENT_SYMBOL_SET_ID
       || stickerSet.id === FAVORITE_SYMBOL_SET_ID
       || stickerSet.id === CHAT_STICKER_SET_ID
       || stickerSet.id === PREMIUM_STICKER_SET_ID
       || stickerSet.hasThumbnail
-      || !firstSticker) {
+      || !firstSticker
+    ) {
       return (
         <Button
           key={stickerSet.id}
@@ -290,6 +303,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
               stickerSet={stickerSet as ApiStickerSet}
               noAnimate={!canAnimate || !loadAndPlay}
               observeIntersection={observeIntersectionForCovers}
+              sharedCanvasRef={withSharedCanvas ? sharedCanvasRef : undefined}
             />
           )}
         </Button>
@@ -306,6 +320,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
           observeIntersection={observeIntersectionForCovers}
           noContextMenu
           isCurrentUserPremium
+          sharedCanvasRef={withSharedCanvas ? sharedCanvasRef : undefined}
           onClick={selectStickerSet}
           clickArg={index}
         />
@@ -315,7 +330,7 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
 
   const fullClassName = buildClassName('StickerPicker', className);
 
-  if (!areAddedLoaded || !canRenderContents || noPopulatedSets || !canSendStickers) {
+  if (!shouldRenderContents) {
     return (
       <div className={fullClassName}>
         {!canSendStickers ? (
@@ -335,7 +350,10 @@ const StickerPicker: FC<OwnProps & StateProps> = ({
         ref={headerRef}
         className="StickerPicker-header no-selection no-scrollbar"
       >
-        {allSets.map(renderCover)}
+        <div className="shared-canvas-container">
+          <canvas ref={sharedCanvasRef} className="shared-canvas" />
+          {allSets.map(renderCover)}
+        </div>
       </div>
       <div
         ref={containerRef}

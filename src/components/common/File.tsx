@@ -1,15 +1,18 @@
 import type { RefObject } from 'react';
 import type { FC } from '../../lib/teact/teact';
-import React, { memo, useRef } from '../../lib/teact/teact';
+import React, { memo, useRef, useState } from '../../lib/teact/teact';
 
-import useShowTransition from '../../hooks/useShowTransition';
-import useMediaTransition from '../../hooks/useMediaTransition';
+import { IS_CANVAS_FILTER_SUPPORTED } from '../../util/windowEnvironment';
 import buildClassName from '../../util/buildClassName';
 import { formatMediaDateTime, formatPastTimeShort } from '../../util/dateFormat';
 import { getColorFromExtension, getFileSizeString } from './helpers/documentInfo';
 import { getDocumentThumbnailDimensions } from './helpers/mediaDimensions';
 import renderText from './helpers/renderText';
+import useShowTransition from '../../hooks/useShowTransition';
+import useMediaTransition from '../../hooks/useMediaTransition';
 import useLang from '../../hooks/useLang';
+import useCanvasBlur from '../../hooks/useCanvasBlur';
+import useAppLayout from '../../hooks/useAppLayout';
 
 import ProgressSpinner from '../ui/ProgressSpinner';
 import Link from '../ui/Link';
@@ -64,7 +67,12 @@ const File: FC<OwnProps> = ({
     elementRef = ref;
   }
 
-  const transitionClassNames = useMediaTransition(previewData);
+  const { isMobile } = useAppLayout();
+  const [withThumb] = useState(!previewData);
+  const noThumb = Boolean(previewData);
+  const thumbRef = useCanvasBlur(thumbnailDataUri, noThumb, isMobile && !IS_CANVAS_FILTER_SUPPORTED);
+  const thumbClassNames = useMediaTransition(!noThumb);
+
   const {
     shouldRender: shouldSpinnerRender,
     transitionClassNames: spinnerClassNames,
@@ -94,19 +102,18 @@ const File: FC<OwnProps> = ({
         {thumbnailDataUri || previewData ? (
           <div className="file-preview media-inner">
             <img
-              src={thumbnailDataUri}
-              width={width}
-              height={height}
-              className="thumbnail"
-              alt=""
-            />
-            <img
               src={previewData}
-              className={buildClassName('full-media', transitionClassNames)}
+              className="full-media"
               width={width}
               height={height}
               alt=""
             />
+            {withThumb && (
+              <canvas
+                ref={thumbRef}
+                className={buildClassName('thumbnail', thumbClassNames)}
+              />
+            )}
           </div>
         ) : (
           <div className={`file-icon ${color}`}>
@@ -135,13 +142,13 @@ const File: FC<OwnProps> = ({
         )}
       </div>
       <div className="file-info">
-        <div className="file-title" dir="auto">{renderText(name)}</div>
+        <div className="file-title" dir="auto" title={name}>{renderText(name)}</div>
         <div className="file-subtitle" dir="auto">
           <span>
             {isTransferring && transferProgress ? `${Math.round(transferProgress * 100)}%` : sizeString}
           </span>
           {sender && <span className="file-sender">{renderText(sender)}</span>}
-          {!sender && timestamp && (
+          {!sender && Boolean(timestamp) && (
             <>
               <span className="bullet" />
               <Link onClick={onDateClick}>{formatMediaDateTime(lang, timestamp * 1000, true)}</Link>
@@ -149,7 +156,7 @@ const File: FC<OwnProps> = ({
           )}
         </div>
       </div>
-      {sender && timestamp && (
+      {sender && Boolean(timestamp) && (
         <Link onClick={onDateClick}>{formatPastTimeShort(lang, timestamp * 1000)}</Link>
       )}
     </div>

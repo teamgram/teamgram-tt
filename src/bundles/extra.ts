@@ -17,6 +17,7 @@ export { default as DeleteFolderDialog } from '../components/main/DeleteFolderDi
 export { default as PremiumMainModal } from '../components/main/premium/PremiumMainModal';
 export { default as GiftPremiumModal } from '../components/main/premium/GiftPremiumModal';
 export { default as PremiumLimitReachedModal } from '../components/main/premium/common/PremiumLimitReachedModal';
+export { default as StatusPickerMenu } from '../components/left/main/StatusPickerMenu';
 
 export { default as AboutAdsModal } from '../components/common/AboutAdsModal';
 export { default as CalendarModal } from '../components/common/CalendarModal';
@@ -27,6 +28,7 @@ export { default as MessageSelectToolbar } from '../components/middle/MessageSel
 export { default as SeenByModal } from '../components/common/SeenByModal';
 export { default as ReactorListModal } from '../components/middle/ReactorListModal';
 export { default as EmojiInteractionAnimation } from '../components/middle/EmojiInteractionAnimation';
+export { default as MessageLanguageModal } from '../components/middle/MessageLanguageModal';
 
 // eslint-disable-next-line import/no-cycle
 export { default as LeftSearch } from '../components/left/search/LeftSearch';
@@ -40,6 +42,7 @@ export { default as NewChatStep2 } from '../components/left/newChat/NewChatStep2
 export { default as ArchivedChats } from '../components/left/ArchivedChats';
 export { default as ChatFolderModal } from '../components/left/ChatFolderModal';
 
+// eslint-disable-next-line import/no-cycle
 export { default as ContextMenuContainer } from '../components/middle/message/ContextMenuContainer';
 export { default as SponsoredMessageContextMenuContainer }
   from '../components/middle/message/SponsoredMessageContextMenuContainer';
@@ -75,6 +78,8 @@ export { default as GifSearch } from '../components/right/GifSearch';
 export { default as Statistics } from '../components/right/statistics/Statistics';
 export { default as MessageStatistics } from '../components/right/statistics/MessageStatistics';
 export { default as PollResults } from '../components/right/PollResults';
+export { default as CreateTopic } from '../components/right/CreateTopic';
+export { default as EditTopic } from '../components/right/EditTopic';
 
 export { default as Management } from '../components/right/management/Management';
 

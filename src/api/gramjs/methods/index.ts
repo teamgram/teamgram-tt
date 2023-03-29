@@ -12,14 +12,15 @@ export {
 
 export {
   fetchChats, fetchFullChat, searchChats, requestChatUpdate, fetchChatSettings,
-  saveDraft, clearDraft, fetchChat, updateChatMutedState,
+  saveDraft, clearDraft, fetchChat, updateChatMutedState, updateTopicMutedState,
   createChannel, joinChannel, deleteChatUser, deleteChat, leaveChannel, deleteChannel, createGroupChat, editChatPhoto,
   toggleChatPinned, toggleChatArchived, toggleDialogUnread, setChatEnabledReactions,
   fetchChatFolders, editChatFolder, deleteChatFolder, sortChatFolders, fetchRecommendedChatFolders,
   getChatByUsername, togglePreHistoryHidden, updateChatDefaultBannedRights, updateChatMemberBannedRights,
   updateChatTitle, updateChatAbout, toggleSignatures, updateChatAdmin, fetchGroupsForDiscussion, setDiscussionGroup,
   migrateChat, openChatByInvite, fetchMembers, importChatInvite, addChatMembers, deleteChatMember, toggleIsProtected,
-  getChatByPhoneNumber, toggleJoinToSend, toggleJoinRequest,
+  getChatByPhoneNumber, toggleJoinToSend, toggleJoinRequest, fetchTopics, deleteTopic, togglePinnedTopic,
+  editTopic, toggleForum, fetchTopicById, createTopic, toggleParticipantsHidden,
 } from './chats';
 
 export {
@@ -29,20 +30,20 @@ export {
   fetchPinnedMessages, fetchScheduledHistory, sendScheduledMessages, rescheduleMessage, deleteScheduledMessages,
   reportMessages, sendMessageAction, fetchSeenBy, fetchSponsoredMessages, viewSponsoredMessage, fetchSendAs,
   saveDefaultSendAs, fetchUnreadReactions, readAllReactions, fetchUnreadMentions, readAllMentions, transcribeAudio,
-  closePoll, fetchExtendedMedia,
+  closePoll, fetchExtendedMedia, translateText, fetchMessageViews,
 } from './messages';
 
 export {
   fetchFullUser, fetchNearestCountry, fetchTopUsers, fetchContactList, fetchUsers,
-  updateContact, importContact, deleteContact, fetchProfilePhotos, fetchCommonChats, reportSpam,
+  updateContact, importContact, deleteContact, fetchProfilePhotos, fetchCommonChats, reportSpam, updateEmojiStatus,
 } from './users';
 
 export {
-  fetchStickerSets, fetchRecentStickers, fetchFavoriteStickers, fetchFeaturedStickers,
+  fetchStickerSets, fetchRecentStickers, fetchFavoriteStickers, fetchFeaturedStickers, fetchRecentEmojiStatuses,
   faveSticker, fetchStickers, fetchSavedGifs, saveGif, searchStickers, installStickerSet, uninstallStickerSet,
   searchGifs, fetchAnimatedEmojis, fetchStickersForEmoji, fetchEmojiKeywords, fetchAnimatedEmojiEffects,
   removeRecentSticker, clearRecentStickers, fetchCustomEmoji, fetchPremiumGifts, fetchCustomEmojiSets,
-  fetchFeaturedEmojiStickers,
+  fetchFeaturedEmojiStickers, fetchGenericEmojiEffects, fetchDefaultTopicIcons, fetchDefaultStatusEmojis,
 } from './symbols';
 
 export {
@@ -54,13 +55,14 @@ export {
 
 export {
   updateProfile, checkUsername, updateUsername, fetchBlockedContacts, blockContact, unblockContact,
-  updateProfilePhoto, uploadProfilePhoto, fetchWallpapers, uploadWallpaper,
+  updateProfilePhoto, uploadProfilePhoto, deleteProfilePhotos, fetchWallpapers, uploadWallpaper,
   fetchAuthorizations, terminateAuthorization, terminateAllAuthorizations,
   fetchWebAuthorizations, terminateWebAuthorization, terminateAllWebAuthorizations,
   fetchNotificationExceptions, fetchNotificationSettings, updateContactSignUpNotification, updateNotificationSettings,
   fetchLanguages, fetchLangPack, fetchPrivacySettings, setPrivacySettings, registerDevice, unregisterDevice,
   updateIsOnline, fetchContentSettings, updateContentSettings, fetchLangStrings, fetchCountryList, fetchAppConfig,
-  fetchGlobalPrivacySettings, updateGlobalPrivacySettings,
+  fetchGlobalPrivacySettings, updateGlobalPrivacySettings, toggleUsername, reorderUsernames, fetchConfig,
+  uploadContactProfilePhoto,
 } from './settings';
 
 export {
@@ -70,7 +72,7 @@ export {
 export {
   answerCallbackButton, fetchTopInlineBots, fetchInlineBot, fetchInlineBotResults, sendInlineBotResult, startBot,
   requestWebView, requestSimpleWebView, sendWebViewData, prolongWebView, loadAttachBots, toggleAttachBot,
-  requestBotUrlAuth, requestLinkUrlAuth, acceptBotUrlAuth, acceptLinkUrlAuth,
+  requestBotUrlAuth, requestLinkUrlAuth, acceptBotUrlAuth, acceptLinkUrlAuth, loadAttachBot,
 } from './bots';
 
 export {
@@ -98,3 +100,7 @@ export {
   acceptPhoneCall, confirmPhoneCall, requestPhoneCall, decodePhoneCallData, createPhoneCallState,
   destroyPhoneCallState, encodePhoneCallData,
 } from './phoneCallState';
+
+export {
+  broadcastLocalDbUpdateFull,
+} from '../localDb';

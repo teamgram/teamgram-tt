@@ -5,7 +5,7 @@ import type { ISettings } from '../../../types';
 import type { ApiDocument } from '../../../api/types';
 import { ApiMediaFormat } from '../../../api/types';
 
-import { IS_COMPACT_MENU } from '../../../util/environment';
+import { IS_COMPACT_MENU } from '../../../util/windowEnvironment';
 import useMedia from '../../../hooks/useMedia';
 import { getDocumentMediaHash } from '../../../global/helpers';
 import buildClassName from '../../../util/buildClassName';
@@ -33,9 +33,9 @@ const AttachBotIcon: FC<OwnProps> = ({
 
     const mediaDataWithReplacedColors = mediaData.replace(COLOR_REPLACE_PATTERN, color);
     const doc = new DOMParser().parseFromString(mediaDataWithReplacedColors, 'image/svg+xml');
-    doc.querySelectorAll('path').forEach((l) => {
-      l.style.stroke = color;
-      l.style.strokeWidth = ADDITIONAL_STROKE_WIDTH;
+    doc.querySelectorAll('path').forEach((path) => {
+      path.style.stroke = color;
+      path.style.strokeWidth = ADDITIONAL_STROKE_WIDTH;
     });
 
     return `data:image/svg+xml;utf8,${doc.documentElement.outerHTML}`;

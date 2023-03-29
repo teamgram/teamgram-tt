@@ -2,7 +2,9 @@ import { useMemo } from '../lib/teact/teact';
 import { getActions } from '../global';
 
 import type { ApiChat, ApiUser } from '../api/types';
+import type { MenuItemContextAction } from '../components/ui/ListItem';
 
+import { IS_OPEN_IN_NEW_TAB_SUPPORTED } from '../util/windowEnvironment';
 import { SERVICE_NOTIFICATIONS_USER_ID } from '../config';
 import {
   isChatArchived, getCanDeleteChat, isUserId, isChatChannel, isChatGroup,
@@ -46,7 +48,16 @@ const useChatContextActions = ({
       updateChatMutedState,
       toggleChatArchived,
       toggleChatUnread,
+      openChatInNewTab,
     } = getActions();
+
+    const actionOpenInNewTab = IS_OPEN_IN_NEW_TAB_SUPPORTED && {
+      title: 'Open in new tab',
+      icon: 'open-in-new-tab',
+      handler: () => {
+        openChatInNewTab({ chatId: chat.id });
+      },
+    };
 
     const actionAddToFolder = canChangeFolder ? {
       title: lang('ChatList.Filter.AddToFolder'),
@@ -58,17 +69,20 @@ const useChatContextActions = ({
       ? {
         title: lang('UnpinFromTop'),
         icon: 'unpin',
-        handler: () => toggleChatPinned({ id: chat.id, folderId }),
+        handler: () => toggleChatPinned({ id: chat.id, folderId: folderId! }),
       }
-      : { title: lang('PinToTop'), icon: 'pin', handler: () => toggleChatPinned({ id: chat.id, folderId }) };
+      : { title: lang('PinToTop'), icon: 'pin', handler: () => toggleChatPinned({ id: chat.id, folderId: folderId! }) };
 
     if (isInSearch) {
-      return compact([actionPin, actionAddToFolder]);
+      return compact([actionOpenInNewTab, actionPin, actionAddToFolder]);
     }
 
-    const actionUnreadMark = chat.unreadCount || chat.hasUnreadMark
+    const actionMaskAsRead = (chat.unreadCount || chat.hasUnreadMark)
       ? { title: lang('MarkAsRead'), icon: 'readchats', handler: () => toggleChatUnread({ id: chat.id }) }
-      : { title: lang('MarkAsUnread'), icon: 'unread', handler: () => toggleChatUnread({ id: chat.id }) };
+      : undefined;
+    const actionMarkAsUnread = !(chat.unreadCount || chat.hasUnreadMark) && !chat.isForum
+      ? { title: lang('MarkAsUnread'), icon: 'unread', handler: () => toggleChatUnread({ id: chat.id }) }
+      : undefined;
 
     const actionMute = isMuted
       ? {
@@ -105,14 +119,16 @@ const useChatContextActions = ({
     const isInFolder = folderId !== undefined;
 
     return compact([
+      actionOpenInNewTab,
       actionAddToFolder,
-      actionUnreadMark,
+      actionMaskAsRead,
+      actionMarkAsUnread,
       actionPin,
       !isSelf && actionMute,
       !isSelf && !isServiceNotifications && !isInFolder && actionArchive,
       actionReport,
       actionDelete,
-    ]);
+    ]) as MenuItemContextAction[];
   }, [
     chat, user, canChangeFolder, lang, handleChatFolderChange, isPinned, isInSearch, isMuted,
     handleDelete, handleReport, folderId, isSelf, isServiceNotifications,

@@ -6,20 +6,20 @@ import type { ApiChatFolder, ApiSticker } from '../../../api/types';
 import { SettingsScreens } from '../../../types';
 import type { FolderEditDispatch } from '../../../hooks/reducers/useFoldersReducer';
 
-import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import { selectAnimatedEmoji, selectChatFolder } from '../../../global/selectors';
 import useLang from '../../../hooks/useLang';
+import useAppLayout from '../../../hooks/useAppLayout';
 
 import Button from '../../ui/Button';
 import AnimatedIconFromSticker from '../../common/AnimatedIconFromSticker';
 
-import './EmptyFolder.scss';
+import styles from './EmptyFolder.module.scss';
 
 type OwnProps = {
   folderId?: number;
   folderType: 'all' | 'archived' | 'folder';
-  foldersDispatch?: FolderEditDispatch;
-  onScreenSelect?: (screen: SettingsScreens) => void;
+  foldersDispatch: FolderEditDispatch;
+  onSettingsScreenSelect: (screen: SettingsScreens) => void;
 };
 
 type StateProps = {
@@ -27,30 +27,31 @@ type StateProps = {
   animatedEmoji?: ApiSticker;
 };
 
-const ICON_SIZE = 128;
+const ICON_SIZE = 96;
 
 const EmptyFolder: FC<OwnProps & StateProps> = ({
-  chatFolder, animatedEmoji, foldersDispatch, onScreenSelect,
+  chatFolder, animatedEmoji, foldersDispatch, onSettingsScreenSelect,
 }) => {
   const lang = useLang();
+  const { isMobile } = useAppLayout();
 
   const handleEditFolder = useCallback(() => {
-    foldersDispatch!({ type: 'editFolder', payload: chatFolder });
-    onScreenSelect!(SettingsScreens.FoldersEditFolderFromChatList);
-  }, [chatFolder, foldersDispatch, onScreenSelect]);
+    foldersDispatch({ type: 'editFolder', payload: chatFolder });
+    onSettingsScreenSelect(SettingsScreens.FoldersEditFolderFromChatList);
+  }, [chatFolder, foldersDispatch, onSettingsScreenSelect]);
 
   return (
-    <div className="EmptyFolder">
-      <div className="sticker">
+    <div className={styles.root}>
+      <div className={styles.sticker}>
         {animatedEmoji && <AnimatedIconFromSticker sticker={animatedEmoji} size={ICON_SIZE} />}
       </div>
-      <h3 className="title" dir="auto">{lang('FilterNoChatsToDisplay')}</h3>
-      <p className="description" dir="auto">
+      <h3 className={styles.title} dir="auto">{lang('FilterNoChatsToDisplay')}</h3>
+      <p className={styles.description} dir="auto">
         {lang(chatFolder ? 'ChatList.EmptyChatListFilterText' : 'Chat.EmptyChat')}
       </p>
-      {chatFolder && foldersDispatch && onScreenSelect && (
+      {chatFolder && (
         <Button
-          ripple={!IS_SINGLE_COLUMN_LAYOUT}
+          ripple={!isMobile}
           fluid
           pill
           onClick={handleEditFolder}
@@ -58,7 +59,9 @@ const EmptyFolder: FC<OwnProps & StateProps> = ({
           isRtl={lang.isRtl}
         >
           <i className="icon-settings" />
-          {lang('ChatList.EmptyChatListEditFilter')}
+          <div className={styles.buttonText}>
+            {lang('ChatList.EmptyChatListEditFilter')}
+          </div>
         </Button>
       )}
     </div>

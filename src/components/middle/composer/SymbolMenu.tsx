@@ -5,16 +5,17 @@ import { getActions, withGlobal } from '../../../global';
 
 import type { FC } from '../../../lib/teact/teact';
 import type { ApiSticker, ApiVideo } from '../../../api/types';
-import type { GlobalActions } from '../../../global/types';
+import type { GlobalActions } from '../../../global';
 
-import { IS_SINGLE_COLUMN_LAYOUT, IS_TOUCH_ENV } from '../../../util/environment';
+import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { fastRaf } from '../../../util/schedulers';
 import buildClassName from '../../../util/buildClassName';
-import { selectIsCurrentUserPremium } from '../../../global/selectors';
+import { selectTabState, selectIsCurrentUserPremium } from '../../../global/selectors';
 
 import useShowTransition from '../../../hooks/useShowTransition';
 import useMouseInside from '../../../hooks/useMouseInside';
 import useLang from '../../../hooks/useLang';
+import useAppLayout from '../../../hooks/useAppLayout';
 
 import Button from '../../ui/Button';
 import Menu from '../../ui/Menu';
@@ -29,25 +30,38 @@ import Portal from '../../ui/Portal';
 import './SymbolMenu.scss';
 
 const ANIMATION_DURATION = 350;
+const STICKERS_TAB_INDEX = 2;
 
 export type OwnProps = {
   chatId: string;
   threadId?: number;
   isOpen: boolean;
-  canSendStickers: boolean;
-  canSendGifs: boolean;
+  canSendStickers?: boolean;
+  canSendGifs?: boolean;
   onLoad: () => void;
   onClose: () => void;
   onEmojiSelect: (emoji: string) => void;
   onCustomEmojiSelect: (emoji: ApiSticker) => void;
-  onStickerSelect: (
-    sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean, shouldPreserveInput?: boolean
+  onStickerSelect?: (
+    sticker: ApiSticker,
+    isSilent?: boolean,
+    shouldSchedule?: boolean,
+    shouldPreserveInput?: boolean,
+    shouldUpdateStickerSetsOrder?: boolean
   ) => void;
-  onGifSelect: (gif: ApiVideo, isSilent?: boolean, shouldSchedule?: boolean) => void;
+  onGifSelect?: (gif: ApiVideo, isSilent?: boolean, shouldSchedule?: boolean) => void;
   onRemoveSymbol: () => void;
   onSearchOpen: (type: 'stickers' | 'gifs') => void;
   addRecentEmoji: GlobalActions['addRecentEmoji'];
   addRecentCustomEmoji: GlobalActions['addRecentCustomEmoji'];
+  className?: string;
+  isAttachmentModal?: boolean;
+  canSendPlainText?: boolean;
+  positionX?: 'left' | 'right';
+  positionY?: 'top' | 'bottom';
+  transformOriginX?: number;
+  transformOriginY?: number;
+  style?: string;
 };
 
 type StateProps = {
@@ -70,20 +84,29 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
   onLoad,
   onClose,
   onEmojiSelect,
+  isAttachmentModal,
+  canSendPlainText,
   onCustomEmojiSelect,
   onStickerSelect,
+  className,
   onGifSelect,
   onRemoveSymbol,
   onSearchOpen,
   addRecentEmoji,
   addRecentCustomEmoji,
+  positionX,
+  positionY,
+  transformOriginX,
+  transformOriginY,
+  style,
 }) => {
   const { loadPremiumSetStickers, loadFeaturedEmojiStickers } = getActions();
   const [activeTab, setActiveTab] = useState<number>(0);
   const [recentEmojis, setRecentEmojis] = useState<string[]>([]);
   const [recentCustomEmojis, setRecentCustomEmojis] = useState<string[]>([]);
+  const { isMobile } = useAppLayout();
 
-  const [handleMouseEnter, handleMouseLeave] = useMouseInside(isOpen, onClose, undefined, IS_SINGLE_COLUMN_LAYOUT);
+  const [handleMouseEnter, handleMouseLeave] = useMouseInside(isOpen, onClose, undefined, isMobile);
   const { shouldRender, transitionClassNames } = useShowTransition(isOpen, onClose, false, false);
 
   if (!isActivated && isOpen) {
@@ -94,6 +117,12 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
     onLoad();
   }, [onLoad]);
 
+  // If we can't send plain text, we should always show the stickers tab
+  useEffect(() => {
+    if (canSendPlainText) return;
+    setActiveTab(STICKERS_TAB_INDEX);
+  }, [canSendPlainText]);
+
   useEffect(() => {
     if (!lastSyncTime) return;
     if (isCurrentUserPremium) {
@@ -103,7 +132,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
   }, [isCurrentUserPremium, lastSyncTime, loadFeaturedEmojiStickers, loadPremiumSetStickers]);
 
   useLayoutEffect(() => {
-    if (!IS_SINGLE_COLUMN_LAYOUT) {
+    if (!isMobile || isAttachmentModal) {
       return undefined;
     }
 
@@ -122,7 +151,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
         });
       }
     };
-  }, [isOpen]);
+  }, [isAttachmentModal, isMobile, isOpen]);
 
   const recentEmojisRef = useRef(recentEmojis);
   recentEmojisRef.current = recentEmojis;
@@ -171,8 +200,10 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
     onSearchOpen(type);
   }, [onClose, onSearchOpen]);
 
-  const handleStickerSelect = useCallback((sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean) => {
-    onStickerSelect(sticker, isSilent, shouldSchedule, true);
+  const handleStickerSelect = useCallback((
+    sticker: ApiSticker, isSilent?: boolean, shouldSchedule?: boolean, shouldUpdateStickerSetsOrder?: boolean,
+  ) => {
+    onStickerSelect?.(sticker, isSilent, shouldSchedule, true, shouldUpdateStickerSetsOrder);
   }, [onStickerSelect]);
 
   const lang = useLang();
@@ -233,7 +264,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
           </Transition>
         )}
       </div>
-      {IS_SINGLE_COLUMN_LAYOUT && (
+      {isMobile && (
         <Button
           round
           faded
@@ -251,24 +282,35 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
         onSwitchTab={setActiveTab}
         onRemoveSymbol={onRemoveSymbol}
         onSearchOpen={handleSearch}
+        isAttachmentModal={isAttachmentModal}
+        canSendPlainText={canSendPlainText}
       />
     </>
   );
 
-  if (IS_SINGLE_COLUMN_LAYOUT) {
+  if (isMobile) {
     if (!shouldRender) {
       return undefined;
     }
 
-    const className = buildClassName(
+    const mobileClassName = buildClassName(
       'SymbolMenu mobile-menu',
       transitionClassNames,
       isLeftColumnShown && 'left-column-open',
+      isAttachmentModal && 'in-attachment-modal',
     );
+
+    if (isAttachmentModal) {
+      return (
+        <div className={mobileClassName}>
+          {content}
+        </div>
+      );
+    }
 
     return (
       <Portal>
-        <div className={className}>
+        <div className={mobileClassName}>
           {content}
         </div>
       </Portal>
@@ -278,15 +320,19 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
   return (
     <Menu
       isOpen={isOpen}
-      positionX="left"
-      positionY="bottom"
+      positionX={isAttachmentModal ? positionX : 'left'}
+      positionY={isAttachmentModal ? positionY : 'bottom'}
       onClose={onClose}
-      className="SymbolMenu"
+      withPortal={isAttachmentModal}
+      className={buildClassName('SymbolMenu', className)}
       onCloseAnimationEnd={onClose}
       onMouseEnter={!IS_TOUCH_ENV ? handleMouseEnter : undefined}
       onMouseLeave={!IS_TOUCH_ENV ? handleMouseLeave : undefined}
       noCloseOnBackdrop={!IS_TOUCH_ENV}
       noCompact
+      transformOriginX={transformOriginX}
+      transformOriginY={transformOriginY}
+      style={style}
     >
       {content}
     </Menu>
@@ -296,7 +342,7 @@ const SymbolMenu: FC<OwnProps & StateProps> = ({
 export default memo(withGlobal<OwnProps>(
   (global): StateProps => {
     return {
-      isLeftColumnShown: global.isLeftColumnShown,
+      isLeftColumnShown: selectTabState(global).isLeftColumnShown,
       isCurrentUserPremium: selectIsCurrentUserPremium(global),
       lastSyncTime: global.lastSyncTime,
     };

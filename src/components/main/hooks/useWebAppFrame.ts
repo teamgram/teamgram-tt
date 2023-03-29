@@ -36,6 +36,7 @@ export type WebAppInboundEvent = {
   eventType: 'web_app_open_link';
   eventData: {
     url: string;
+    try_instant_view?: boolean;
   };
 } | {
   eventType: 'web_app_open_tg_link';
@@ -73,8 +74,18 @@ export type WebAppInboundEvent = {
     need_confirmation: boolean;
   };
 } | {
+  eventType: 'web_app_open_scan_qr_popup';
+  eventData: {
+    text?: string;
+  };
+} | {
+  eventType: 'web_app_read_text_from_clipboard';
+  eventData: {
+    req_id: string;
+  };
+} | {
   eventType: 'web_app_request_viewport' | 'web_app_request_theme' | 'web_app_ready' | 'web_app_expand'
-  | 'web_app_request_phone' | 'web_app_close' | 'iframe_ready';
+  | 'web_app_request_phone' | 'web_app_close' | 'iframe_ready' | 'web_app_close_scan_qr_popup';
   eventData: null;
 };
 
@@ -119,7 +130,18 @@ type WebAppOutboundEvent = {
     button_id?: string;
   };
 } | {
-  eventType: 'main_button_pressed' | 'back_button_pressed' | 'settings_button_pressed';
+  eventType: 'qr_text_received';
+  eventData: {
+    data: string;
+  };
+} | {
+  eventType: 'clipboard_text_received';
+  eventData: {
+    req_id: string;
+    data: string | null;
+  };
+} | {
+  eventType: 'main_button_pressed' | 'back_button_pressed' | 'settings_button_pressed' | 'scan_qr_popup_closed';
 };
 
 const SCROLLBAR_STYLE = `* {
@@ -147,10 +169,25 @@ const useWebAppFrame = (
   isOpen: boolean,
   isSimpleView: boolean,
   onEvent: (event: WebAppInboundEvent) => void,
+  onLoad?: () => void,
 ) => {
   const ignoreEventsRef = useRef<boolean>(false);
   const lastFrameSizeRef = useRef<{ width: number; height: number; isResizing?: boolean }>();
   const windowSize = useWindowSize();
+
+  useEffect(() => {
+    if (!ref.current || !isOpen) return undefined;
+
+    const handleLoad = () => {
+      onLoad?.();
+    };
+
+    const frame = ref.current;
+    frame.addEventListener('load', handleLoad);
+    return () => {
+      frame.removeEventListener('load', handleLoad);
+    };
+  }, [onLoad, ref, isOpen]);
 
   const reloadFrame = useCallback((url: string) => {
     if (!ref.current) return;
@@ -206,6 +243,10 @@ const useWebAppFrame = (
     try {
       const data = JSON.parse(event.data) as WebAppInboundEvent;
       // Handle some app requests here to simplify hook usage
+      if (data.eventType === 'web_app_ready') {
+        onLoad?.();
+      }
+
       if (data.eventType === 'web_app_request_viewport') {
         sendViewport(windowSize.isResizing);
       }
@@ -223,11 +264,25 @@ const useWebAppFrame = (
         if (!isSimpleView) return; // Allowed only in simple view
         ignoreEventsRef.current = true;
       }
+
+      if (data.eventType === 'web_app_read_text_from_clipboard') {
+        const { req_id: requestId } = data.eventData;
+        // eslint-disable-next-line no-null/no-null -- Required by spec
+        window.navigator.clipboard.readText().catch(() => null).then((text) => {
+          sendEvent({
+            eventType: 'clipboard_text_received',
+            eventData: {
+              req_id: requestId,
+              data: text,
+            },
+          });
+        });
+      }
       onEvent(data);
     } catch (err) {
       // Ignore other messages
     }
-  }, [isSimpleView, onEvent, sendCustomStyle, sendTheme, sendViewport, windowSize]);
+  }, [isSimpleView, onEvent, sendCustomStyle, sendEvent, sendTheme, sendViewport, onLoad, windowSize.isResizing]);
 
   useEffect(() => {
     const { width, height, isResizing } = windowSize;

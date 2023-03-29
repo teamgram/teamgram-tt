@@ -4,6 +4,7 @@ import React, {
 } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
+import { selectTabState } from '../../global/selectors';
 import useLang from '../../hooks/useLang';
 import useFlag from '../../hooks/useFlag';
 
@@ -24,7 +25,7 @@ const ForwardRecipientPicker: FC<OwnProps & StateProps> = ({
   isManyMessages,
 }) => {
   const {
-    setForwardChatId,
+    setForwardChatOrTopic,
     exitForwardMode,
     forwardToSavedMessages,
     showNotification,
@@ -39,7 +40,7 @@ const ForwardRecipientPicker: FC<OwnProps & StateProps> = ({
     }
   }, [isOpen, markIsShown]);
 
-  const handleSelectRecipient = useCallback((recipientId: string) => {
+  const handleSelectRecipient = useCallback((recipientId: string, threadId?: number) => {
     if (recipientId === currentUserId) {
       forwardToSavedMessages();
       showNotification({
@@ -48,9 +49,9 @@ const ForwardRecipientPicker: FC<OwnProps & StateProps> = ({
           : 'Conversation.ForwardTooltip.SavedMessages.One'),
       });
     } else {
-      setForwardChatId({ id: recipientId });
+      setForwardChatOrTopic({ chatId: recipientId, topicId: threadId });
     }
-  }, [currentUserId, forwardToSavedMessages, isManyMessages, lang, setForwardChatId, showNotification]);
+  }, [currentUserId, forwardToSavedMessages, isManyMessages, lang, setForwardChatOrTopic, showNotification]);
 
   const handleClose = useCallback(() => {
     exitForwardMode();
@@ -74,6 +75,6 @@ const ForwardRecipientPicker: FC<OwnProps & StateProps> = ({
 export default memo(withGlobal<OwnProps>((global): StateProps => {
   return {
     currentUserId: global.currentUserId,
-    isManyMessages: (global.forwardMessages.messageIds?.length || 0) > 1,
+    isManyMessages: (selectTabState(global).forwardMessages.messageIds?.length || 0) > 1,
   };
 })(ForwardRecipientPicker));

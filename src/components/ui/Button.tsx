@@ -46,9 +46,10 @@ export type OwnProps = {
   onClick?: (e: ReactMouseEvent<HTMLButtonElement, MouseEvent>) => void;
   onContextMenu?: (e: ReactMouseEvent<HTMLButtonElement, MouseEvent>) => void;
   onMouseDown?: (e: ReactMouseEvent<HTMLButtonElement>) => void;
-  onMouseEnter?: NoneToVoidFunction;
+  onMouseEnter?: (e: ReactMouseEvent<HTMLButtonElement>) => void;
   onMouseLeave?: NoneToVoidFunction;
   onFocus?: NoneToVoidFunction;
+  onTransitionEnd?: NoneToVoidFunction;
 };
 
 // Longest animation duration;
@@ -76,6 +77,7 @@ const Button: FC<OwnProps> = ({
   isLoading,
   isShiny,
   withPremiumGradient,
+  onTransitionEnd,
   ariaLabel,
   ariaControls,
   hasPopup,
@@ -154,6 +156,7 @@ const Button: FC<OwnProps> = ({
         aria-label={ariaLabel}
         aria-controls={ariaControls}
         style={style}
+        onTransitionEnd={onTransitionEnd}
       >
         {children}
         {!disabled && ripple && (
@@ -174,6 +177,7 @@ const Button: FC<OwnProps> = ({
       onMouseDown={handleMouseDown}
       onMouseEnter={onMouseEnter && !disabled ? onMouseEnter : undefined}
       onMouseLeave={onMouseLeave && !disabled ? onMouseLeave : undefined}
+      onTransitionEnd={onTransitionEnd}
       onFocus={onFocus && !disabled ? onFocus : undefined}
       aria-label={ariaLabel}
       aria-controls={ariaControls}
@@ -181,7 +185,7 @@ const Button: FC<OwnProps> = ({
       title={ariaLabel}
       tabIndex={tabIndex}
       dir={isRtl ? 'rtl' : undefined}
-      style={buildStyle(backgroundImage && `background-image: url(${backgroundImage})`)}
+      style={buildStyle(style, backgroundImage && `background-image: url(${backgroundImage})`)}
     >
       {isLoading ? (
         <div>

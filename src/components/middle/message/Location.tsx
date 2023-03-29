@@ -1,12 +1,13 @@
-import type { FC } from '../../../lib/teact/teact';
 import React, {
   memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState,
 } from '../../../lib/teact/teact';
+import { getActions } from '../../../global';
 
+import type { FC } from '../../../lib/teact/teact';
 import type { ApiChat, ApiMessage, ApiUser } from '../../../api/types';
 import type { ISettings } from '../../../types';
 
-import { CUSTOM_APPENDIX_ATTRIBUTE } from '../../../config';
+import { CUSTOM_APPENDIX_ATTRIBUTE, MESSAGE_CONTENT_SELECTOR } from '../../../config';
 import {
   getMessageLocation,
   buildStaticMapHash,
@@ -14,19 +15,21 @@ import {
   isOwnMessage,
   isUserId,
 } from '../../../global/helpers';
-import useMedia from '../../../hooks/useMedia';
 import getCustomAppendixBg from './helpers/getCustomAppendixBg';
 import { formatCountdownShort, formatLastUpdated } from '../../../util/dateFormat';
-import useLang from '../../../hooks/useLang';
-import useForceUpdate from '../../../hooks/useForceUpdate';
-import useTimeout from '../../../hooks/useTimeout';
 import {
   getMetersPerPixel, getVenueColor, getVenueIconUrl, prepareMapUrl,
 } from '../../../util/map';
+import { getServerTime } from '../../../util/serverTime';
+
+import useMedia from '../../../hooks/useMedia';
+import useLang from '../../../hooks/useLang';
+import useForceUpdate from '../../../hooks/useForceUpdate';
+import useTimeout from '../../../hooks/useTimeout';
 import buildClassName from '../../../util/buildClassName';
 import usePrevious from '../../../hooks/usePrevious';
 import useInterval from '../../../hooks/useInterval';
-import { getServerTime } from '../../../util/serverTime';
+import useLayoutEffectWithPrevDeps from '../../../hooks/useLayoutEffectWithPrevDeps';
 
 import Avatar from '../../common/Avatar';
 import Skeleton from '../../ui/Skeleton';
@@ -52,7 +55,6 @@ type OwnProps = {
   isInSelectMode?: boolean;
   isSelected?: boolean;
   theme: ISettings['theme'];
-  serverTimeOffset: number;
 };
 
 const Location: FC<OwnProps> = ({
@@ -62,8 +64,8 @@ const Location: FC<OwnProps> = ({
   isInSelectMode,
   isSelected,
   theme,
-  serverTimeOffset,
 }) => {
+  const { openUrl } = getActions();
   // eslint-disable-next-line no-null/no-null
   const ref = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line no-null/no-null
@@ -74,7 +76,7 @@ const Location: FC<OwnProps> = ({
   const location = getMessageLocation(message)!;
   const { type, geo } = location;
 
-  const serverTime = getServerTime(serverTimeOffset);
+  const serverTime = getServerTime();
   const isExpired = isGeoLiveExpired(message, serverTime);
   const secondsBeforeEnd = (type === 'geoLive' && !isExpired) ? message.date + location.period - serverTime
     : undefined;
@@ -108,7 +110,7 @@ const Location: FC<OwnProps> = ({
 
   const handleClick = () => {
     const url = prepareMapUrl(point.lat, point.long, zoom);
-    window.open(url, '_blank', 'noopener')?.focus();
+    openUrl({ url });
   };
 
   const updateCountdown = useCallback((countdownEl: HTMLDivElement) => {
@@ -118,7 +120,7 @@ const Location: FC<OwnProps> = ({
     const svgEl = countdownEl.lastElementChild;
     const timerEl = countdownEl.firstElementChild as SVGElement;
 
-    const timeLeft = message.date + location.period - getServerTime(serverTimeOffset);
+    const timeLeft = message.date + location.period - getServerTime();
     const strokeDashOffset = (1 - timeLeft / location.period) * circumference;
     const text = formatCountdownShort(lang, timeLeft * 1000);
 
@@ -135,7 +137,7 @@ const Location: FC<OwnProps> = ({
       timerEl.textContent = text;
       svgEl.firstElementChild!.setAttribute('stroke-dashoffset', `-${strokeDashOffset}`);
     }
-  }, [type, message.date, location, serverTimeOffset, lang]);
+  }, [type, message.date, location, lang]);
 
   useLayoutEffect(() => {
     if (countdownRef.current) {
@@ -143,17 +145,23 @@ const Location: FC<OwnProps> = ({
     }
   }, [updateCountdown]);
 
-  useLayoutEffect(() => {
-    if (shouldRenderText) return;
-    const contentEl = ref.current!.closest<HTMLDivElement>('.message-content')!;
+  useLayoutEffectWithPrevDeps(([prevShouldRenderText]) => {
+    if (shouldRenderText) {
+      if (!prevShouldRenderText) {
+        ref.current!.closest<HTMLDivElement>(MESSAGE_CONTENT_SELECTOR)!.removeAttribute(CUSTOM_APPENDIX_ATTRIBUTE);
+      }
+      return;
+    }
+
     if (mapBlobUrl) {
+      const contentEl = ref.current!.closest<HTMLDivElement>(MESSAGE_CONTENT_SELECTOR)!;
       getCustomAppendixBg(mapBlobUrl, isOwn, isInSelectMode, isSelected, theme).then((appendixBg) => {
         contentEl.style.setProperty('--appendix-bg', appendixBg);
         contentEl.classList.add('has-appendix-thumb');
         contentEl.setAttribute(CUSTOM_APPENDIX_ATTRIBUTE, '');
       });
     }
-  }, [isOwn, isInSelectMode, isSelected, theme, mapBlobUrl, shouldRenderText]);
+  }, [shouldRenderText, isOwn, isInSelectMode, isSelected, theme, mapBlobUrl]);
 
   useEffect(() => {
     // Prevent map refetching for slight location changes
@@ -216,8 +224,7 @@ const Location: FC<OwnProps> = ({
         className="full-media map"
         src={mapBlobUrl}
         alt="Location on a map"
-        width={DEFAULT_MAP_CONFIG.width}
-        height={DEFAULT_MAP_CONFIG.height}
+        style={`width: ${DEFAULT_MAP_CONFIG.width}px; height: ${DEFAULT_MAP_CONFIG.height}px;`}
       />
     );
   }
@@ -241,10 +248,10 @@ const Location: FC<OwnProps> = ({
 
     if (type === 'venue') {
       const color = getVenueColor(location.venueType);
-      const icon = getVenueIconUrl(location.venueType);
+      const iconSrc = getVenueIconUrl(location.venueType);
       return (
         <div className={pinClassName} dangerouslySetInnerHTML={SVG_PIN} style={`--pin-color: ${color}`}>
-          <img src={icon} className="venue-icon" alt="" />
+          <img src={iconSrc} className="venue-icon" alt="" />
         </div>
       );
     }

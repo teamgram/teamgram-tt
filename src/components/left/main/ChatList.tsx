@@ -1,55 +1,67 @@
 import React, {
-  memo, useMemo, useEffect, useRef, useCallback,
+  memo, useEffect, useRef, useCallback,
 } from '../../../lib/teact/teact';
 import { getActions } from '../../../global';
 
 import type { FC } from '../../../lib/teact/teact';
-import type { SettingsScreens } from '../../../types';
 import type { FolderEditDispatch } from '../../../hooks/reducers/useFoldersReducer';
+import { LeftColumnContent } from '../../../types';
+import type { SettingsScreens } from '../../../types';
+import type { GlobalState } from '../../../global/types';
 
 import {
   ALL_FOLDER_ID,
   ARCHIVED_FOLDER_ID,
+  ARCHIVE_MINIMIZED_HEIGHT,
   CHAT_HEIGHT_PX,
   CHAT_LIST_SLICE,
 } from '../../../config';
-import { IS_MAC_OS, IS_PWA } from '../../../util/environment';
-import { mapValues } from '../../../util/iteratees';
+import { IS_MAC_OS, IS_PWA } from '../../../util/windowEnvironment';
 import { getPinnedChatsCount, getOrderKey } from '../../../util/folderManager';
+import buildClassName from '../../../util/buildClassName';
 
-import usePrevious from '../../../hooks/usePrevious';
 import useInfiniteScroll from '../../../hooks/useInfiniteScroll';
 import { useFolderManagerForOrderedIds } from '../../../hooks/useFolderManager';
-import { useChatAnimationType } from './hooks';
 import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 import { useHotkeys } from '../../../hooks/useHotkeys';
 import useDebouncedCallback from '../../../hooks/useDebouncedCallback';
+import useOrderDiff from './hooks/useOrderDiff';
 
 import InfiniteScroll from '../../ui/InfiniteScroll';
 import Loading from '../../ui/Loading';
 import Chat from './Chat';
 import EmptyFolder from './EmptyFolder';
+import Archive from './Archive';
 
 type OwnProps = {
   folderType: 'all' | 'archived' | 'folder';
   folderId?: number;
   isActive: boolean;
+  canDisplayArchive?: boolean;
+  archiveSettings: GlobalState['archiveSettings'];
+  isForumPanelOpen?: boolean;
   lastSyncTime?: number;
-  foldersDispatch?: FolderEditDispatch;
-  onScreenSelect?: (screen: SettingsScreens) => void;
+  foldersDispatch: FolderEditDispatch;
+  onSettingsScreenSelect: (screen: SettingsScreens) => void;
+  onLeftColumnContentChange: (content: LeftColumnContent) => void;
 };
 
 const INTERSECTION_THROTTLE = 200;
 const DRAG_ENTER_DEBOUNCE = 500;
+const RESERVED_HOTKEYS = new Set(['9', '0']);
 
 const ChatList: FC<OwnProps> = ({
   folderType,
   folderId,
   isActive,
+  isForumPanelOpen,
+  canDisplayArchive,
+  archiveSettings,
   foldersDispatch,
-  onScreenSelect,
+  onSettingsScreenSelect,
+  onLeftColumnContentChange,
 }) => {
-  const { openChat, openNextChat } = getActions();
+  const { openChat, openNextChat, closeForumPanel } = getActions();
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldIgnoreDragRef = useRef(false);
@@ -58,30 +70,15 @@ const ChatList: FC<OwnProps> = ({
     folderType === 'all' ? ALL_FOLDER_ID : folderType === 'archived' ? ARCHIVED_FOLDER_ID : folderId!
   );
 
+  const shouldDisplayArchive = folderType === 'all' && canDisplayArchive;
+
   const orderedIds = useFolderManagerForOrderedIds(resolvedFolderId);
 
-  const orderById = useMemo(() => {
-    if (!orderedIds) {
-      return undefined;
-    }
+  const chatsHeight = (orderedIds?.length || 0) * CHAT_HEIGHT_PX;
+  const archiveHeight = shouldDisplayArchive
+    ? archiveSettings.isMinimized ? ARCHIVE_MINIMIZED_HEIGHT : CHAT_HEIGHT_PX : 0;
 
-    return orderedIds.reduce((acc, id, i) => {
-      acc[id] = i;
-      return acc;
-    }, {} as Record<string, number>);
-  }, [orderedIds]);
-
-  const prevOrderById = usePrevious(orderById);
-
-  const orderDiffById = useMemo(() => {
-    if (!orderById || !prevOrderById) {
-      return {};
-    }
-
-    return mapValues(orderById, (order, id) => {
-      return prevOrderById[id] !== undefined ? order - prevOrderById[id] : -Infinity;
-    });
-  }, [orderById, prevOrderById]);
+  const { orderDiffById, getAnimationType } = useOrderDiff(orderedIds);
 
   const [viewportIds, getMore] = useInfiniteScroll(undefined, orderedIds, undefined, CHAT_LIST_SLICE);
 
@@ -106,10 +103,19 @@ const ChatList: FC<OwnProps> = ({
     function handleKeyDown(e: KeyboardEvent) {
       if (((IS_MAC_OS && e.metaKey) || (!IS_MAC_OS && e.ctrlKey)) && e.code.startsWith('Digit')) {
         const [, digit] = e.code.match(/Digit(\d)/) || [];
-        if (!digit) return;
+        if (!digit || RESERVED_HOTKEYS.has(digit)) return;
 
-        const position = Number(digit) - 1;
-        if (position > orderedIds!.length - 1 || position < 0) return;
+        const isArchiveInList = shouldDisplayArchive && !archiveSettings.isMinimized;
+
+        const shift = isArchiveInList ? -1 : 0;
+        const position = Number(digit) + shift - 1;
+
+        if (isArchiveInList && position === -1) {
+          onLeftColumnContentChange(LeftColumnContent.Archived);
+          return;
+        }
+
+        if (position > orderedIds!.length - 1) return;
 
         openChat({ id: orderedIds![position], shouldReplaceHistory: true });
       }
@@ -120,14 +126,25 @@ const ChatList: FC<OwnProps> = ({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isActive, openChat, openNextChat, orderedIds]);
-
-  const getAnimationType = useChatAnimationType(orderDiffById);
+  }, [archiveSettings, isActive, onLeftColumnContentChange, openChat, openNextChat, orderedIds, shouldDisplayArchive]);
 
   const { observe } = useIntersectionObserver({
     rootRef: containerRef,
     throttleMs: INTERSECTION_THROTTLE,
   });
+
+  const handleArchivedClick = useCallback(() => {
+    onLeftColumnContentChange(LeftColumnContent.Archived);
+    closeForumPanel();
+  }, [closeForumPanel, onLeftColumnContentChange]);
+
+  const handleArchivedDragEnter = useCallback(() => {
+    if (shouldIgnoreDragRef.current) {
+      shouldIgnoreDragRef.current = false;
+      return;
+    }
+    handleArchivedClick();
+  }, [handleArchivedClick]);
 
   const handleDragEnter = useDebouncedCallback((chatId: string) => {
     if (shouldIgnoreDragRef.current) {
@@ -135,7 +152,7 @@ const ChatList: FC<OwnProps> = ({
       return;
     }
     openChat({ id: chatId, shouldReplaceHistory: true });
-  }, [], DRAG_ENTER_DEBOUNCE, true);
+  }, [openChat], DRAG_ENTER_DEBOUNCE, true);
 
   const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -147,10 +164,12 @@ const ChatList: FC<OwnProps> = ({
 
   function renderChats() {
     const viewportOffset = orderedIds!.indexOf(viewportIds![0]);
+
     const pinnedCount = getPinnedChatsCount(resolvedFolderId) || 0;
 
     return viewportIds!.map((id, i) => {
       const isPinned = viewportOffset + i < pinnedCount;
+      const offsetTop = archiveHeight + (viewportOffset + i) * CHAT_HEIGHT_PX;
 
       return (
         <Chat
@@ -161,7 +180,7 @@ const ChatList: FC<OwnProps> = ({
           folderId={folderId}
           animationType={getAnimationType(id)}
           orderDiff={orderDiffById[id]}
-          style={`top: ${(viewportOffset + i) * CHAT_HEIGHT_PX}px;`}
+          offsetTop={offsetTop}
           observeIntersection={observe}
           onDragEnter={handleDragEnter}
         />
@@ -171,15 +190,24 @@ const ChatList: FC<OwnProps> = ({
 
   return (
     <InfiniteScroll
-      className="chat-list custom-scroll"
+      className={buildClassName('chat-list custom-scroll', isForumPanelOpen && 'forum-panel-open')}
       ref={containerRef}
       items={viewportIds}
+      itemSelector=".ListItem:not(.chat-item-archive)"
       preloadBackwards={CHAT_LIST_SLICE}
       withAbsolutePositioning
-      maxHeight={(orderedIds?.length || 0) * CHAT_HEIGHT_PX}
+      maxHeight={chatsHeight + archiveHeight}
       onLoadMore={getMore}
       onDragLeave={handleDragLeave}
     >
+      {shouldDisplayArchive && (
+        <Archive
+          key="archive"
+          archiveSettings={archiveSettings}
+          onClick={handleArchivedClick}
+          onDragEnter={handleArchivedDragEnter}
+        />
+      )}
       {viewportIds?.length ? (
         renderChats()
       ) : viewportIds && !viewportIds.length ? (
@@ -188,7 +216,7 @@ const ChatList: FC<OwnProps> = ({
             folderId={folderId}
             folderType={folderType}
             foldersDispatch={foldersDispatch}
-            onScreenSelect={onScreenSelect}
+            onSettingsScreenSelect={onSettingsScreenSelect}
           />
         )
       ) : (

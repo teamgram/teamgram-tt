@@ -20,6 +20,9 @@ import type {
   ApiThemeParameters,
   ApiPoll,
   ApiRequestInputInvoice,
+  ApiChatReactions,
+  ApiReaction,
+  ApiFormattedText,
 } from '../../types';
 import {
   ApiMessageEntityTypes,
@@ -27,6 +30,7 @@ import {
 import localDb from '../localDb';
 import { pick } from '../../../util/iteratees';
 import { deserializeBytes } from '../helpers';
+import { DEFAULT_STATUS_ICON_ID } from '../../../config';
 
 const CHANNEL_ID_MIN_LENGTH = 11; // Example: -1000000000
 
@@ -554,15 +558,58 @@ export function buildInputInvoice(invoice: ApiRequestInputInvoice) {
   }
 }
 
-export function buildInputReaction(reaction?: string) {
-  if (!reaction) return new GramJs.ReactionEmpty();
-  return new GramJs.ReactionEmoji({
-    emoticon: reaction,
+export function buildInputReaction(reaction?: ApiReaction) {
+  if (reaction && 'emoticon' in reaction) {
+    return new GramJs.ReactionEmoji({
+      emoticon: reaction.emoticon,
+    });
+  }
+
+  if (reaction && 'documentId' in reaction) {
+    return new GramJs.ReactionCustomEmoji({
+      documentId: BigInt(reaction.documentId),
+    });
+  }
+
+  return new GramJs.ReactionEmpty();
+}
+
+export function buildInputChatReactions(chatReactions?: ApiChatReactions) {
+  if (chatReactions?.type === 'all') {
+    return new GramJs.ChatReactionsAll({
+      allowCustom: chatReactions.areCustomAllowed,
+    });
+  }
+
+  if (chatReactions?.type === 'some') {
+    return new GramJs.ChatReactionsSome({
+      reactions: chatReactions.allowed.map(buildInputReaction),
+    });
+  }
+
+  return new GramJs.ChatReactionsNone();
+}
+
+export function buildInputEmojiStatus(emojiStatus: ApiSticker, expires?: number) {
+  if (emojiStatus.id === DEFAULT_STATUS_ICON_ID) {
+    return new GramJs.EmojiStatusEmpty();
+  }
+
+  if (expires) {
+    return new GramJs.EmojiStatusUntil({
+      documentId: BigInt(emojiStatus.id),
+      until: expires,
+    });
+  }
+
+  return new GramJs.EmojiStatus({
+    documentId: BigInt(emojiStatus.id),
   });
 }
 
-export function buildInputChatReactions(chatReactions: string[]) {
-  return new GramJs.ChatReactionsSome({
-    reactions: chatReactions.map(buildInputReaction),
+export function buildInputTextWithEntities(formatted: ApiFormattedText) {
+  return new GramJs.TextWithEntities({
+    text: formatted.text,
+    entities: formatted.entities?.map(buildMtpMessageEntity) || [],
   });
 }

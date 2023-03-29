@@ -10,6 +10,7 @@ import { calculateMediaDimensions } from './helpers/mediaDimensions';
 import renderText from '../../common/helpers/renderText';
 import trimText from '../../../util/trimText';
 import buildClassName from '../../../util/buildClassName';
+import useAppLayout from '../../../hooks/useAppLayout';
 
 import SafeLink from '../../common/SafeLink';
 import Photo from './Photo';
@@ -26,6 +27,7 @@ type OwnProps = {
   canAutoLoad?: boolean;
   canAutoPlay?: boolean;
   inPreview?: boolean;
+  asForwarded?: boolean;
   lastSyncTime?: number;
   isDownloading?: boolean;
   isProtected?: boolean;
@@ -41,6 +43,7 @@ const WebPage: FC<OwnProps> = ({
   canAutoLoad,
   canAutoPlay,
   inPreview,
+  asForwarded,
   lastSyncTime,
   isDownloading = false,
   isProtected,
@@ -49,6 +52,7 @@ const WebPage: FC<OwnProps> = ({
   onCancelMediaTransfer,
 }) => {
   const webPage = getMessageWebPage(message);
+  const { isMobile } = useAppLayout();
 
   const handleMediaClick = useCallback(() => {
     onMediaClick!();
@@ -71,7 +75,7 @@ const WebPage: FC<OwnProps> = ({
   const isArticle = Boolean(truncatedDescription || title || siteName);
   let isSquarePhoto = false;
   if (isArticle && webPage?.photo && !webPage.video) {
-    const { width, height } = calculateMediaDimensions(message);
+    const { width, height } = calculateMediaDimensions(message, undefined, undefined, isMobile);
     isSquarePhoto = width === height;
   }
   const isMediaInteractive = (photo || video) && onMediaClick && !isSquarePhoto;
@@ -98,13 +102,13 @@ const WebPage: FC<OwnProps> = ({
           noAvatars={noAvatars}
           canAutoLoad={canAutoLoad}
           size={isSquarePhoto ? 'pictogram' : 'inline'}
+          asForwarded={asForwarded}
           nonInteractive={!isMediaInteractive}
-          onClick={isMediaInteractive ? handleMediaClick : undefined}
-          onCancelUpload={onCancelMediaTransfer}
           isDownloading={isDownloading}
           isProtected={isProtected}
-          withAspectRatio
           theme={theme}
+          onClick={isMediaInteractive ? handleMediaClick : undefined}
+          onCancelUpload={onCancelMediaTransfer}
         />
       )}
       {isArticle && (
@@ -121,16 +125,16 @@ const WebPage: FC<OwnProps> = ({
       {!inPreview && video && (
         <Video
           message={message}
-          observeIntersection={observeIntersection!}
+          observeIntersectionForLoading={observeIntersection!}
           noAvatars={noAvatars}
           canAutoLoad={canAutoLoad}
           canAutoPlay={canAutoPlay}
           lastSyncTime={lastSyncTime}
-          onClick={isMediaInteractive ? handleMediaClick : undefined}
-          onCancelUpload={onCancelMediaTransfer}
+          asForwarded={asForwarded}
           isDownloading={isDownloading}
           isProtected={isProtected}
-          withAspectRatio
+          onClick={isMediaInteractive ? handleMediaClick : undefined}
+          onCancelUpload={onCancelMediaTransfer}
         />
       )}
     </div>

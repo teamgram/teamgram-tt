@@ -7,7 +7,12 @@ import { getActions, withGlobal } from '../../global';
 import type { ApiChat } from '../../api/types';
 
 import { debounce } from '../../util/schedulers';
-import { selectCurrentTextSearch, selectCurrentChat } from '../../global/selectors';
+import {
+  selectCurrentTextSearch,
+  selectCurrentChat,
+  selectTabState,
+  selectCurrentMessageList,
+} from '../../global/selectors';
 import { getDayStartAt } from '../../util/dateFormat';
 
 import Button from '../ui/Button';
@@ -22,6 +27,7 @@ export type OwnProps = {
 type StateProps = {
   isActive?: boolean;
   chat?: ApiChat;
+  threadId?: number;
   query?: string;
   totalCount?: number;
   foundIds?: number[];
@@ -33,6 +39,7 @@ const runDebouncedForSearch = debounce((cb) => cb(), 200, false);
 const MobileSearchFooter: FC<StateProps> = ({
   isActive,
   chat,
+  threadId,
   query,
   totalCount,
   foundIds,
@@ -81,12 +88,12 @@ const MobileSearchFooter: FC<StateProps> = ({
   // Focus message
   useEffect(() => {
     if (chat?.id && foundIds?.length) {
-      focusMessage({ chatId: chat.id, messageId: foundIds[0] });
+      focusMessage({ chatId: chat.id, messageId: foundIds[0], threadId });
       setFocusedIndex(0);
     } else {
       setFocusedIndex(-1);
     }
-  }, [chat?.id, focusMessage, foundIds]);
+  }, [chat?.id, focusMessage, foundIds, threadId]);
 
   // Disable native up/down buttons on iOS
   useEffect(() => {
@@ -122,18 +129,22 @@ const MobileSearchFooter: FC<StateProps> = ({
   const handleUp = useCallback(() => {
     if (chat && foundIds) {
       const newFocusIndex = focusedIndex + 1;
-      focusMessage({ chatId: chat.id, messageId: foundIds[newFocusIndex] });
+      focusMessage({ chatId: chat.id, messageId: foundIds[newFocusIndex], threadId });
       setFocusedIndex(newFocusIndex);
     }
-  }, [chat, focusedIndex, focusMessage, foundIds]);
+  }, [chat, foundIds, focusedIndex, threadId]);
 
   const handleDown = useCallback(() => {
     if (chat && foundIds) {
       const newFocusIndex = focusedIndex - 1;
-      focusMessage({ chatId: chat.id, messageId: foundIds[newFocusIndex] });
+      focusMessage({ chatId: chat.id, messageId: foundIds[newFocusIndex], threadId });
       setFocusedIndex(newFocusIndex);
     }
-  }, [chat, focusedIndex, focusMessage, foundIds]);
+  }, [chat, foundIds, focusedIndex, threadId]);
+
+  const handleCloseLocalTextSearch = useCallback(() => {
+    closeLocalTextSearch();
+  }, [closeLocalTextSearch]);
 
   return (
     <div id="MobileSearch" className={isActive ? 'active' : ''}>
@@ -142,7 +153,7 @@ const MobileSearchFooter: FC<StateProps> = ({
           size="smaller"
           round
           color="translucent"
-          onClick={closeLocalTextSearch}
+          onClick={handleCloseLocalTextSearch}
         >
           <i className="icon-arrow-left" />
         </Button>
@@ -206,14 +217,16 @@ export default memo(withGlobal<OwnProps>(
     }
 
     const { query, results } = selectCurrentTextSearch(global) || {};
+    const { threadId } = selectCurrentMessageList(global) || {};
     const { totalCount, foundIds } = results || {};
 
     return {
       chat,
       query,
       totalCount,
+      threadId,
       foundIds,
-      isHistoryCalendarOpen: Boolean(global.historyCalendarSelectedAt),
+      isHistoryCalendarOpen: Boolean(selectTabState(global).historyCalendarSelectedAt),
     };
   },
 )(MobileSearchFooter));

@@ -14,7 +14,7 @@ type Limit = 'upload_max_fileparts' | 'stickers_faved_limit' | 'saved_gifs_limit
 type LimitKey = `${Limit}_${LimitType}`;
 type LimitsConfig = Record<LimitKey, number>;
 
-interface GramJsAppConfig extends LimitsConfig {
+export interface GramJsAppConfig extends LimitsConfig {
   emojies_sounds: Record<string, {
     id: string;
     access_hash: string;
@@ -22,10 +22,11 @@ interface GramJsAppConfig extends LimitsConfig {
   }>;
   emojies_send_dice: string[];
   groupcall_video_participants_max: number;
-  reactions_default: string;
   reactions_uniq_max: number;
   chat_read_mark_size_threshold: number;
   chat_read_mark_expire_period: number;
+  reactions_user_max_default: number;
+  reactions_user_max_premium: number;
   autologin_domains: string[];
   autologin_token: string;
   url_auth_domains: string[];
@@ -34,6 +35,10 @@ interface GramJsAppConfig extends LimitsConfig {
   premium_invoice_slug: string;
   premium_promo_order: string[];
   default_emoji_statuses_stickerset_id: string;
+  hidden_members_group_size_min: number;
+  autoarchive_setting_available: boolean;
+  // Forums
+  topics_pinned_limit: number;
 }
 
 function buildEmojiSounds(appConfig: GramJsAppConfig) {
@@ -66,18 +71,23 @@ export function buildAppConfig(json: GramJs.TypeJSONValue): ApiAppConfig {
   const appConfig = buildJson(json) as GramJsAppConfig;
 
   return {
-    defaultReaction: appConfig.reactions_default,
     emojiSounds: buildEmojiSounds(appConfig),
     seenByMaxChatMembers: appConfig.chat_read_mark_size_threshold,
     seenByExpiresAt: appConfig.chat_read_mark_expire_period,
     autologinDomains: appConfig.autologin_domains || [],
     autologinToken: appConfig.autologin_token || '',
     urlAuthDomains: appConfig.url_auth_domains || [],
+    maxUniqueReactions: appConfig.reactions_uniq_max,
     premiumBotUsername: appConfig.premium_bot_username,
     premiumInvoiceSlug: appConfig.premium_invoice_slug,
     premiumPromoOrder: appConfig.premium_promo_order,
     isPremiumPurchaseBlocked: appConfig.premium_purchase_blocked,
     defaultEmojiStatusesStickerSetId: appConfig.default_emoji_statuses_stickerset_id,
+    topicsPinnedLimit: appConfig.topics_pinned_limit,
+    maxUserReactionsDefault: appConfig.reactions_user_max_default,
+    maxUserReactionsPremium: appConfig.reactions_user_max_premium,
+    hiddenMembersMinCount: appConfig.hidden_members_group_size_min,
+    canDisplayAutoarchiveSetting: appConfig.autoarchive_setting_available,
     limits: {
       uploadMaxFileparts: getLimit(appConfig, 'upload_max_fileparts', 'uploadMaxFileparts'),
       stickersFaved: getLimit(appConfig, 'stickers_faved_limit', 'stickersFaved'),

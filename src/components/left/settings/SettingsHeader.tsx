@@ -6,9 +6,9 @@ import { getActions } from '../../../global';
 
 import { SettingsScreens } from '../../../types';
 
-import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
 import useLang from '../../../hooks/useLang';
 import useMultiClick from '../../../hooks/useMultiClick';
+import useAppLayout from '../../../hooks/useAppLayout';
 
 import DropdownMenu from '../../ui/DropdownMenu';
 import MenuItem from '../../ui/MenuItem';
@@ -35,6 +35,7 @@ const SettingsHeader: FC<OwnProps> = ({
     openDeleteChatFolderModal,
   } = getActions();
 
+  const { isMobile } = useAppLayout();
   const [isSignOutDialogOpen, setIsSignOutDialogOpen] = useState(false);
 
   const handleMultiClick = useMultiClick(5, () => {
@@ -57,14 +58,14 @@ const SettingsHeader: FC<OwnProps> = ({
 
   const handleSignOutMessage = useCallback(() => {
     closeSignOutConfirmation();
-    signOut();
+    signOut({ forceInitApi: true });
   }, [closeSignOutConfirmation, signOut]);
 
   const SettingsMenuButton: FC<{ onTrigger: () => void; isOpen?: boolean }> = useMemo(() => {
     return ({ onTrigger, isOpen }) => (
       <Button
         round
-        ripple={!IS_SINGLE_COLUMN_LAYOUT}
+        ripple={!isMobile}
         size="smaller"
         color="translucent"
         className={isOpen ? 'active' : ''}
@@ -74,7 +75,7 @@ const SettingsHeader: FC<OwnProps> = ({
         <i className="icon-more" />
       </Button>
     );
-  }, []);
+  }, [isMobile]);
 
   const lang = useLang();
 
@@ -96,6 +97,8 @@ const SettingsHeader: FC<OwnProps> = ({
         return <h3>{lang('PrivacySettings')}</h3>;
       case SettingsScreens.Language:
         return <h3>{lang('Language')}</h3>;
+      case SettingsScreens.DoNotTranslate:
+        return <h3>{lang('DoNotTranslate')}</h3>;
       case SettingsScreens.Stickers:
         return <h3>{lang('StickersName')}</h3>;
       case SettingsScreens.Experimental:
@@ -191,8 +194,7 @@ const SettingsHeader: FC<OwnProps> = ({
         return (
           <div className="settings-main-header">
             <h3>{lang('FilterEdit')}</h3>
-
-            {editedFolderId && (
+            {Boolean(editedFolderId) && (
               <DropdownMenu
                 className="settings-more-menu"
                 trigger={SettingsMenuButton}
@@ -241,7 +243,7 @@ const SettingsHeader: FC<OwnProps> = ({
 
             <Button
               round
-              ripple={!IS_SINGLE_COLUMN_LAYOUT}
+              ripple={!isMobile}
               size="smaller"
               color="translucent"
               // eslint-disable-next-line react/jsx-no-bind

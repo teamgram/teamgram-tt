@@ -1,8 +1,8 @@
 import { useEffect, useRef } from '../lib/teact/teact';
 
+import { IS_CANVAS_FILTER_SUPPORTED } from '../util/windowEnvironment';
 import fastBlur from '../lib/fastBlur';
-import useForceUpdate from './useForceUpdate';
-import { IS_CANVAS_FILTER_SUPPORTED } from '../util/environment';
+import useSyncEffect from './useSyncEffect';
 
 const RADIUS = 2;
 const ITERATIONS = 2;
@@ -17,14 +17,22 @@ export default function useCanvasBlur(
 ) {
   // eslint-disable-next-line no-null/no-null
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const forceUpdate = useForceUpdate();
+  const isStarted = useRef();
+
+  useSyncEffect(() => {
+    if (!isDisabled) {
+      isStarted.current = false;
+    }
+  }, [dataUri, isDisabled]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
 
-    if (!dataUri || !canvas || isDisabled) {
+    if (!dataUri || !canvas || isDisabled || isStarted.current) {
       return;
     }
+
+    isStarted.current = true;
 
     const img = new Image();
 
@@ -54,7 +62,7 @@ export default function useCanvasBlur(
     };
 
     img.src = dataUri;
-  }, [canvasRef, dataUri, forceUpdate, isDisabled, preferredHeight, preferredWidth, withRaf, radius]);
+  }, [dataUri, isDisabled, preferredHeight, preferredWidth, radius, withRaf]);
 
   return canvasRef;
 }

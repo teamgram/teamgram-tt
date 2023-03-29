@@ -7,7 +7,7 @@ import { getActions, getGlobal, withGlobal } from '../../../global';
 import type { ApiChat, ApiMessage } from '../../../api/types';
 import { LoadMoreDirection } from '../../../types';
 
-import { IS_SINGLE_COLUMN_LAYOUT } from '../../../util/environment';
+import { selectTabState } from '../../../global/selectors';
 import { unique } from '../../../util/iteratees';
 import {
   sortChatIds,
@@ -15,9 +15,11 @@ import {
 } from '../../../global/helpers';
 import { MEMO_EMPTY_ARRAY } from '../../../util/memo';
 import { throttle } from '../../../util/schedulers';
-import useLang from '../../../hooks/useLang';
 import { renderMessageSummary } from '../../common/helpers/renderMessageText';
+
+import useLang from '../../../hooks/useLang';
 import useHorizontalScroll from '../../../hooks/useHorizontalScroll';
+import useAppLayout from '../../../hooks/useAppLayout';
 
 import InfiniteScroll from '../../ui/InfiniteScroll';
 import LeftSearchResultChat from './LeftSearchResultChat';
@@ -53,7 +55,7 @@ type StateProps = {
 const MIN_QUERY_LENGTH_FOR_GLOBAL_SEARCH = 4;
 const LESS_LIST_ITEMS_AMOUNT = 5;
 
-const runThrottled = throttle((cb) => cb(), 500, true);
+const runThrottled = throttle((cb) => cb(), 500, false);
 
 const ChatResults: FC<OwnProps & StateProps> = ({
   searchQuery, searchDate, dateSearchQuery, currentUserId,
@@ -68,10 +70,9 @@ const ChatResults: FC<OwnProps & StateProps> = ({
   // eslint-disable-next-line no-null/no-null
   const chatSelectionRef = useRef<HTMLDivElement>(null);
 
-  useHorizontalScroll(chatSelectionRef.current, undefined, true);
-
   const lang = useLang();
 
+  const { isMobile } = useAppLayout();
   const [shouldShowMoreLocal, setShouldShowMoreLocal] = useState<boolean>(false);
   const [shouldShowMoreGlobal, setShouldShowMoreGlobal] = useState<boolean>(false);
 
@@ -80,10 +81,10 @@ const ChatResults: FC<OwnProps & StateProps> = ({
       runThrottled(() => {
         searchMessagesGlobal({
           type: 'text',
-          query: searchQuery,
         });
       });
     }
+  // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps -- `searchQuery` is required to prevent infinite message loading
   }, [lastSyncTime, searchMessagesGlobal, searchQuery]);
 
   const handleChatClick = useCallback(
@@ -94,11 +95,11 @@ const ChatResults: FC<OwnProps & StateProps> = ({
         addRecentlyFoundChatId({ id });
       }
 
-      if (!IS_SINGLE_COLUMN_LAYOUT) {
+      if (!isMobile) {
         onReset();
       }
     },
-    [currentUserId, openChat, addRecentlyFoundChatId, onReset],
+    [openChat, currentUserId, isMobile, addRecentlyFoundChatId, onReset],
   );
 
   const handlePickerItemClick = useCallback((id: string) => {
@@ -128,6 +129,8 @@ const ChatResults: FC<OwnProps & StateProps> = ({
       ]), chatsById, undefined, currentUserId ? [currentUserId] : undefined),
     ];
   }, [searchQuery, currentUserId, localContactIds, lang, localChatIds, localUserIds, chatsById]);
+
+  useHorizontalScroll(chatSelectionRef, !localResults.length, true);
 
   const globalResults = useMemo(() => {
     if (!searchQuery || searchQuery.length < MIN_QUERY_LENGTH_FOR_GLOBAL_SEARCH || !globalChatIds || !globalUserIds) {
@@ -302,7 +305,7 @@ export default memo(withGlobal<OwnProps>(
     } = global;
     const {
       fetchingStatus, globalResults, localResults, resultsByType,
-    } = global.globalSearch;
+    } = selectTabState(global).globalSearch;
     const { chatIds: globalChatIds, userIds: globalUserIds } = globalResults || {};
     const { chatIds: localChatIds, userIds: localUserIds } = localResults || {};
     const { byChatId: globalMessagesByChatId } = messages;

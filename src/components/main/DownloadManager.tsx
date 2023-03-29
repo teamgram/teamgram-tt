@@ -6,7 +6,8 @@ import type { Thread } from '../../global/types';
 import type { ApiMessage } from '../../api/types';
 import { ApiMediaFormat } from '../../api/types';
 
-import { IS_OPFS_SUPPORTED, IS_SERVICE_WORKER_SUPPORTED, MAX_BUFFER_SIZE } from '../../util/environment';
+import { selectTabState } from '../../global/selectors';
+import { IS_OPFS_SUPPORTED, IS_SERVICE_WORKER_SUPPORTED, MAX_BUFFER_SIZE } from '../../util/windowEnvironment';
 import * as mediaLoader from '../../util/mediaLoader';
 import download from '../../util/download';
 import {
@@ -113,7 +114,7 @@ const DownloadManager: FC<StateProps> = ({
 
 export default memo(withGlobal(
   (global): StateProps => {
-    const activeDownloads = global.activeDownloads.byChatId;
+    const activeDownloads = selectTabState(global).activeDownloads.byChatId;
     const messages = global.messages.byChatId;
     return {
       activeDownloads,

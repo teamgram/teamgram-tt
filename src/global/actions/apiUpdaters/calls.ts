@@ -3,22 +3,33 @@ import { removeGroupCall, updateGroupCall, updateGroupCallParticipant } from '..
 import { omit } from '../../../util/iteratees';
 import { selectChat } from '../../selectors';
 import { updateChat } from '../../reducers';
-import { ARE_CALLS_SUPPORTED } from '../../../util/environment';
+import { ARE_CALLS_SUPPORTED } from '../../../util/windowEnvironment';
 import { notifyAboutCall } from '../../../util/notifications';
-import { selectPhoneCallUser } from '../../selectors/calls';
-import { initializeSoundsForSafari } from '../ui/calls';
+import { selectGroupCall, selectPhoneCallUser } from '../../selectors/calls';
+import { checkNavigatorUserMediaPermissions, initializeSounds } from '../ui/calls';
 import { onTickEnd } from '../../../util/schedulers';
+import type { ActionReturnType } from '../../types';
+import { updateTabState } from '../../reducers/tabs';
+import { getCurrentTabId } from '../../../util/establishMultitabRole';
 
-addActionHandler('apiUpdate', (global, actions, update) => {
+addActionHandler('apiUpdate', (global, actions, update): ActionReturnType => {
   switch (update['@type']) {
     case 'updateGroupCall': {
       if (update.call.connectionState === 'discarded') {
         if (global.groupCalls.activeGroupCallId) {
-          actions.leaveGroupCall({ shouldRemove: true });
+          if ('leaveGroupCall' in actions) actions.leaveGroupCall({ shouldRemove: true, tabId: getCurrentTabId() });
           return undefined;
         } else {
           return removeGroupCall(global, update.call.id);
         }
+      }
+
+      const groupCall = selectGroupCall(global, update.call.id);
+      const chatId = groupCall?.chatId;
+      if (chatId) {
+        global = updateChat(global, chatId, {
+          isCallNotEmpty: (groupCall.participantsCount > 0 || Boolean(groupCall.participants?.length)),
+        });
       }
 
       return updateGroupCall(
@@ -59,6 +70,14 @@ addActionHandler('apiUpdate', (global, actions, update) => {
           nextOffset,
         });
       }
+
+      const groupCall = selectGroupCall(global, groupCallId);
+      const chatId = groupCall?.chatId;
+      if (chatId) {
+        global = updateChat(global, chatId, {
+          isCallNotEmpty: (groupCall.participantsCount > 0 || Boolean(groupCall.participants?.length)),
+        });
+      }
       return global;
     }
     case 'updatePhoneCall': {
@@ -74,11 +93,11 @@ addActionHandler('apiUpdate', (global, actions, update) => {
       if (phoneCall) {
         if (call.state === 'discarded') {
           actions.playGroupCallSound({ sound: 'end' });
+          if ('hangUp' in actions) actions.hangUp({ tabId: getCurrentTabId() });
+
           return {
             ...global,
             ...(call.needRating && { ratingPhoneCall: call }),
-            isCallPanelVisible: undefined,
-            phoneCall: undefined,
           };
         }
 
@@ -89,18 +108,23 @@ addActionHandler('apiUpdate', (global, actions, update) => {
 
       if (!isOutgoing && call.state === 'requested') {
         onTickEnd(() => {
+          global = getGlobal();
           notifyAboutCall({
             call,
-            user: selectPhoneCallUser(getGlobal())!,
+            user: selectPhoneCallUser(global)!,
           });
         });
 
-        void initializeSoundsForSafari();
-        return {
+        initializeSounds();
+        void checkNavigatorUserMediaPermissions(global, actions, call.isVideo, getCurrentTabId());
+        global = {
           ...global,
           phoneCall: call,
-          isCallPanelVisible: false,
         };
+
+        return updateTabState(global, {
+          isCallPanelVisible: false,
+        }, getCurrentTabId());
       }
     }
   }

@@ -33,7 +33,6 @@ const runThrottled = throttle((cb) => cb(), 500, true);
 
 const LinkResults: FC<OwnProps & StateProps> = ({
   searchQuery,
-  searchChatId,
   isLoading,
   chatsById,
   usersById,
@@ -62,12 +61,11 @@ const LinkResults: FC<OwnProps & StateProps> = ({
       runThrottled(() => {
         searchMessagesGlobal({
           type: CURRENT_TYPE,
-          query: searchQuery,
-          chatId: searchChatId,
         });
       });
     }
-  }, [lastSyncTime, searchMessagesGlobal, searchQuery, searchChatId]);
+  // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps -- `searchQuery` is required to prevent infinite message loading
+  }, [lastSyncTime, searchMessagesGlobal, searchQuery]);
 
   const foundMessages = useMemo(() => {
     if (!foundIds || !globalMessagesByChatId) {

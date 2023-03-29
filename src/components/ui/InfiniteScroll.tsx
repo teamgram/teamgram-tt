@@ -8,7 +8,7 @@ import React, {
 
 import { debounce } from '../../util/schedulers';
 import resetScroll from '../../util/resetScroll';
-import { IS_ANDROID } from '../../util/environment';
+import { IS_ANDROID } from '../../util/windowEnvironment';
 import buildStyle from '../../util/buildStyle';
 
 type OwnProps = {
@@ -24,6 +24,7 @@ type OwnProps = {
   noScrollRestoreOnTop?: boolean;
   noFastList?: boolean;
   cacheBuster?: any;
+  beforeChildren?: React.ReactNode;
   children: React.ReactNode;
   onLoadMore?: ({ direction }: { direction: LoadMoreDirection; noScroll?: boolean }) => void;
   onScroll?: (e: UIEvent<HTMLDivElement>) => void;
@@ -51,6 +52,7 @@ const InfiniteScroll: FC<OwnProps> = ({
   noFastList,
   // Used to re-query `listItemElements` if rendering is delayed by transition
   cacheBuster,
+  beforeChildren,
   children,
   onLoadMore,
   onScroll,
@@ -84,7 +86,7 @@ const InfiniteScroll: FC<OwnProps> = ({
         onLoadMore({ direction: LoadMoreDirection.Forwards });
       }, 1000, true, false),
     ];
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps
   }, [onLoadMore, items]);
 
   // Initial preload
@@ -230,6 +232,7 @@ const InfiniteScroll: FC<OwnProps> = ({
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
     >
+      {beforeChildren}
       {withAbsolutePositioning && items?.length ? (
         <div
           teactFastList={!noFastList}

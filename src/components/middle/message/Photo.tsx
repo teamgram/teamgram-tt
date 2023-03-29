@@ -1,13 +1,14 @@
-import type { FC } from '../../../lib/teact/teact';
 import React, {
-  useCallback, useLayoutEffect, useRef, useState,
+  useCallback, useRef, useState,
 } from '../../../lib/teact/teact';
 
+import type { FC } from '../../../lib/teact/teact';
 import type { ApiMessage } from '../../../api/types';
 import type { ISettings } from '../../../types';
 import type { IMediaDimensions } from './helpers/calculateAlbumLayout';
+import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
 
-import { CUSTOM_APPENDIX_ATTRIBUTE } from '../../../config';
+import { CUSTOM_APPENDIX_ATTRIBUTE, MESSAGE_CONTENT_SELECTOR } from '../../../config';
 import {
   getMessagePhoto,
   getMessageWebPagePhoto,
@@ -15,19 +16,24 @@ import {
   getMediaTransferState,
   isOwnMessage,
   getMessageMediaFormat,
+  getMessageMediaThumbDataUri,
 } from '../../../global/helpers';
-import type { ObserveFn } from '../../../hooks/useIntersectionObserver';
+import buildClassName from '../../../util/buildClassName';
+import getCustomAppendixBg from './helpers/getCustomAppendixBg';
+import { calculateMediaDimensions } from './helpers/mediaDimensions';
+
 import { useIsIntersecting } from '../../../hooks/useIntersectionObserver';
 import useMediaWithLoadProgress from '../../../hooks/useMediaWithLoadProgress';
 import useShowTransition from '../../../hooks/useShowTransition';
 import useBlurredMediaThumbRef from './hooks/useBlurredMediaThumbRef';
 import usePrevious from '../../../hooks/usePrevious';
 import useMediaTransition from '../../../hooks/useMediaTransition';
-import buildClassName from '../../../util/buildClassName';
-import getCustomAppendixBg from './helpers/getCustomAppendixBg';
-import { calculateMediaDimensions } from './helpers/mediaDimensions';
+import useLayoutEffectWithPrevDeps from '../../../hooks/useLayoutEffectWithPrevDeps';
+import useFlag from '../../../hooks/useFlag';
+import useAppLayout from '../../../hooks/useAppLayout';
 
 import ProgressSpinner from '../../ui/ProgressSpinner';
+import MediaSpoiler from '../../common/MediaSpoiler';
 
 export type OwnProps = {
   id?: string;
@@ -41,10 +47,10 @@ export type OwnProps = {
   size?: 'inline' | 'pictogram';
   shouldAffectAppendix?: boolean;
   dimensions?: IMediaDimensions & { isSmall?: boolean };
+  asForwarded?: boolean;
   nonInteractive?: boolean;
   isDownloading: boolean;
   isProtected?: boolean;
-  withAspectRatio?: boolean;
   theme: ISettings['theme'];
   onClick?: (id: number) => void;
   onCancelUpload?: (message: ApiMessage) => void;
@@ -61,11 +67,11 @@ const Photo: FC<OwnProps> = ({
   uploadProgress,
   size = 'inline',
   dimensions,
+  asForwarded,
   nonInteractive,
   shouldAffectAppendix,
   isDownloading,
   isProtected,
-  withAspectRatio,
   theme,
   onClick,
   onCancelUpload,
@@ -78,13 +84,21 @@ const Photo: FC<OwnProps> = ({
 
   const isIntersecting = useIsIntersecting(ref, observeIntersection);
 
+  const { isMobile } = useAppLayout();
   const [isLoadAllowed, setIsLoadAllowed] = useState(canAutoLoad);
   const shouldLoad = isLoadAllowed && isIntersecting;
   const {
     mediaData, loadProgress,
   } = useMediaWithLoadProgress(getMessageMediaHash(message, size), !shouldLoad);
   const fullMediaData = localBlobUrl || mediaData;
-  const thumbRef = useBlurredMediaThumbRef(message, fullMediaData);
+
+  const [withThumb] = useState(!fullMediaData);
+  const noThumb = Boolean(fullMediaData);
+  const thumbRef = useBlurredMediaThumbRef(message, noThumb);
+  const thumbClassNames = useMediaTransition(!noThumb);
+  const thumbDataUri = getMessageMediaThumbDataUri(message);
+
+  const [isSpoilerShown, , hideSpoiler] = useFlag(photo.isSpoiler);
 
   const {
     loadProgress: downloadProgress,
@@ -101,7 +115,6 @@ const Photo: FC<OwnProps> = ({
   );
   const wasLoadDisabled = usePrevious(isLoadAllowed) === false;
 
-  const transitionClassNames = useMediaTransition(fullMediaData);
   const {
     shouldRender: shouldRenderSpinner,
     transitionClassNames: spinnerClassNames,
@@ -113,24 +126,33 @@ const Photo: FC<OwnProps> = ({
 
   const handleClick = useCallback(() => {
     if (isUploading) {
-      if (onCancelUpload) {
-        onCancelUpload(message);
-      }
-    } else if (!fullMediaData) {
-      setIsLoadAllowed((isAllowed) => !isAllowed);
-    } else if (onClick) {
-      onClick(message.id);
-    }
-  }, [fullMediaData, isUploading, message, onCancelUpload, onClick]);
-
-  const isOwn = isOwnMessage(message);
-  useLayoutEffect(() => {
-    if (!shouldAffectAppendix) {
+      onCancelUpload?.(message);
       return;
     }
 
-    const contentEl = ref.current!.closest<HTMLDivElement>('.message-content')!;
+    if (!fullMediaData) {
+      setIsLoadAllowed((isAllowed) => !isAllowed);
+      return;
+    }
 
+    if (isSpoilerShown) {
+      hideSpoiler();
+      return;
+    }
+
+    onClick?.(message.id);
+  }, [fullMediaData, hideSpoiler, isSpoilerShown, isUploading, message, onCancelUpload, onClick]);
+
+  const isOwn = isOwnMessage(message);
+  useLayoutEffectWithPrevDeps(([prevShouldAffectAppendix]) => {
+    if (!shouldAffectAppendix) {
+      if (prevShouldAffectAppendix) {
+        ref.current!.closest<HTMLDivElement>(MESSAGE_CONTENT_SELECTOR)!.removeAttribute(CUSTOM_APPENDIX_ATTRIBUTE);
+      }
+      return;
+    }
+
+    const contentEl = ref.current!.closest<HTMLDivElement>(MESSAGE_CONTENT_SELECTOR)!;
     if (fullMediaData) {
       getCustomAppendixBg(fullMediaData, isOwn, isInSelectMode, isSelected, theme).then((appendixBg) => {
         contentEl.style.setProperty('--appendix-bg', appendixBg);
@@ -139,9 +161,9 @@ const Photo: FC<OwnProps> = ({
     } else {
       contentEl.classList.add('has-appendix-thumb');
     }
-  }, [fullMediaData, isOwn, shouldAffectAppendix, isInSelectMode, isSelected, theme]);
+  }, [shouldAffectAppendix, fullMediaData, isOwn, isInSelectMode, isSelected, theme]);
 
-  const { width, height, isSmall } = dimensions || calculateMediaDimensions(message, noAvatars);
+  const { width, height, isSmall } = dimensions || calculateMediaDimensions(message, asForwarded, noAvatars, isMobile);
 
   const className = buildClassName(
     'media-inner',
@@ -150,10 +172,8 @@ const Photo: FC<OwnProps> = ({
     width === height && 'square-image',
   );
 
-  const aspectRatio = withAspectRatio ? `aspect-ratio: ${(width / height).toFixed(3)}/ 1` : '';
-  const style = dimensions
-    ? `width: ${width}px; height: ${height}px; left: ${dimensions.x}px; top: ${dimensions.y}px;${aspectRatio}`
-    : '';
+  const dimensionsStyle = dimensions ? ` width: ${width}px; left: ${dimensions.x}px; top: ${dimensions.y}px;` : '';
+  const style = size === 'inline' ? `height: ${height}px;${dimensionsStyle}` : undefined;
 
   return (
     <div
@@ -163,19 +183,15 @@ const Photo: FC<OwnProps> = ({
       style={style}
       onClick={isUploading ? undefined : handleClick}
     >
-      <canvas
-        ref={thumbRef}
-        className="thumbnail"
-        style={`width: ${width}px; height: ${height}px;${aspectRatio}`}
-      />
       <img
         src={fullMediaData}
-        className={`full-media ${transitionClassNames}`}
-        width={width}
-        height={height}
+        className="full-media"
         alt=""
         draggable={!isProtected}
       />
+      {withThumb && (
+        <canvas ref={thumbRef} className={buildClassName('thumbnail', thumbClassNames)} />
+      )}
       {isProtected && <span className="protector" />}
       {shouldRenderSpinner && !shouldRenderDownloadButton && (
         <div className={`media-loading ${spinnerClassNames}`}>
@@ -183,6 +199,14 @@ const Photo: FC<OwnProps> = ({
         </div>
       )}
       {shouldRenderDownloadButton && <i className={buildClassName('icon-download', downloadButtonClassNames)} />}
+      <MediaSpoiler
+        isVisible={isSpoilerShown}
+        withAnimation
+        thumbDataUri={thumbDataUri}
+        width={width}
+        height={height}
+        className="media-spoiler"
+      />
       {isTransferring && (
         <span className="message-transfer-progress">{Math.round(transferProgress * 100)}%</span>
       )}

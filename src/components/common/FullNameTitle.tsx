@@ -24,6 +24,7 @@ type OwnProps = {
   noVerified?: boolean;
   noFake?: boolean;
   withEmojiStatus?: boolean;
+  emojiStatusSize?: number;
   isSavedMessages?: boolean;
   noLoopLimit?: boolean;
   onEmojiStatusClick?: NoneToVoidFunction;
@@ -36,6 +37,7 @@ const FullNameTitle: FC<OwnProps> = ({
   noVerified,
   noFake,
   withEmojiStatus,
+  emojiStatusSize,
   isSavedMessages,
   noLoopLimit,
   onEmojiStatusClick,
@@ -57,14 +59,15 @@ const FullNameTitle: FC<OwnProps> = ({
 
   return (
     <div className={buildClassName('title', styles.root, className)}>
-      <h3 dir="auto" className="fullName">{renderText(title)}</h3>
+      <h3 dir="auto" className="fullName">{renderText(title || '')}</h3>
       {!noVerified && peer.isVerified && <VerifiedIcon />}
       {!noFake && peer.fakeType && <FakeIcon fakeType={peer.fakeType} />}
       {withEmojiStatus && emojiStatus && (
         <CustomEmoji
           documentId={emojiStatus.documentId}
+          size={emojiStatusSize}
           loopLimit={!noLoopLimit ? EMOJI_STATUS_LOOP_LIMIT : undefined}
-          observeIntersection={observeIntersection}
+          observeIntersectionForLoading={observeIntersection}
           onClick={onEmojiStatusClick}
         />
       )}

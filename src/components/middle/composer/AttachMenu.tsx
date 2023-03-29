@@ -7,9 +7,14 @@ import type { GlobalState } from '../../../global/types';
 import type { ApiAttachMenuPeerType } from '../../../api/types';
 import type { ISettings } from '../../../types';
 
-import { CONTENT_TYPES_WITH_PREVIEW } from '../../../config';
-import { IS_TOUCH_ENV } from '../../../util/environment';
+import {
+  CONTENT_TYPES_WITH_PREVIEW, SUPPORTED_AUDIO_CONTENT_TYPES,
+  SUPPORTED_IMAGE_CONTENT_TYPES,
+  SUPPORTED_VIDEO_CONTENT_TYPES,
+} from '../../../config';
+import { IS_TOUCH_ENV } from '../../../util/windowEnvironment';
 import { openSystemFilesDialog } from '../../../util/systemFilesDialog';
+import { validateFiles } from '../../../util/files';
 
 import useMouseInside from '../../../hooks/useMouseInside';
 import useLang from '../../../hooks/useLang';
@@ -24,22 +29,32 @@ import './AttachMenu.scss';
 
 export type OwnProps = {
   chatId: string;
+  threadId?: number;
   isButtonVisible: boolean;
   canAttachMedia: boolean;
   canAttachPolls: boolean;
+  canSendPhotos: boolean;
+  canSendVideos: boolean;
+  canSendDocuments: boolean;
+  canSendAudios: boolean;
   isScheduled?: boolean;
   attachBots: GlobalState['attachMenu']['bots'];
   peerType?: ApiAttachMenuPeerType;
-  onFileSelect: (files: File[], isQuick: boolean) => void;
+  onFileSelect: (files: File[], shouldSuggestCompression?: boolean) => void;
   onPollCreate: () => void;
   theme: ISettings['theme'];
 };
 
 const AttachMenu: FC<OwnProps> = ({
   chatId,
+  threadId,
   isButtonVisible,
   canAttachMedia,
   canAttachPolls,
+  canSendPhotos,
+  canSendVideos,
+  canSendDocuments,
+  canSendAudios,
   attachBots,
   peerType,
   isScheduled,
@@ -49,6 +64,9 @@ const AttachMenu: FC<OwnProps> = ({
 }) => {
   const [isAttachMenuOpen, openAttachMenu, closeAttachMenu] = useFlag();
   const [handleMouseEnter, handleMouseLeave, markMouseInside] = useMouseInside(isAttachMenuOpen, closeAttachMenu);
+
+  const canSendVideoAndPhoto = canSendPhotos && canSendVideos;
+  const canSendVideoOrPhoto = canSendPhotos || canSendVideos;
 
   const [isAttachmentBotMenuOpen, markAttachmentBotMenuOpen, unmarkAttachmentBotMenuOpen] = useFlag();
   useEffect(() => {
@@ -65,24 +83,30 @@ const AttachMenu: FC<OwnProps> = ({
     }
   }, [isAttachMenuOpen, openAttachMenu, closeAttachMenu]);
 
-  const handleFileSelect = useCallback((e: Event, isQuick: boolean) => {
+  const handleFileSelect = useCallback((e: Event, shouldSuggestCompression?: boolean) => {
     const { files } = e.target as HTMLInputElement;
+    const validatedFiles = validateFiles(files);
 
-    if (files && files.length > 0) {
-      onFileSelect(Array.from(files), isQuick);
+    if (validatedFiles?.length) {
+      onFileSelect(validatedFiles, shouldSuggestCompression);
     }
   }, [onFileSelect]);
 
   const handleQuickSelect = useCallback(() => {
     openSystemFilesDialog(
-      Array.from(CONTENT_TYPES_WITH_PREVIEW).join(','),
+      Array.from(canSendVideoAndPhoto ? CONTENT_TYPES_WITH_PREVIEW : (
+        canSendPhotos ? SUPPORTED_IMAGE_CONTENT_TYPES : SUPPORTED_VIDEO_CONTENT_TYPES
+      )).join(','),
       (e) => handleFileSelect(e, true),
     );
-  }, [handleFileSelect]);
+  }, [canSendPhotos, canSendVideoAndPhoto, handleFileSelect]);
 
   const handleDocumentSelect = useCallback(() => {
-    openSystemFilesDialog('*', (e) => handleFileSelect(e, false));
-  }, [handleFileSelect]);
+    openSystemFilesDialog(!canSendDocuments && canSendAudios
+      ? Array.from(SUPPORTED_AUDIO_CONTENT_TYPES).join(',') : (
+        '*'
+      ), (e) => handleFileSelect(e, false));
+  }, [canSendAudios, canSendDocuments, handleFileSelect]);
 
   const bots = useMemo(() => {
     return Object.values(attachBots).filter((bot) => {
@@ -137,8 +161,18 @@ const AttachMenu: FC<OwnProps> = ({
         )}
         {canAttachMedia && (
           <>
-            <MenuItem icon="photo" onClick={handleQuickSelect}>{lang('AttachmentMenu.PhotoOrVideo')}</MenuItem>
-            <MenuItem icon="document" onClick={handleDocumentSelect}>{lang('AttachDocument')}</MenuItem>
+            {canSendVideoOrPhoto && (
+              <MenuItem icon="photo" onClick={handleQuickSelect}>
+                {lang(canSendVideoAndPhoto ? 'AttachmentMenu.PhotoOrVideo'
+                  : (canSendPhotos ? 'InputAttach.Popover.Photo' : 'InputAttach.Popover.Video'))}
+              </MenuItem>
+            )}
+            {(canSendDocuments || canSendAudios)
+              && (
+                <MenuItem icon="document" onClick={handleDocumentSelect}>
+                  {lang(!canSendDocuments && canSendAudios ? 'InputAttach.Popover.Music' : 'AttachDocument')}
+                </MenuItem>
+              )}
           </>
         )}
         {canAttachPolls && (
@@ -149,6 +183,7 @@ const AttachMenu: FC<OwnProps> = ({
           <AttachBotItem
             bot={bot}
             chatId={chatId}
+            threadId={threadId}
             theme={theme}
             onMenuOpened={markAttachmentBotMenuOpen}
             onMenuClosed={unmarkAttachmentBotMenuOpen}

@@ -14,6 +14,7 @@ import useShowTransition from '../../../hooks/useShowTransition';
 import usePrevDuringAnimation from '../../../hooks/usePrevDuringAnimation';
 import { useKeyboardNavigation } from './hooks/useKeyboardNavigation';
 import useHorizontalScroll from '../../../hooks/useHorizontalScroll';
+import { useIntersectionObserver } from '../../../hooks/useIntersectionObserver';
 
 import Loading from '../../ui/Loading';
 import EmojiButton from './EmojiButton';
@@ -64,6 +65,8 @@ export type OwnProps = {
   addRecentCustomEmoji: ({ documentId }: { documentId: string }) => void;
 };
 
+const INTERSECTION_THROTTLE = 200;
+
 const EmojiTooltip: FC<OwnProps> = ({
   isOpen,
   emojis,
@@ -81,7 +84,11 @@ const EmojiTooltip: FC<OwnProps> = ({
     emojis.length ? [...customEmojis, ...emojis] : undefined, CLOSE_DURATION,
   ) || [];
 
-  useHorizontalScroll(containerRef.current);
+  useHorizontalScroll(containerRef);
+
+  const {
+    observe: observeIntersection,
+  } = useIntersectionObserver({ rootRef: containerRef, throttleMs: INTERSECTION_THROTTLE, isDisabled: !isOpen });
 
   const handleSelectEmoji = useCallback((emoji: Emoji) => {
     onEmojiSelect(emoji.native);
@@ -148,6 +155,7 @@ const EmojiTooltip: FC<OwnProps> = ({
               emoji={emoji}
               focus={selectedIndex === index}
               onClick={handleCustomEmojiClick}
+              observeIntersection={observeIntersection}
             />
           )
         ))

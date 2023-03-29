@@ -18,7 +18,7 @@ import {
   getMessageDocument,
   getPhotoFullDimensions,
   getVideoDimensions,
-  getMessageFileSize,
+  getMessageFileSize, getMessageActionPhoto,
 } from '../../../global/helpers';
 import { useMemo } from '../../../lib/teact/teact';
 import useMedia from '../../../hooks/useMedia';
@@ -44,6 +44,7 @@ export const useMediaProps = ({
   delay,
 }: UseMediaProps) => {
   const photo = message ? getMessagePhoto(message) : undefined;
+  const actionPhoto = message ? getMessageActionPhoto(message) : undefined;
   const video = message ? getMessageVideo(message) : undefined;
   const webPagePhoto = message ? getMessageWebPagePhoto(message) : undefined;
   const webPageVideo = message ? getMessageWebPageVideo(message) : undefined;
@@ -51,9 +52,9 @@ export const useMediaProps = ({
   const isDocumentVideo = message ? isMessageDocumentVideo(message) : false;
   const videoSize = message ? getMessageFileSize(message) : undefined;
   const avatarMedia = avatarOwner?.photos?.[mediaId];
-  const isVideoAvatar = Boolean(avatarMedia?.isVideo);
+  const isVideoAvatar = Boolean(avatarMedia?.isVideo || actionPhoto?.isVideo);
   const isVideo = Boolean(video || webPageVideo || isDocumentVideo);
-  const isPhoto = Boolean(!isVideo && (photo || webPagePhoto || isDocumentPhoto));
+  const isPhoto = Boolean(!isVideo && (photo || webPagePhoto || isDocumentPhoto || actionPhoto));
   const { isGif } = video || webPageVideo || {};
   const isFromSharedMedia = origin === MediaViewerOrigin.SharedMedia;
   const isFromSearch = origin === MediaViewerOrigin.SearchResult;
@@ -73,11 +74,17 @@ export const useMediaProps = ({
         return getChatAvatarHash(avatarOwner, isFull ? 'big' : 'normal');
       }
     }
-    return message && getMessageMediaHash(message, isFull ? 'viewerFull' : 'viewerPreview');
-  }, [avatarOwner, message, avatarMedia, mediaId]);
+    if (actionPhoto && isVideoAvatar && isFull) {
+      return `videoAvatar${actionPhoto.id}?size=u`;
+    }
+    return message && getMessageMediaHash(message, isFull ? 'full' : 'preview');
+  }, [avatarOwner, actionPhoto, isVideoAvatar, message, avatarMedia, mediaId]);
 
   const pictogramBlobUrl = useMedia(
-    message && (isFromSharedMedia || isFromSearch) && getMessageMediaHash(message, 'pictogram'),
+    message
+    // Only use pictogram if it's already loaded
+    && (isFromSharedMedia || isFromSearch || isDocumentPhoto || isDocumentVideo)
+    && getMessageMediaHash(message, 'pictogram'),
     undefined,
     ApiMediaFormat.BlobUrl,
     undefined,
@@ -97,7 +104,7 @@ export const useMediaProps = ({
   } = useMediaWithLoadProgress(
     getMediaHash(true),
     undefined,
-    message && getMessageMediaFormat(message, 'viewerFull'),
+    message && getMessageMediaFormat(message, 'full'),
     undefined,
     delay,
   );
@@ -111,6 +118,9 @@ export const useMediaProps = ({
   if (isVideoAvatar && previewBlobUrl) {
     bestImageData = previewBlobUrl;
   }
+  const bestData = localBlobUrl || fullMediaBlobUrl || (
+    !isVideo ? previewBlobUrl || pictogramBlobUrl || bestImageData : undefined
+  );
 
   const fileName = message
     ? getMessageFileName(message)
@@ -122,8 +132,8 @@ export const useMediaProps = ({
   if (message) {
     if (isDocumentPhoto || isDocumentVideo) {
       dimensions = getMessageDocument(message)!.mediaSize!;
-    } else if (photo || webPagePhoto) {
-      dimensions = getPhotoFullDimensions((photo || webPagePhoto)!)!;
+    } else if (photo || webPagePhoto || actionPhoto) {
+      dimensions = getPhotoFullDimensions((photo || webPagePhoto || actionPhoto)!)!;
     } else if (video || webPageVideo) {
       dimensions = getVideoDimensions((video || webPageVideo)!)!;
     }
@@ -136,6 +146,7 @@ export const useMediaProps = ({
     photo,
     video,
     webPagePhoto,
+    actionPhoto,
     webPageVideo,
     isVideo,
     isPhoto,
@@ -144,14 +155,11 @@ export const useMediaProps = ({
     isDocumentVideo,
     fileName,
     bestImageData,
+    bestData,
     dimensions,
     isFromSharedMedia,
     avatarPhoto: avatarMedia,
     isVideoAvatar,
-    localBlobUrl,
-    fullMediaBlobUrl,
-    previewBlobUrl,
-    pictogramBlobUrl,
     loadProgress,
     videoSize,
   };

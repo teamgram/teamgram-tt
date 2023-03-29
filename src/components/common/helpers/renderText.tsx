@@ -1,10 +1,11 @@
 import React from '../../../lib/teact/teact';
-import EMOJI_REGEX from '../../../lib/twemojiRegex';
 
+import type { TeactNode } from '../../../lib/teact/teact';
 import type { TextPart } from '../../../types';
 
+import EMOJI_REGEX from '../../../lib/twemojiRegex';
 import { RE_LINK_TEMPLATE, RE_MENTION_TEMPLATE } from '../../../config';
-import { IS_EMOJI_SUPPORTED } from '../../../util/environment';
+import { IS_EMOJI_SUPPORTED } from '../../../util/windowEnvironment';
 import {
   fixNonStandardEmoji,
   handleEmojiLoad,
@@ -22,14 +23,13 @@ export type TextFilter = (
   'simple_markdown' | 'simple_markdown_html'
   );
 
-const RE_LETTER_OR_DIGIT = /^[\d\wа-яё]$/i;
 const SIMPLE_MARKDOWN_REGEX = /(\*\*|__).+?\1/g;
 
 export default function renderText(
   part: TextPart,
   filters: Array<TextFilter> = ['emoji'],
   params?: { highlight: string | undefined },
-): TextPart[] {
+): TeactNode[] {
   if (typeof part !== 'string') {
     return [part];
   }
@@ -129,9 +129,12 @@ function replaceEmojis(textParts: TextPart[], size: 'big' | 'small', type: 'jsx'
       }
       if (type === 'html') {
         emojiResult.push(
-          // For preventing extra spaces in html
-          // eslint-disable-next-line max-len
-          `<img draggable="false" class="${className}" src="./img-apple-${size === 'big' ? '160' : '64'}/${code}.png" alt="${emoji}" />`,
+          `<img\
+            draggable="false"\
+            class="${className}"\
+            src="./img-apple-${size === 'big' ? '160' : '64'}/${code}.png"\
+            alt="${emoji}"\
+          />`,
         );
       }
 
@@ -182,8 +185,7 @@ function addHighlight(textParts: TextPart[], highlight: string | undefined): Tex
 
     const lowerCaseText = part.toLowerCase();
     const queryPosition = lowerCaseText.indexOf(highlight.toLowerCase());
-    const nextSymbol = lowerCaseText[queryPosition + highlight.length];
-    if (queryPosition < 0 || (nextSymbol && nextSymbol.match(RE_LETTER_OR_DIGIT))) {
+    if (queryPosition < 0) {
       result.push(part);
       return result;
     }
@@ -196,7 +198,6 @@ function addHighlight(textParts: TextPart[], highlight: string | undefined): Tex
       </span>,
     );
     newParts.push(part.substring(queryPosition + highlight.length));
-
     return [...result, ...newParts];
   }, []);
 }
@@ -255,7 +256,7 @@ function replaceSimpleMarkdown(textParts: TextPart[], type: 'jsx' | 'html'): Tex
     }
 
     const parts = part.split(SIMPLE_MARKDOWN_REGEX);
-    const entities = part.match(SIMPLE_MARKDOWN_REGEX) || [];
+    const entities: string[] = part.match(SIMPLE_MARKDOWN_REGEX) || [];
     result.push(parts[0]);
 
     return entities.reduce((entityResult: TextPart[], entity, i) => {

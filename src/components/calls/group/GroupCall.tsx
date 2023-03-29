@@ -17,8 +17,7 @@ import {
   IS_ANDROID,
   IS_IOS,
   IS_REQUEST_FULLSCREEN_SUPPORTED,
-  IS_SINGLE_COLUMN_LAYOUT,
-} from '../../../util/environment';
+} from '../../../util/windowEnvironment';
 import { LOCAL_TGS_URLS } from '../../common/helpers/animatedAssets';
 import buildClassName from '../../../util/buildClassName';
 import {
@@ -26,8 +25,10 @@ import {
   selectGroupCallParticipant,
   selectIsAdminInActiveGroupCall,
 } from '../../../global/selectors/calls';
+import { selectTabState } from '../../../global/selectors';
 import useFlag from '../../../hooks/useFlag';
 import useLang from '../../../hooks/useLang';
+import useAppLayout from '../../../hooks/useAppLayout';
 
 import Loading from '../../ui/Loading';
 import Button from '../../ui/Button';
@@ -84,12 +85,13 @@ const GroupCall: FC<OwnProps & StateProps> = ({
   const lang = useLang();
   // eslint-disable-next-line no-null/no-null
   const containerRef = useRef<HTMLDivElement>(null);
+  const { isMobile, isLandscape } = useAppLayout();
 
   const [isLeaving, setIsLeaving] = useState(false);
   const [isFullscreen, openFullscreen, closeFullscreen] = useFlag();
   const [isSidebarOpen, openSidebar, closeSidebar] = useFlag(true);
-  const hasVideoParticipants = participants && Object.values(participants).some((l) => l.video || l.presentation);
-  const isLandscape = isFullscreen && !IS_SINGLE_COLUMN_LAYOUT && hasVideoParticipants;
+  const hasVideoParticipants = Object.values(participants).some(({ video, presentation }) => video || presentation);
+  const isLandscapeLayout = isFullscreen && (!isMobile || isLandscape) && hasVideoParticipants;
 
   const [participantMenu, setParticipantMenu] = useState<{
     participant: TypeGroupCallParticipant;
@@ -106,7 +108,6 @@ const GroupCall: FC<OwnProps & StateProps> = ({
   const isConnecting = connectionState !== 'connected';
   const canSelfUnmute = meParticipant?.canSelfUnmute;
   const shouldRaiseHand = !canSelfUnmute && meParticipant?.isMuted;
-
   const handleOpenParticipantMenu = useCallback((anchor: HTMLDivElement, participant: TypeGroupCallParticipant) => {
     const rect = anchor.getBoundingClientRect();
     const container = containerRef.current!;
@@ -248,14 +249,18 @@ const GroupCall: FC<OwnProps & StateProps> = ({
     }
   }, [isLeaving, leaveGroupCall, shouldEndGroupCall]);
 
+  const handleToggleGroupCallPresentation = useCallback(() => {
+    toggleGroupCallPresentation();
+  }, [toggleGroupCallPresentation]);
+
   return (
     <Modal
       isOpen={!isCallPanelVisible && !isLeaving}
       onClose={toggleGroupCallPanel}
       className={buildClassName(
         'GroupCall',
-        IS_SINGLE_COLUMN_LAYOUT && 'single-column',
-        isLandscape && 'landscape',
+        (isMobile && !isLandscape) && 'single-column',
+        isLandscapeLayout && 'landscape',
         !isSidebarOpen && 'no-sidebar',
       )}
       dialogRef={containerRef}
@@ -274,7 +279,7 @@ const GroupCall: FC<OwnProps & StateProps> = ({
             <i className={isFullscreen ? 'icon-smallscreen' : 'icon-fullscreen'} />
           </Button>
         )}
-        {isLandscape && (
+        {isLandscapeLayout && (
           <Button
             round
             size="smaller"
@@ -292,7 +297,7 @@ const GroupCall: FC<OwnProps & StateProps> = ({
             {IS_SCREENSHARE_SUPPORTED && !shouldRaiseHand && (
               <MenuItem
                 icon="share-screen-outlined"
-                onClick={toggleGroupCallPresentation}
+                onClick={handleToggleGroupCallPresentation}
               >
                 {lang(hasPresentation ? 'VoipChatStopScreenCapture' : 'VoipChatStartScreenCapture')}
               </MenuItem>
@@ -321,7 +326,7 @@ const GroupCall: FC<OwnProps & StateProps> = ({
       <div className="scrollable custom-scroll">
         <GroupCallParticipantStreams onDoubleClick={handleStreamsDoubleClick} />
 
-        {(!isLandscape || isSidebarOpen)
+        {(!isLandscapeLayout || isSidebarOpen)
         && <GroupCallParticipantList openParticipantMenu={handleOpenParticipantMenu} />}
       </div>
 
@@ -390,12 +395,14 @@ const GroupCall: FC<OwnProps & StateProps> = ({
             onCheck={setShouldEndGroupCall}
           />
         )}
-        <Button isText className="confirm-dialog-button" onClick={handleLeaveGroupCall}>
-          {lang(isEndGroupCallModal ? 'VoipGroupEnd' : 'VoipGroupLeave')}
-        </Button>
-        <Button isText className="confirm-dialog-button" onClick={handleCloseConfirmLeaveModal}>
-          {lang('Cancel')}
-        </Button>
+        <div className="dialog-buttons">
+          <Button isText className="confirm-dialog-button" onClick={handleLeaveGroupCall}>
+            {lang(isEndGroupCallModal ? 'VoipGroupEnd' : 'VoipGroupLeave')}
+          </Button>
+          <Button isText className="confirm-dialog-button" onClick={handleCloseConfirmLeaveModal}>
+            {lang('Cancel')}
+          </Button>
+        </div>
       </Modal>
     </Modal>
   );
@@ -413,7 +420,7 @@ export default memo(withGlobal<OwnProps>(
       isSpeakerEnabled: !isSpeakerDisabled,
       participantsCount,
       meParticipant: selectGroupCallParticipant(global, groupCallId, global.currentUserId!),
-      isCallPanelVisible: Boolean(global.isCallPanelVisible),
+      isCallPanelVisible: Boolean(selectTabState(global).isCallPanelVisible),
       isAdmin: selectIsAdminInActiveGroupCall(global),
       participants,
     };

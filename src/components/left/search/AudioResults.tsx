@@ -30,7 +30,6 @@ const AudioResults: FC<OwnProps & StateProps> = ({
   theme,
   isVoice,
   searchQuery,
-  searchChatId,
   isLoading,
   chatsById,
   usersById,
@@ -52,12 +51,11 @@ const AudioResults: FC<OwnProps & StateProps> = ({
       runThrottled(() => {
         searchMessagesGlobal({
           type: currentType,
-          query: searchQuery,
-          chatId: searchChatId,
         });
       });
     }
-  }, [currentType, lastSyncTime, searchMessagesGlobal, searchQuery, searchChatId]);
+  // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps -- `searchQuery` is required to prevent infinite message loading
+  }, [currentType, lastSyncTime, searchMessagesGlobal, searchQuery]);
 
   const foundMessages = useMemo(() => {
     if (!foundIds || !globalMessagesByChatId) {

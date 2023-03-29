@@ -1,9 +1,11 @@
 import BigInt from 'big-integer';
 import Api from '../tl/api';
 import type TelegramClient from './TelegramClient';
-import { sleep, createDeferred } from '../Helpers';
+import { sleep } from '../Helpers';
 import { getDownloadPartSize } from '../Utils';
 import errors from '../errors';
+import Deferred from '../../../util/Deferred';
+import { Foreman } from '../../../util/foreman';
 
 interface OnProgress {
     isCanceled?: boolean;
@@ -25,11 +27,6 @@ export interface DownloadFileParams {
     progressCallback?: OnProgress;
 }
 
-interface Deferred {
-    promise: Promise<any>;
-    resolve: (value?: any) => void;
-}
-
 // Chunk sizes for `upload.getFile` must be multiple of the smallest size
 const MIN_CHUNK_SIZE = 4096;
 const DEFAULT_CHUNK_SIZE = 64; // kb
@@ -40,36 +37,6 @@ const DISCONNECT_SLEEP = 1000;
 const SENDER_TIMEOUT = 60 * 1000;
 // Telegram may have server issues so we try several times
 const SENDER_RETRIES = 5;
-
-class Foreman {
-    private deferreds: Deferred[] = [];
-
-    activeWorkers = 0;
-
-    constructor(private maxWorkers: number) {
-    }
-
-    requestWorker() {
-        if (this.activeWorkers === this.maxWorkers) {
-            const deferred = createDeferred();
-            this.deferreds.push(deferred);
-            return deferred.promise;
-        } else {
-            this.activeWorkers++;
-        }
-
-        return Promise.resolve();
-    }
-
-    releaseWorker() {
-        if (this.deferreds.length && (this.activeWorkers === this.maxWorkers)) {
-            const deferred = this.deferreds.shift()!;
-            deferred.resolve();
-        } else {
-            this.activeWorkers--;
-        }
-    }
-}
 
 class FileView {
     private type: 'memory' | 'opfs';
@@ -134,10 +101,14 @@ export async function downloadFile(
         try {
             return await downloadFile2(client, inputLocation, fileParams);
         } catch (err: any) {
-            if (i === SENDER_RETRIES - 1 || !err.message.startsWith('SESSION_REVOKED')) {
+            if (
+                (err.message.startsWith('SESSION_REVOKED') || err.message.startsWith('CONNECTION_NOT_INITED'))
+                && i < SENDER_RETRIES - 1
+            ) {
+                await client._cleanupExportedSenders(dcId);
+            } else {
                 throw err;
             }
-            await client._cleanupExportedSender(dcId);
         }
     }
 
@@ -192,7 +163,7 @@ async function downloadFile2(
     // Pick the least busy foreman
     // For some reason, fresh connections give out a higher speed for the first couple of seconds
     // I have no idea why, but this may speed up the download of small files
-    const activeCounts = foremans.map((l) => l.activeWorkers);
+    const activeCounts = foremans.map(({ activeWorkers }) => activeWorkers);
     let currentForemanIndex = activeCounts.indexOf(Math.min(...activeCounts));
     // Used for files with unknown size and for manual cancellations
     let hasEnded = false;
@@ -225,7 +196,7 @@ async function downloadFile2(
 
         if (deferred) await deferred.promise;
 
-        if (noParallel) deferred = createDeferred();
+        if (noParallel) deferred = new Deferred();
 
         if (hasEnded) {
             foremans[senderIndex].releaseWorker();
@@ -248,7 +219,7 @@ async function downloadFile2(
                             precise: isPrecise || undefined,
                         })),
                         sleep(SENDER_TIMEOUT).then(() => {
-                            // if we're on the main DC we just cancel the download and let the user retry later.
+                            // If we're on the main DC we just cancel the download and let the user retry later
                             if (dcId === client.session.dcId) {
                                 return Promise.reject(new Error('USER_CANCELED'));
                             } else {

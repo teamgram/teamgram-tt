@@ -306,6 +306,10 @@
     .Radio:last-child {
       margin-bottom: 0;
     }
+
+    .Checkbox {
+      margin-left: 0;
+    }
   }
 
   .Radio + .Radio,
@@ -344,10 +348,6 @@
   padding: 0 1.5rem;
 }
 
-.username-link {
-  color: var(--color-links);
-}
-
 .settings-quick-reaction {
   .Radio-main .label {
     display: flex;
@@ -361,9 +361,7 @@
 }
 
 .SettingsDefaultReaction {
-  .ReactionStaticEmoji {
-    width: 1.5rem;
-    height: 1.5rem;
+  .current-default-reaction {
     margin-inline-end: 2rem;
   }
 }

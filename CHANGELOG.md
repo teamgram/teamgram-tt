@@ -1,3 +1,126 @@
+## 1.60.0 (2023-03-03)
+
+### 🤩 **What’s New**
+* Archived Chats Header - Archived Chats are now accessible from the chat list in a collapsable header.
+* Reply Threads - You can tap to view all replies to a message in a separate window.
+* Emoji In Captions - You can now open the emoji panel 🙂 when adding a caption to media.
+* Message Translation - You can translate any message into another language from the context menu. To show this option, enable Translation in _Settings > Language_.
+* Emoji Statuses - Premium users can update their animated emoji status from the 🌟 at the top of their chat list.
+* Granular Media Permissions - Admins can choose which media types are allowed in their groups, each with separate toggles.
+
+### 😍 **What’s Better**
+* Multiple tabs can be opened by holding <Ctrl> (⌘ on macOS) and clicking on a chat.
+* Opening a chat changes the title of your browser tab to the chat name. This can be modified in _Settings > Privacy and Security_.
+* Bot reply keyboards are now supported in groups and channels.
+* The video and audio players always remember your last playback speed.
+* Opening topics has an improved animation.
+* Performance when typing messages has been drastically improved.
+* Fixed disappearing drafts.
+* Fixed missing results in Global Search.
+* Fixed rare issues with opening text format options.
+* Fixed pasting text from Google Docs.
+* Fixed auto-closing context menu on iOS PWA.
+* Fixed changing group and channel admin rights.
+* Various layout and performance improvements.
+
+
+## 1.59.0 (2023-01-30)
+
+### 👏 **Harder**
+* Chats can be opened in multiple browser tabs or windows.
+* A spoiler effect is available for photos and videos.
+* You can replace profile photos of contacts or suggest new ones.
+* Your account can have a public profile photo, in addition to the main one.
+* Media can be sent from your clipboard without compression.
+* Topics are able to be created or edited in groups.
+* Syntax highlighting is now supported for Type (.tl) language.
+
+### 🤩 **Better**
+* Multiple media items can be sent as separate messages from the attachment menu.
+* The audio player now supports multiple playback speeds.
+* The topic panel can be quickly closed with a swipe.
+
+### 🚀 **Faster**
+* Animations in the topic panel are faster and lighter.
+
+### 💪 **Stronger**
+* Fixed some chats being hidden in the chat list.
+* Fixed the app reloading when resizing the window.
+* Fixed missing video in group video calls.
+* Fixed problems with deleting chat history.
+* Fixed missing text formats when composing a message.
+* Fixed jumping cursor when editing chat description.
+* Fixed app URL not updating after closing a chat.
+* Fixed yellow border when switching profile photos.
+* Fixed call indicator not hiding after a call ends.
+* Various layout improvements.
+
+## 1.58.0 (2023-01-06)
+
+### 👏 Harder
+* Topics in groups are now supported.
+* Collectible usernames now appear on profiles, and can be managed in Settings.
+* Custom reactions are properly displayed.
+* Premium users can react multiple times with different emoji.
+
+### 🤩 Better
+* Animations can be disabled from the main menu.
+
+### 💪 Stronger
+* Fixed missing Quick Reaction buttons.
+* Fixed issues with the ‘Chat History for New Members’ setting.
+* Fixed issues when changing display name.
+* Fixed issues with emoji in display names on Windows.
+* Fixed inline bot query parsing on Windows.
+
+## 1.57.0 (2022-12-07)
+
+### 👏 **Harder**
+* Custom emoji now animate as you write a message.
+* Voice messages can now be played with more speed options like 0.5x, 0.75x and 1.5x.
+* You can now set a main photo for your profile, group or channel in the Media Viewer.
+* Messages will now display 'admin', 'owner' and 'imported' labels.
+* A notification will appear when camera or microphone access is needed.
+
+### 🤩 **Better**
+* Unread message counters animate as their number increases.
+* Custom Emoji have even better quality at larger sizes.
+* Clicking on live locations now requires a confirmation before opening Google Maps.
+
+### 🚀 **Faster**
+* Uploading media and documents is drastically accelerated.
+* Video messages now load even more smoothly.
+
+### 💪 **Stronger**
+* Fixed copying selected text in messages.
+* Fixed outgoing messages sometimes being displayed as incoming.
+* Fixed group descriptions being uneditable.
+* Fixed streaming video from files.
+* Fixed auto-closing calendar after rescheduling.
+* Fixed scrolling to the bottom of the chat after sending a new message.
+* Various layout improvements.
+
+## 1.56.0 (2022-11-18)
+
+### 👏 **Harder**
+* Formatting is now preserved when pasting text from websites or Telegram messages.
+* The input field is automatically highlighted when you open a chat – so you can start typing right away.
+* Your account's profile pictures can now be deleted by clicking your profile picture in Settings.
+* Native system sharing is available when running the app as a PWA.
+
+### 🤩 **Better**
+* A list of group members now appears when typing @ to help mention users even faster.
+
+### 🚀 **Faster**
+* Plenty of improvements and optimizations for stickers and custom emoji rendering – adding a noticeable performance increase.
+
+### 💪 **Stronger**
+* Various fixes for copying text from messages.
+* Various fixes for custom emoji.
+* Fixed opening the symbol menu on certain touchscreen devices.
+* Fixed the quoted header disappearing when typing a reply.
+* Various layout improvements.
+
 ## 1.55.0 (2022-10-29)
 
 ### 👏 **Harder**

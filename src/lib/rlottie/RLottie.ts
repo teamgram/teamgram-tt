@@ -1,50 +1,59 @@
+import type { RLottieApi } from './rlottie.worker';
+
 import {
-  DPR,
-  IS_SINGLE_COLUMN_LAYOUT,
-  IS_SAFARI,
-  IS_ANDROID,
-} from '../../util/environment';
-import WorkerConnector from '../../util/WorkerConnector';
+  DPR, IS_SAFARI, IS_ANDROID, IS_IOS,
+} from '../../util/windowEnvironment';
+import { createConnector } from '../../util/PostMessageConnector';
 import { animate } from '../../util/animation';
 import cycleRestrict from '../../util/cycleRestrict';
+import { fastRaf } from '../../util/schedulers';
+import generateIdFor from '../../util/generateIdFor';
 
 interface Params {
   noLoop?: boolean;
   size?: number;
   quality?: number;
   isLowPriority?: boolean;
+  coords?: { x: number; y: number };
 }
 
-type Frames = ArrayBuffer[];
-type Chunks = (Frames | undefined)[];
+const WAITING = Symbol('WAITING');
+type Frame =
+  undefined
+  | typeof WAITING
+  | ImageBitmap;
 
-// TODO Consider removing chunks
-const CHUNK_SIZE = 1;
 const MAX_WORKERS = 4;
-const HIGH_PRIORITY_QUALITY = IS_SINGLE_COLUMN_LAYOUT ? 0.75 : 1;
+const HIGH_PRIORITY_QUALITY = (IS_ANDROID || IS_IOS) ? 0.75 : 1;
 const LOW_PRIORITY_QUALITY = IS_ANDROID ? 0.5 : 0.75;
+const LOW_PRIORITY_QUALITY_SIZE_THRESHOLD = 24;
 const HIGH_PRIORITY_CACHE_MODULO = IS_SAFARI ? 2 : 4;
 const LOW_PRIORITY_CACHE_MODULO = 0;
+const ID_STORE = {};
 
-const instancesById = new Map<string, RLottie>();
+const instancesByRenderId = new Map<string, RLottie>();
 
 const workers = new Array(MAX_WORKERS).fill(undefined).map(
-  () => new WorkerConnector(new Worker(new URL('./rlottie.worker.ts', import.meta.url))),
+  () => createConnector<RLottieApi>(new Worker(new URL('./rlottie.worker.ts', import.meta.url))),
 );
 let lastWorkerIndex = -1;
 
 class RLottie {
   // Config
 
-  private containers = new Map<HTMLDivElement, {
+  private views = new Map<string, {
     canvas: HTMLCanvasElement;
     ctx: CanvasRenderingContext2D;
     isLoaded?: boolean;
     isPaused?: boolean;
+    isSharedCanvas?: boolean;
+    coords?: Params['coords'];
     onLoad?: NoneToVoidFunction;
   }>();
 
   private imgSize!: number;
+
+  private imageData!: ImageData;
 
   private msPerFrame = 1000 / 60;
 
@@ -52,15 +61,11 @@ class RLottie {
 
   private cacheModulo!: number;
 
-  private chunkSize!: number;
-
   private workerIndex!: number;
 
-  private chunks: Chunks = [];
+  private frames: Frame[] = [];
 
   private framesCount?: number;
-
-  private chunksCount?: number;
 
   // State
 
@@ -87,40 +92,56 @@ class RLottie {
   private lastRenderAt?: number;
 
   static init(...args: ConstructorParameters<typeof RLottie>) {
-    const [container, onLoad, id] = args;
-    let instance = instancesById.get(id);
+    const [
+      , canvas,
+      renderId,
+      viewId = generateIdFor(ID_STORE, true),
+      params, ,
+      onLoad,
+    ] = args;
+    let instance = instancesByRenderId.get(renderId);
 
     if (!instance) {
       // eslint-disable-next-line prefer-rest-params
       instance = new RLottie(...args);
-      instancesById.set(id, instance);
+      instancesByRenderId.set(renderId, instance);
     } else {
-      instance.addContainer(container, onLoad);
+      instance.addView(viewId, canvas, onLoad, params?.coords);
     }
 
     return instance;
   }
 
   constructor(
-    container: HTMLDivElement,
-    onLoad: NoneToVoidFunction | undefined,
-    private id: string,
     private tgsUrl: string,
+    private container: HTMLDivElement | HTMLCanvasElement,
+    private renderId: string,
+    private viewId: string = generateIdFor(ID_STORE, true),
     private params: Params = {},
     private customColor?: [number, number, number],
+    private onLoad?: NoneToVoidFunction | undefined,
     private onEnded?: (isDestroyed?: boolean) => void,
     private onLoop?: () => void,
   ) {
-    this.addContainer(container, onLoad);
+    this.addView(viewId, container, onLoad, params.coords);
     this.initConfig();
     this.initRenderer();
   }
 
-  public removeContainer(container: HTMLDivElement) {
-    this.containers.get(container)!.canvas.remove();
-    this.containers.delete(container);
+  public removeView(viewId: string) {
+    const {
+      canvas, ctx, isSharedCanvas, coords,
+    } = this.views.get(viewId)!;
 
-    if (!this.containers.size) {
+    if (isSharedCanvas) {
+      ctx.clearRect(coords!.x, coords!.y, this.imgSize, this.imgSize);
+    } else {
+      canvas.remove();
+    }
+
+    this.views.delete(viewId);
+
+    if (!this.views.size) {
       this.destroy();
     }
   }
@@ -129,9 +150,9 @@ class RLottie {
     return this.isAnimating || this.isWaiting;
   }
 
-  play(forceRestart = false, container?: HTMLDivElement) {
-    if (container) {
-      this.containers.get(container)!.isPaused = false;
+  play(forceRestart = false, viewId?: string) {
+    if (viewId) {
+      this.views.get(viewId)!.isPaused = false;
     }
 
     if (this.isEnded && forceRestart) {
@@ -143,11 +164,11 @@ class RLottie {
     this.doPlay();
   }
 
-  pause(container?: HTMLDivElement) {
-    if (container) {
-      this.containers.get(container)!.isPaused = true;
+  pause(viewId?: string) {
+    if (viewId) {
+      this.views.get(viewId)!.isPaused = true;
 
-      const areAllContainersPaused = Array.from(this.containers.values()).every(({ isPaused }) => isPaused);
+      const areAllContainersPaused = Array.from(this.views.values()).every(({ isPaused }) => isPaused);
       if (!areAllContainersPaused) {
         return;
       }
@@ -159,8 +180,19 @@ class RLottie {
       this.isAnimating = false;
     }
 
-    const currentChunkIndex = this.getChunkIndex(this.approxFrameIndex);
-    this.chunks = this.chunks.map((chunk, i) => (i === currentChunkIndex ? chunk : undefined));
+    if (!this.params.isLowPriority) {
+      this.frames = this.frames.map((frame, i) => {
+        if (i === this.prevFrameIndex) {
+          return frame;
+        } else {
+          if (frame && frame !== WAITING) {
+            frame.close();
+          }
+
+          return undefined;
+        }
+      });
+    }
   }
 
   playSegment([startFrameIndex, stopFrameIndex]: [number, number]) {
@@ -174,69 +206,155 @@ class RLottie {
     this.speed = speed;
   }
 
-  setNoLoop(noLoop: boolean) {
+  setNoLoop(noLoop?: boolean) {
     this.params.noLoop = noLoop;
   }
 
-  private addContainer(container: HTMLDivElement, onLoad?: NoneToVoidFunction) {
-    if (!(container.parentNode instanceof HTMLElement)) {
-      throw new Error('[RLottie] Container is not mounted');
+  setSharedCanvasCoords(viewId: string, newCoords: Params['coords']) {
+    const containerInfo = this.views.get(viewId)!;
+    const {
+      canvas, ctx,
+    } = containerInfo;
+
+    if (!canvas.dataset.isJustCleaned || canvas.dataset.isJustCleaned === 'false') {
+      const sizeFactor = this.calcSizeFactor();
+      ensureCanvasSize(canvas, sizeFactor);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.dataset.isJustCleaned = 'true';
+      fastRaf(() => {
+        canvas.dataset.isJustCleaned = 'false';
+      });
     }
 
-    let { size } = this.params;
+    containerInfo.coords = {
+      x: Math.round((newCoords?.x || 0) * canvas.width),
+      y: Math.round((newCoords?.y || 0) * canvas.height),
+    };
 
-    if (!size) {
-      size = (
-        container.offsetWidth
-        || parseInt(container.style.width, 10)
-        || container.parentNode.offsetWidth
-      );
+    const frame = this.getFrame(this.prevFrameIndex) || this.getFrame(Math.round(this.approxFrameIndex));
+
+    if (frame && frame !== WAITING) {
+      ctx.drawImage(frame, containerInfo.coords.x, containerInfo.coords.y);
+    }
+  }
+
+  private addView(
+    viewId: string,
+    container: HTMLDivElement | HTMLCanvasElement,
+    onLoad?: NoneToVoidFunction,
+    coords?: Params['coords'],
+  ) {
+    const sizeFactor = this.calcSizeFactor();
+
+    let imgSize: number;
+
+    if (container instanceof HTMLDivElement) {
+      if (!(container.parentNode instanceof HTMLElement)) {
+        throw new Error('[RLottie] Container is not mounted');
+      }
+
+      let { size } = this.params;
 
       if (!size) {
-        throw new Error('[RLottie] Failed to detect width from container');
+        size = (
+          container.offsetWidth
+          || parseInt(container.style.width, 10)
+          || container.parentNode.offsetWidth
+        );
+
+        if (!size) {
+          throw new Error('[RLottie] Failed to detect width from container');
+        }
       }
+
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d')!;
+
+      canvas.style.width = `${size}px`;
+      canvas.style.height = `${size}px`;
+
+      imgSize = Math.round(size * sizeFactor);
+
+      canvas.width = imgSize;
+      canvas.height = imgSize;
+
+      container.appendChild(canvas);
+
+      this.views.set(viewId, {
+        canvas, ctx, onLoad,
+      });
+    } else {
+      if (!container.isConnected) {
+        throw new Error('[RLottie] Shared canvas is not mounted');
+      }
+
+      const canvas = container;
+      const ctx = canvas.getContext('2d')!;
+
+      ensureCanvasSize(canvas, sizeFactor);
+
+      imgSize = Math.round(this.params.size! * sizeFactor);
+
+      this.views.set(viewId, {
+        canvas,
+        ctx,
+        isSharedCanvas: true,
+        coords: {
+          x: Math.round((coords?.x || 0) * canvas.width),
+          y: Math.round((coords?.y || 0) * canvas.height),
+        },
+        onLoad,
+      });
     }
-
-    const canvas = document.createElement('canvas');
-    canvas.dataset.id = this.id;
-    const ctx = canvas.getContext('2d')!;
-
-    canvas.style.width = `${size}px`;
-    canvas.style.height = `${size}px`;
-
-    const { isLowPriority, quality = isLowPriority ? LOW_PRIORITY_QUALITY : HIGH_PRIORITY_QUALITY } = this.params;
-    // Reduced quality only looks acceptable on high DPR screens
-    const imgSize = Math.round(size * Math.max(DPR * quality, 1));
-
-    canvas.width = imgSize;
-    canvas.height = imgSize;
-
-    container.appendChild(canvas);
 
     if (!this.imgSize) {
       this.imgSize = imgSize;
+      this.imageData = new ImageData(imgSize, imgSize);
     }
-
-    this.containers.set(container, { canvas, ctx, onLoad });
 
     if (this.isRendererInited) {
       this.doPlay();
     }
   }
 
+  private calcSizeFactor() {
+    const {
+      isLowPriority,
+      size,
+      // Reduced quality only looks acceptable on big enough images
+      quality = isLowPriority && (!size || size > LOW_PRIORITY_QUALITY_SIZE_THRESHOLD)
+        ? LOW_PRIORITY_QUALITY : HIGH_PRIORITY_QUALITY,
+    } = this.params;
+
+    // Reduced quality only looks acceptable on high DPR screens
+    return Math.max(DPR * quality, 1);
+  }
+
   private destroy() {
     this.isDestroyed = true;
     this.pause();
+    this.clearCache();
     this.destroyRenderer();
 
-    instancesById.delete(this.id);
+    instancesByRenderId.delete(this.renderId);
+  }
+
+  private clearCache() {
+    this.frames.forEach((frame) => {
+      if (frame && frame !== WAITING) {
+        frame.close();
+      }
+    });
+
+    // Help GC
+    this.imageData = undefined as any;
+    this.frames = [];
   }
 
   private initConfig() {
     const { isLowPriority } = this.params;
 
     this.cacheModulo = isLowPriority ? LOW_PRIORITY_CACHE_MODULO : HIGH_PRIORITY_CACHE_MODULO;
-    this.chunkSize = CHUNK_SIZE;
   }
 
   setColor(newColor: [number, number, number] | undefined) {
@@ -249,10 +367,11 @@ class RLottie {
     workers[this.workerIndex].request({
       name: 'init',
       args: [
-        this.id,
+        this.renderId,
         this.tgsUrl,
         this.imgSize,
-        this.params.isLowPriority,
+        this.params.isLowPriority || false,
+        this.customColor,
         this.onRendererInit.bind(this),
       ],
     });
@@ -261,7 +380,7 @@ class RLottie {
   private destroyRenderer() {
     workers[this.workerIndex].request({
       name: 'destroy',
-      args: [this.id],
+      args: [this.renderId],
     });
   }
 
@@ -270,7 +389,6 @@ class RLottie {
     this.reduceFactor = reduceFactor;
     this.msPerFrame = msPerFrame;
     this.framesCount = framesCount;
-    this.chunksCount = Math.ceil(framesCount / this.chunkSize);
 
     if (this.isWaiting) {
       this.doPlay();
@@ -285,9 +403,9 @@ class RLottie {
     workers[this.workerIndex].request({
       name: 'changeData',
       args: [
-        this.id,
+        this.renderId,
         this.tgsUrl,
-        this.params.isLowPriority,
+        this.params.isLowPriority || false,
         this.onChangeData.bind(this),
       ],
     });
@@ -297,7 +415,6 @@ class RLottie {
     this.reduceFactor = reduceFactor;
     this.msPerFrame = msPerFrame;
     this.framesCount = framesCount;
-    this.chunksCount = Math.ceil(framesCount / this.chunkSize);
     this.isWaiting = false;
     this.isAnimating = false;
 
@@ -332,51 +449,37 @@ class RLottie {
 
       // Paused from outside
       if (!this.isAnimating) {
-        return false;
+        const areAllLoaded = Array.from(this.views.values()).every(({ isLoaded }) => isLoaded);
+        if (areAllLoaded) {
+          return false;
+        }
       }
 
       const frameIndex = Math.round(this.approxFrameIndex);
-      const chunkIndex = this.getChunkIndex(frameIndex);
-      const chunk = this.chunks[chunkIndex];
+      const frame = this.getFrame(frameIndex);
+      if (!frame || frame === WAITING) {
+        if (!frame) {
+          this.requestFrame(frameIndex);
+        }
 
-      if (!chunk || chunk.length === 0) {
-        this.requestChunk(chunkIndex);
         this.isAnimating = false;
         this.isWaiting = true;
         return false;
       }
 
-      if (this.cacheModulo && chunkIndex % this.cacheModulo === 0) {
-        this.cleanupPrevChunk(chunkIndex);
+      if (this.cacheModulo && frameIndex % this.cacheModulo === 0) {
+        this.cleanupPrevFrame(frameIndex);
       }
 
       if (frameIndex !== this.prevFrameIndex) {
-        const frame = this.getFrame(frameIndex);
-        if (!frame) {
-          this.isAnimating = false;
-          this.isWaiting = true;
-          return false;
-        }
-
-        const arr = new Uint8ClampedArray(frame);
-        if (this.customColor) {
-          for (let i = 0; i < arr.length; i += 4) {
-            /* eslint-disable prefer-destructuring */
-            arr[i] = this.customColor[0];
-            arr[i + 1] = this.customColor[1];
-            arr[i + 2] = this.customColor[2];
-            /* eslint-enable prefer-destructuring */
-          }
-        }
-        const imageData = new ImageData(arr, this.imgSize, this.imgSize);
-
-        this.containers.forEach((containerData) => {
+        this.views.forEach((containerData) => {
           const {
-            ctx, isLoaded, isPaused, onLoad,
+            ctx, isLoaded, isPaused, coords: { x, y } = {}, onLoad,
           } = containerData;
 
           if (!isLoaded || !isPaused) {
-            ctx.putImageData(imageData, 0, 0);
+            ctx.clearRect(x || 0, y || 0, this.imgSize, this.imgSize);
+            ctx.drawImage(frame, x || 0, y || 0);
           }
 
           if (!isLoaded) {
@@ -440,7 +543,7 @@ class RLottie {
       const nextFrameIndex = Math.round(this.approxFrameIndex);
 
       if (!this.getFrame(nextFrameIndex)) {
-        this.requestChunk(this.getChunkIndex(nextFrameIndex));
+        this.requestFrame(nextFrameIndex);
         this.isWaiting = true;
         this.isAnimating = false;
         return false;
@@ -451,75 +554,46 @@ class RLottie {
   }
 
   private getFrame(frameIndex: number) {
-    const chunkIndex = this.getChunkIndex(frameIndex);
-    const indexInChunk = this.getFrameIndexInChunk(frameIndex);
-    const chunk = this.chunks[chunkIndex];
-    if (!chunk) {
-      return undefined;
-    }
-
-    return chunk[indexInChunk];
+    return this.frames[frameIndex];
   }
 
-  private getFrameIndexInChunk(frameIndex: number) {
-    const chunkIndex = this.getChunkIndex(frameIndex);
-    return frameIndex - chunkIndex * this.chunkSize;
-  }
-
-  private getChunkIndex(frameIndex: number) {
-    return Math.floor(frameIndex / this.chunkSize);
-  }
-
-  private requestChunk(chunkIndex: number) {
-    if (this.chunks[chunkIndex] && this.chunks[chunkIndex]?.length !== 0) {
-      return;
-    }
-
-    this.chunks[chunkIndex] = [];
-
-    const fromIndex = chunkIndex * this.chunkSize;
-    const toIndex = Math.min(fromIndex + this.chunkSize - 1, this.framesCount! - 1);
+  private requestFrame(frameIndex: number) {
+    this.frames[frameIndex] = WAITING;
 
     workers[this.workerIndex].request({
       name: 'renderFrames',
-      args: [this.id, fromIndex, toIndex, this.onFrameLoad.bind(this)],
+      args: [this.renderId, frameIndex, this.onFrameLoad.bind(this)],
     });
   }
 
-  private cleanupPrevChunk(chunkIndex: number) {
-    if (this.chunksCount! < 3) {
+  private cleanupPrevFrame(frameIndex: number) {
+    if (this.framesCount! < 3) {
       return;
     }
 
-    const prevChunkIndex = cycleRestrict(this.chunksCount!, chunkIndex - 1);
-    this.chunks[prevChunkIndex] = undefined;
+    const prevFrameIndex = cycleRestrict(this.framesCount!, frameIndex - 1);
+    this.frames[prevFrameIndex] = undefined;
   }
 
-  private requestNextChunk(chunkIndex: number) {
-    if (this.chunksCount === 1) {
+  private onFrameLoad(frameIndex: number, imageBitmap: ImageBitmap) {
+    if (this.frames[frameIndex] !== WAITING) {
       return;
     }
 
-    const nextChunkIndex = cycleRestrict(this.chunksCount!, chunkIndex + 1);
-
-    if (!this.chunks[nextChunkIndex]) {
-      this.requestChunk(nextChunkIndex);
-    }
-  }
-
-  private onFrameLoad(frameIndex: number, arrayBuffer: ArrayBuffer) {
-    const chunkIndex = this.getChunkIndex(frameIndex);
-    const chunk = this.chunks[chunkIndex];
-    // Frame can be skipped and chunk can be already cleaned up
-    if (!chunk) {
-      return;
-    }
-
-    chunk[this.getFrameIndexInChunk(frameIndex)] = arrayBuffer;
+    this.frames[frameIndex] = imageBitmap;
 
     if (this.isWaiting) {
       this.doPlay();
     }
+  }
+}
+
+function ensureCanvasSize(canvas: HTMLCanvasElement, sizeFactor: number) {
+  const expectedWidth = Math.round(canvas.offsetWidth * sizeFactor);
+  const expectedHeight = Math.round(canvas.offsetHeight * sizeFactor);
+  if (canvas.width !== expectedWidth || canvas.height !== expectedHeight) {
+    canvas.width = expectedWidth;
+    canvas.height = expectedHeight;
   }
 }
 

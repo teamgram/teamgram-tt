@@ -1,11 +1,11 @@
-import React, { memo, useState } from '../../lib/teact/teact';
+import React, { memo, useMemo, useState } from '../../lib/teact/teact';
 import { getGlobal } from '../../global';
 
 import type { FC } from '../../lib/teact/teact';
 import type { ObserveFn } from '../../hooks/useIntersectionObserver';
 import type { ApiSticker } from '../../api/types';
 
-import { IS_WEBM_SUPPORTED } from '../../util/environment';
+import { IS_WEBM_SUPPORTED } from '../../util/windowEnvironment';
 import * as mediaLoader from '../../util/mediaLoader';
 import buildClassName from '../../util/buildClassName';
 import generateIdFor from '../../util/generateIdFor';
@@ -17,6 +17,7 @@ import { useIsIntersecting } from '../../hooks/useIntersectionObserver';
 import useThumbnail from '../../hooks/useThumbnail';
 import useMediaTransition from '../../hooks/useMediaTransition';
 import useFlag from '../../hooks/useFlag';
+import useBoundsInSharedCanvas from '../../hooks/useBoundsInSharedCanvas';
 
 import AnimatedSticker from './AnimatedSticker';
 import OptimizedVideo from '../ui/OptimizedVideo';
@@ -36,11 +37,13 @@ type OwnProps = {
   shouldLoop?: boolean;
   shouldPreloadPreview?: boolean;
   forceOnHeavyAnimation?: boolean;
-  observeIntersection?: ObserveFn;
+  observeIntersectionForLoading?: ObserveFn;
   observeIntersectionForPlaying?: ObserveFn;
   noLoad?: boolean;
   noPlay?: boolean;
   withSharedAnimation?: boolean;
+  sharedCanvasRef?: React.RefObject<HTMLCanvasElement>;
+  withTranslucentThumb?: boolean; // With shared canvas thumbs are opaque by default to provide better transition effect
   cacheBuster?: number;
   onVideoEnded?: AnyToVoidFunction;
   onAnimatedStickerLoop?: AnyToVoidFunction;
@@ -63,11 +66,13 @@ const StickerView: FC<OwnProps> = ({
   shouldLoop = false,
   shouldPreloadPreview,
   forceOnHeavyAnimation,
-  observeIntersection,
+  observeIntersectionForLoading,
   observeIntersectionForPlaying,
   noLoad,
   noPlay,
   withSharedAnimation,
+  withTranslucentThumb,
+  sharedCanvasRef,
   cacheBuster,
   onVideoEnded,
   onAnimatedStickerLoop,
@@ -80,9 +85,12 @@ const StickerView: FC<OwnProps> = ({
   const isStatic = !isLottie && !isVideo;
   const previewMediaHash = getStickerPreviewHash(sticker.id);
 
-  const isIntersectingForLoad = useIsIntersecting(containerRef, observeIntersection);
-  const shouldLoad = isIntersectingForLoad && !noLoad;
-  const isIntersectingForPlaying = useIsIntersecting(containerRef, observeIntersectionForPlaying);
+  const isIntersectingForLoading = useIsIntersecting(containerRef, observeIntersectionForLoading);
+  const shouldLoad = isIntersectingForLoading && !noLoad;
+  const isIntersectingForPlaying = (
+    useIsIntersecting(containerRef, observeIntersectionForPlaying)
+    && isIntersectingForLoading
+  );
   const shouldPlay = isIntersectingForPlaying && !noPlay;
 
   const thumbDataUri = useThumbnail(sticker);
@@ -97,39 +105,59 @@ const StickerView: FC<OwnProps> = ({
   const shouldSkipFullMedia = Boolean(fullMediaHash === previewMediaHash && preloadedPreviewData);
 
   const fullMediaData = useMedia(fullMediaHash, !shouldLoad || shouldSkipFullMedia, undefined, cacheBuster);
-  const [isPlayerReady, markPlayerReady] = useFlag(Boolean(isLottie && fullMediaData));
+  // If Lottie data is loaded we will only render thumb if it's good enough (from preview)
+  const [isPlayerReady, markPlayerReady] = useFlag(Boolean(isLottie && fullMediaData && !preloadedPreviewData));
   const isFullMediaReady = fullMediaData && (isStatic || isPlayerReady);
 
+  const isThumbOpaque = sharedCanvasRef && !withTranslucentThumb;
   const thumbClassNames = useMediaTransition(thumbData && !isFullMediaReady);
   const fullMediaClassNames = useMediaTransition(isFullMediaReady);
+  const noTransition = isLottie && preloadedPreviewData;
+
+  const bounds = useBoundsInSharedCanvas(containerRef, sharedCanvasRef);
+  const realSize = size || bounds.size;
 
   // Preload preview for Message Input and local message
   useMedia(previewMediaHash, !shouldLoad || !shouldPreloadPreview, undefined, cacheBuster);
 
-  const [randomIdPrefix] = useState(generateIdFor(ID_STORE, true));
-  const idKey = [
-    (withSharedAnimation ? SHARED_PREFIX : randomIdPrefix), id, size, customColor?.join(','),
+  const randomIdPrefix = useMemo(() => generateIdFor(ID_STORE, true), []);
+  const renderId = [
+    (withSharedAnimation ? SHARED_PREFIX : randomIdPrefix), id, realSize, customColor?.join(','),
   ].filter(Boolean).join('_');
 
   return (
     <>
       <img
         src={thumbData}
-        className={buildClassName(styles.thumb, thumbClassName, thumbClassNames)}
+        className={buildClassName(
+          styles.thumb,
+          noTransition && styles.noTransition,
+          isThumbOpaque && styles.thumbOpaque,
+          thumbClassName,
+          thumbClassNames,
+        )}
         alt=""
+        draggable={false}
       />
       {isLottie ? (
         <AnimatedSticker
-          key={idKey}
-          id={idKey}
-          size={size}
-          className={buildClassName(styles.media, fullMediaClassName, fullMediaClassNames)}
+          key={renderId}
+          renderId={renderId}
+          size={realSize}
+          className={buildClassName(
+            styles.media,
+            (noTransition || isThumbOpaque) && styles.noTransition,
+            fullMediaClassName,
+            fullMediaClassNames,
+          )}
           tgsUrl={fullMediaData}
           play={shouldPlay}
           color={customColor}
           noLoop={!shouldLoop}
           forceOnHeavyAnimation={forceOnHeavyAnimation}
-          isLowPriority={!selectIsAlwaysHighPriorityEmoji(getGlobal(), stickerSetInfo)}
+          isLowPriority={isSmall && !selectIsAlwaysHighPriorityEmoji(getGlobal(), stickerSetInfo)}
+          sharedCanvas={sharedCanvasRef?.current || undefined}
+          sharedCanvasCoords={bounds.coords}
           onLoad={markPlayerReady}
           onLoop={onAnimatedStickerLoop}
           onEnded={onAnimatedStickerLoop}
@@ -143,7 +171,7 @@ const StickerView: FC<OwnProps> = ({
           muted
           loop={!loopLimit}
           disablePictureInPicture
-          onPlay={markPlayerReady}
+          onReady={markPlayerReady}
           onEnded={onVideoEnded}
         />
       ) : (
@@ -151,6 +179,7 @@ const StickerView: FC<OwnProps> = ({
           className={buildClassName(styles.media, fullMediaClassName, fullMediaClassNames)}
           src={fullMediaData}
           alt={emoji}
+          draggable={false}
         />
       )}
     </>

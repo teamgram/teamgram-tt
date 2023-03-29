@@ -7,7 +7,7 @@ import type { ApiMessage, PhoneCallAction } from '../../../api/types';
 import useLang from '../../../hooks/useLang';
 import buildClassName from '../../../util/buildClassName';
 import { formatTimeDuration, formatTime } from '../../../util/dateFormat';
-import { ARE_CALLS_SUPPORTED } from '../../../util/environment';
+import { ARE_CALLS_SUPPORTED } from '../../../util/windowEnvironment';
 
 import Button from '../../ui/Button';
 
@@ -24,7 +24,7 @@ const MessagePhoneCall: FC<OwnProps> = ({
   message,
   chatId,
 }) => {
-  const { requestCall } = getActions();
+  const { requestMasterAndRequestCall } = getActions();
 
   const lang = useLang();
   const { isOutgoing, isVideo, reason } = phoneCall;
@@ -32,8 +32,8 @@ const MessagePhoneCall: FC<OwnProps> = ({
   const isCancelled = reason === 'busy' && !isOutgoing;
 
   const handleCall = useCallback(() => {
-    requestCall({ isVideo, userId: chatId });
-  }, [chatId, isVideo, requestCall]);
+    requestMasterAndRequestCall({ isVideo, userId: chatId });
+  }, [chatId, isVideo, requestMasterAndRequestCall]);
 
   const reasonText = useMemo(() => {
     if (isVideo) {

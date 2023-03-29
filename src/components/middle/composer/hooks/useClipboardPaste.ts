@@ -5,18 +5,26 @@ import type { ApiAttachment, ApiFormattedText, ApiMessage } from '../../../../ap
 import { ApiMessageEntityTypes } from '../../../../api/types';
 
 import buildAttachment from '../helpers/buildAttachment';
-import { EDITABLE_INPUT_ID, EDITABLE_INPUT_MODAL_ID } from '../../../../config';
+import { DEBUG, EDITABLE_INPUT_ID, EDITABLE_INPUT_MODAL_ID } from '../../../../config';
 import getFilesFromDataTransferItems from '../helpers/getFilesFromDataTransferItems';
 import parseMessageInput, { ENTITY_CLASS_BY_NODE_NAME } from '../../../../util/parseMessageInput';
+import cleanDocsHtml from '../../../../lib/cleanDocsHtml';
 import { containsCustomEmoji, stripCustomEmoji } from '../../../../global/helpers/symbols';
 
-const CLIPBOARD_ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/gif'];
 const MAX_MESSAGE_LENGTH = 4096;
 
 const STYLE_TAG_REGEX = /<style>(.*?)<\/style>/gs;
 
 function preparePastedHtml(html: string) {
   let fragment = document.createElement('div');
+  try {
+    html = cleanDocsHtml(html);
+  } catch (err) {
+    if (DEBUG) {
+      // eslint-disable-next-line no-console
+      console.error(err);
+    }
+  }
   fragment.innerHTML = html.replace(/\u00a0/g, ' ').replace(STYLE_TAG_REGEX, ''); // Strip &nbsp and styles
 
   const textContents = fragment.querySelectorAll<HTMLDivElement>('.text-content');
@@ -90,20 +98,20 @@ const useClipboardPaste = (
       }
 
       const { items } = e.clipboardData;
-      let files: File[] = [];
+      let files: File[] | undefined = [];
 
       e.preventDefault();
       if (items.length > 0) {
         files = await getFilesFromDataTransferItems(items);
       }
 
-      if (files.length === 0 && !pastedText) {
+      if (!files?.length && !pastedText) {
         return;
       }
 
-      if (files.length > 0 && !editedMessage) {
+      if (files?.length && !editedMessage) {
         const newAttachments = await Promise.all(files.map((file) => {
-          return buildAttachment(file.name, file, files.length === 1 && CLIPBOARD_ACCEPTED_TYPES.includes(file.type));
+          return buildAttachment(file.name, file);
         }));
         setAttachments((attachments) => attachments.concat(newAttachments));
       }

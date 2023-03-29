@@ -51,6 +51,39 @@
 .icon-volume-3:before {
   content: "\e991";
 }
+.icon-archive-filled:before {
+  content: "\e9ba";
+}
+.icon-archive-from-main:before {
+  content: "\e9bb";
+}
+.icon-archive-to-main:before {
+  content: "\e9bc";
+}
+.icon-collapse:before {
+  content: "\e9bd";
+}
+.icon-expand:before {
+  content: "\e9be";
+}
+.icon-replies:before {
+  content: "\e9b9";
+}
+.icon-forums:before {
+  content: "\e9b4";
+}
+.icon-hashtag:before {
+  content: "\e9b1";
+}
+.icon-reopen-topic:before {
+  content: "\e9b2";
+}
+.icon-close-topic:before {
+  content: "\e9b3";
+}
+.icon-open-in-new-tab:before {
+  content: "\e9af";
+}
 .icon-pip:before {
   content: "\e9ae";
 }
@@ -234,6 +267,9 @@
 .icon-link:before {
   content: "\e969";
 }
+.icon-link-broken:before {
+  content: "\e9b0";
+}
 .icon-mention:before {
   content: "\e96a";
 }
@@ -269,6 +305,18 @@
 }
 .icon-zoom-out:before {
   content: "\e975";
+}
+.icon-spoiler-disable:before {
+  content: "\e9b5";
+}
+.icon-grouped:before {
+  content: "\e9b6";
+}
+.icon-grouped-disable:before {
+  content: "\e9b7";
+}
+.icon-spoiler:before {
+  content: "\e9b8";
 }
 .icon-select:before {
   content: "\e960";

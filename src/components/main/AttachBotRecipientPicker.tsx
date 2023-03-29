@@ -2,7 +2,7 @@ import React, { memo, useCallback, useEffect } from '../../lib/teact/teact';
 import { getActions } from '../../global';
 
 import type { FC } from '../../lib/teact/teact';
-import type { GlobalState } from '../../global/types';
+import type { TabState } from '../../global/types';
 
 import useLang from '../../hooks/useLang';
 import useFlag from '../../hooks/useFlag';
@@ -10,7 +10,7 @@ import useFlag from '../../hooks/useFlag';
 import RecipientPicker from '../common/RecipientPicker';
 
 export type OwnProps = {
-  requestedAttachBotInChat?: GlobalState['requestedAttachBotInChat'];
+  requestedAttachBotInChat?: TabState['requestedAttachBotInChat'];
 };
 
 const AttachBotRecipientPicker: FC<OwnProps> = ({
@@ -27,12 +27,12 @@ const AttachBotRecipientPicker: FC<OwnProps> = ({
     }
   }, [isOpen, markIsShown]);
 
-  const { botId, filter, startParam } = requestedAttachBotInChat || {};
+  const { bot, filter, startParam } = requestedAttachBotInChat || {};
 
   const handlePeerRecipient = useCallback((recipientId: string) => {
-    callAttachBot({ botId: botId!, chatId: recipientId, startParam });
+    callAttachBot({ bot: bot!, chatId: recipientId, startParam });
     cancelAttachBotInChat();
-  }, [botId, callAttachBot, cancelAttachBotInChat, startParam]);
+  }, [bot, callAttachBot, cancelAttachBotInChat, startParam]);
 
   if (!isOpen && !isShown) {
     return undefined;

@@ -3,6 +3,7 @@ dist
 
 src/lib/rlottie/rlottie-wasm.js
 src/lib/webp/webp_wasm.js
+src/lib/fasttextweb/fasttext-wasm.js
 
 src/lib/gramjs/tl/types-generator/template.js
 src/lib/gramjs/tl/api.d.ts
@@ -19,8 +20,9 @@ src/lib/lovely-chart
 
 src/lib/music-metadata-browser
 
-webpack.config.js
 jest.config.js
 src/lib/secret-sauce/
 plugins/wholePixel.js
 playwright.config.ts
+
+dist/*

@@ -23,12 +23,13 @@ import { addNotifyExceptions, replaceSettings } from '../global/reducers';
 import {
   selectChatMessage,
   selectCurrentMessageList,
+  selectTopicFromMessage,
   selectNotifyExceptions,
   selectNotifySettings,
   selectUser,
 } from '../global/selectors';
-import { IS_SERVICE_WORKER_SUPPORTED, IS_TOUCH_ENV } from './environment';
-import { getTranslation } from './langProvider';
+import { IS_SERVICE_WORKER_SUPPORTED, IS_TOUCH_ENV } from './windowEnvironment';
+import { translate } from './langProvider';
 import * as mediaLoader from './mediaLoader';
 import { debounce } from './schedulers';
 
@@ -178,12 +179,8 @@ let areSettingsLoaded = false;
 async function loadNotificationSettings() {
   if (areSettingsLoaded) return selectNotifySettings(getGlobal());
   const [resultSettings, resultExceptions] = await Promise.all([
-    callApi('fetchNotificationSettings', {
-      serverTimeOffset: getGlobal().serverTimeOffset,
-    }),
-    callApi('fetchNotificationExceptions', {
-      serverTimeOffset: getGlobal().serverTimeOffset,
-    }),
+    callApi('fetchNotificationSettings'),
+    callApi('fetchNotificationExceptions'),
   ]);
   if (!resultSettings) return selectNotifySettings(getGlobal());
 
@@ -291,7 +288,9 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
       .filter(Boolean)
     : undefined;
   const privateChatUserId = getPrivateChatUserId(chat);
-  const privateChatUser = privateChatUserId ? selectUser(global, privateChatUserId) : undefined;
+  const isSelf = privateChatUserId === global.currentUserId;
+
+  const topic = selectTopicFromMessage(global, message);
 
   let body: string;
   if (
@@ -302,18 +301,20 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
       const isChat = chat && (isChatChannel(chat) || message.senderId === message.chatId);
 
       body = renderActionMessageText(
-        getTranslation,
+        translate,
         message,
         !isChat ? messageSender : undefined,
         isChat ? chat : undefined,
         actionTargetUsers,
         actionTargetMessage,
         actionTargetChatId,
+        topic,
         { asPlainText: true },
       ) as string;
     } else {
-      const senderName = getMessageSenderName(getTranslation, chat.id, messageSender);
-      const summary = getMessageSummaryText(getTranslation, message, false, 60, false);
+      // TODO[forums] Support ApiChat
+      const senderName = getMessageSenderName(translate, chat.id, messageSender);
+      const summary = getMessageSummaryText(translate, message, false, 60, false);
 
       body = senderName ? `${senderName}: ${summary}` : summary;
     }
@@ -321,7 +322,7 @@ function getNotificationContent(chat: ApiChat, message: ApiMessage, reaction?: A
     body = 'New message';
   }
 
-  let title = isScreenLocked ? APP_NAME : getChatTitle(getTranslation, chat, privateChatUser);
+  let title = isScreenLocked ? APP_NAME : getChatTitle(translate, chat, isSelf);
 
   if (message.isSilent) {
     title += ' 🔕';
@@ -364,7 +365,7 @@ export async function notifyAboutCall({
     options.vibrate = [200, 100, 200];
   }
 
-  const notification = new Notification(getTranslation('VoipIncoming'), options);
+  const notification = new Notification(translate('VoipIncoming'), options);
 
   notification.onclick = () => {
     notification.close();
@@ -441,7 +442,7 @@ export async function notifyAboutMessage({
       notification.close();
       dispatch.focusMessage({
         chatId: chat.id,
-        messageId: message.id,
+        messageId: message.id!,
         shouldReplaceHistory: true,
       });
       if (window.focus) {

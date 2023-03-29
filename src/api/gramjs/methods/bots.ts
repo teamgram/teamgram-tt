@@ -100,17 +100,19 @@ export async function fetchInlineBotResults({
   return {
     isGallery: Boolean(result.gallery),
     help: bot.botPlaceholder,
-    nextOffset: getInlineBotResultsNextOffset(bot.username, result.nextOffset),
+    nextOffset: getInlineBotResultsNextOffset(bot.usernames![0].username, result.nextOffset),
     switchPm: buildBotSwitchPm(result.switchPm),
     users: result.users.map(buildApiUser).filter(Boolean),
     results: processInlineBotResult(String(result.queryId), result.results),
+    cacheTime: result.cacheTime,
   };
 }
 
 export async function sendInlineBotResult({
-  chat, resultId, queryId, replyingTo, sendAs, isSilent, scheduleDate,
+  chat, replyingToTopId, resultId, queryId, replyingTo, sendAs, isSilent, scheduleDate,
 }: {
   chat: ApiChat;
+  replyingToTopId?: number;
   resultId: string;
   queryId: string;
   replyingTo?: number;
@@ -127,6 +129,7 @@ export async function sendInlineBotResult({
     peer: buildInputPeer(chat.id, chat.accessHash),
     id: resultId,
     scheduleDate,
+    ...(replyingToTopId && { topMsgId: replyingToTopId }),
     ...(isSilent && { silent: true }),
     ...(replyingTo && { replyToMsgId: replyingTo }),
     ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
@@ -156,6 +159,7 @@ export async function requestWebView({
   url,
   startParam,
   replyToMessageId,
+  threadId,
   theme,
   sendAs,
   isFromBotMenu,
@@ -166,6 +170,7 @@ export async function requestWebView({
   url?: string;
   startParam?: string;
   replyToMessageId?: number;
+  threadId?: number;
   theme?: ApiThemeParameters;
   sendAs?: ApiUser | ApiChat;
   isFromBotMenu?: boolean;
@@ -180,6 +185,7 @@ export async function requestWebView({
     themeParams: theme ? buildInputThemeParams(theme) : undefined,
     fromBotMenu: isFromBotMenu || undefined,
     platform: 'webz',
+    ...(threadId && { topMsgId: threadId }),
     ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
   }));
 
@@ -216,6 +222,7 @@ export function prolongWebView({
   bot,
   queryId,
   replyToMessageId,
+  threadId,
   sendAs,
 }: {
   isSilent?: boolean;
@@ -223,6 +230,7 @@ export function prolongWebView({
   bot: ApiUser;
   queryId: string;
   replyToMessageId?: number;
+  threadId?: number;
   sendAs?: ApiUser | ApiChat;
 }) {
   return invokeRequest(new GramJs.messages.ProlongWebView({
@@ -231,6 +239,7 @@ export function prolongWebView({
     bot: buildInputPeer(bot.id, bot.accessHash),
     queryId: BigInt(queryId),
     replyToMsgId: replyToMessageId,
+    ...(threadId && { topMsgId: threadId }),
     ...(sendAs && { sendAs: buildInputPeer(sendAs.id, sendAs.accessHash) }),
   }));
 }
@@ -265,6 +274,26 @@ export async function loadAttachBots({
     return {
       hash: result.hash.toString(),
       bots: buildCollectionByKey(result.bots.map(buildApiAttachBot), 'id'),
+      users: result.users.map(buildApiUser).filter(Boolean),
+    };
+  }
+  return undefined;
+}
+
+export async function loadAttachBot({
+  bot,
+}: {
+  bot: ApiUser;
+}) {
+  const result = await invokeRequest(new GramJs.messages.GetAttachMenuBot({
+    bot: buildInputPeer(bot.id, bot.accessHash),
+  }));
+
+  if (result instanceof GramJs.AttachMenuBotsBot) {
+    addEntitiesWithPhotosToLocalDb(result.users);
+    return {
+      bot: buildApiAttachBot(result.bot),
+      users: result.users.map(buildApiUser).filter(Boolean),
     };
   }
   return undefined;
@@ -272,13 +301,16 @@ export async function loadAttachBots({
 
 export function toggleAttachBot({
   bot,
+  isWriteAllowed,
   isEnabled,
 }: {
   bot: ApiUser;
+  isWriteAllowed?: boolean;
   isEnabled: boolean;
 }) {
   return invokeRequest(new GramJs.messages.ToggleBotInAttachMenu({
     bot: buildInputPeer(bot.id, bot.accessHash),
+    writeAllowed: isWriteAllowed || undefined,
     enabled: isEnabled,
   }));
 }

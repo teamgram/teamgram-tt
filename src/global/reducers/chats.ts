@@ -1,15 +1,21 @@
 import type { GlobalState } from '../types';
-import type { ApiChat, ApiChatMember, ApiPhoto } from '../../api/types';
+import type {
+  ApiChat, ApiChatMember, ApiTopic, ApiPhoto,
+} from '../../api/types';
 
 import { ARCHIVED_FOLDER_ID } from '../../config';
-import { areSortedArraysEqual, omit } from '../../util/iteratees';
-import { selectChatListType } from '../selectors';
+import {
+  areSortedArraysEqual, buildCollectionByKey, omit, unique,
+} from '../../util/iteratees';
+import { selectChat, selectChatListType } from '../selectors';
+import { updateThread, updateThreadInfo } from './messages';
+import { areDeepEqual } from '../../util/areDeepEqual';
 
-export function replaceChatListIds(
-  global: GlobalState,
+export function replaceChatListIds<T extends GlobalState>(
+  global: T,
   type: 'active' | 'archived',
   newIds: string[] | undefined,
-): GlobalState {
+): T {
   return {
     ...global,
     chats: {
@@ -22,7 +28,9 @@ export function replaceChatListIds(
   };
 }
 
-export function updateChatListIds(global: GlobalState, type: 'active' | 'archived', idsUpdate: string[]): GlobalState {
+export function updateChatListIds<T extends GlobalState>(
+  global: T, type: 'active' | 'archived', idsUpdate: string[],
+): T {
   const { [type]: listIds } = global.chats.listIds;
   const newIds = listIds?.length
     ? idsUpdate.filter((id) => !listIds.includes(id))
@@ -38,7 +46,7 @@ export function updateChatListIds(global: GlobalState, type: 'active' | 'archive
   ]);
 }
 
-export function replaceChats(global: GlobalState, newById: Record<string, ApiChat>): GlobalState {
+export function replaceChats<T extends GlobalState>(global: T, newById: Record<string, ApiChat>): T {
   return {
     ...global,
     chats: {
@@ -48,10 +56,10 @@ export function replaceChats(global: GlobalState, newById: Record<string, ApiCha
   };
 }
 
-export function updateChat(
-  global: GlobalState, chatId: string, chatUpdate: Partial<ApiChat>, photo?: ApiPhoto,
+export function updateChat<T extends GlobalState>(
+  global: T, chatId: string, chatUpdate: Partial<ApiChat>, photo?: ApiPhoto,
   noOmitUnreadReactionCount = false,
-): GlobalState {
+): T {
   const { byId } = global.chats;
 
   const updatedChat = getUpdatedChat(global, chatId, chatUpdate, photo, noOmitUnreadReactionCount);
@@ -65,7 +73,7 @@ export function updateChat(
   });
 }
 
-export function updateChats(global: GlobalState, newById: Record<string, ApiChat>): GlobalState {
+export function updateChats<T extends GlobalState>(global: T, newById: Record<string, ApiChat>): T {
   const updatedById = Object.keys(newById).reduce((acc: Record<string, ApiChat>, id) => {
     const updatedChat = getUpdatedChat(global, id, newById[id]);
     if (updatedChat) {
@@ -84,7 +92,7 @@ export function updateChats(global: GlobalState, newById: Record<string, ApiChat
 }
 
 // @optimization Allows to avoid redundant updates which cause a lot of renders
-export function addChats(global: GlobalState, newById: Record<string, ApiChat>): GlobalState {
+export function addChats<T extends GlobalState>(global: T, newById: Record<string, ApiChat>): T {
   const { byId } = global.chats;
   let isUpdated = false;
 
@@ -114,21 +122,36 @@ export function addChats(global: GlobalState, newById: Record<string, ApiChat>):
 }
 
 // @optimization Don't spread/unspread global for each element, do it in a batch
-function getUpdatedChat(
-  global: GlobalState, chatId: string, chatUpdate: Partial<ApiChat>, photo?: ApiPhoto,
+function getUpdatedChat<T extends GlobalState>(
+  global: T, chatId: string, chatUpdate: Partial<ApiChat>, photo?: ApiPhoto,
   noOmitUnreadReactionCount = false,
 ) {
   const { byId } = global.chats;
   const chat = byId[chatId];
-  const shouldOmitMinInfo = chatUpdate.isMin && chat && !chat.isMin;
+  const omitProps: (keyof ApiChat)[] = [];
 
-  chatUpdate = noOmitUnreadReactionCount
-    ? chatUpdate : omit(chatUpdate, ['unreadReactionsCount']);
+  const shouldIgnoreUndefinedFields = chatUpdate.isMin && chat && !chat.isMin;
+  if (shouldIgnoreUndefinedFields) {
+    omitProps.push('isMin', 'accessHash');
+    Object.keys(chatUpdate).forEach((key) => {
+      const prop = key as keyof ApiChat;
+      if (chatUpdate[prop] === undefined) {
+        omitProps.push(prop);
+      }
+    });
+  }
+
+  if (!noOmitUnreadReactionCount) {
+    omitProps.push('unreadReactionsCount');
+  }
+
+  if (areDeepEqual(chat?.usernames, chatUpdate.usernames)) {
+    omitProps.push('usernames');
+  }
+
   const updatedChat: ApiChat = {
     ...chat,
-    ...(shouldOmitMinInfo
-      ? omit(chatUpdate, ['isMin', 'accessHash'])
-      : chatUpdate),
+    ...omit(chatUpdate, omitProps),
     ...(photo && { photos: [photo, ...(chat.photos || [])] }),
   };
 
@@ -139,11 +162,11 @@ function getUpdatedChat(
   return updatedChat;
 }
 
-export function updateChatListType(
-  global: GlobalState,
+export function updateChatListType<T extends GlobalState>(
+  global: T,
   chatId: string,
   folderId?: number,
-): GlobalState {
+): T {
   const listType = folderId === ARCHIVED_FOLDER_ID ? 'archived' : 'active';
 
   let currentListIds = global.chats.listIds;
@@ -175,14 +198,14 @@ export function updateChatListType(
   return global;
 }
 
-export function updateChatListSecondaryInfo(
-  global: GlobalState,
+export function updateChatListSecondaryInfo<T extends GlobalState>(
+  global: T,
   type: 'active' | 'archived',
   info: {
     orderedPinnedIds?: string[];
     totalChatCount: number;
   },
-): GlobalState {
+): T {
   const totalCountKey = type === 'active' ? 'all' : 'archived';
 
   return {
@@ -207,7 +230,7 @@ export function updateChatListSecondaryInfo(
   };
 }
 
-export function leaveChat(global: GlobalState, leftChatId: string): GlobalState {
+export function leaveChat<T extends GlobalState>(global: T, leftChatId: string): T {
   const listType = selectChatListType(global, leftChatId);
   if (!listType) {
     return global;
@@ -224,7 +247,7 @@ export function leaveChat(global: GlobalState, leftChatId: string): GlobalState 
   return global;
 }
 
-export function addChatMembers(global: GlobalState, chat: ApiChat, membersToAdd: ApiChatMember[]): GlobalState {
+export function addChatMembers<T extends GlobalState>(global: T, chat: ApiChat, membersToAdd: ApiChatMember[]): T {
   const currentMembers = chat.fullInfo?.members;
   const newMemberIds = new Set(membersToAdd.map((m) => m.userId));
   const updatedMembers = [
@@ -238,10 +261,103 @@ export function addChatMembers(global: GlobalState, chat: ApiChat, membersToAdd:
     return global;
   }
 
+  const adminMembers = updatedMembers.filter(({ isAdmin, isOwner }) => isAdmin || isOwner);
+
   return updateChat(global, chat.id, {
     fullInfo: {
       ...chat.fullInfo,
       members: updatedMembers,
+      adminMembersById: buildCollectionByKey(adminMembers, 'userId'),
     },
   });
+}
+
+export function updateListedTopicIds<T extends GlobalState>(
+  global: T, chatId: string, topicIds: number[],
+): T {
+  return updateChat(global, chatId, {
+    listedTopicIds: unique([
+      ...(global.chats.byId[chatId]?.listedTopicIds || []),
+      ...topicIds,
+    ]),
+  });
+}
+
+export function updateTopics<T extends GlobalState>(
+  global: T, chatId: string, topicsCount: number, topics: ApiTopic[],
+): T {
+  const chat = selectChat(global, chatId);
+
+  const newTopics = buildCollectionByKey(topics, 'id');
+
+  global = updateChat(global, chatId, {
+    topics: {
+      ...chat?.topics,
+      ...newTopics,
+    },
+    topicsCount,
+  });
+
+  topics.forEach((topic) => {
+    global = updateThread(global, chatId, topic.id, {
+      firstMessageId: topic.id,
+    });
+
+    global = updateThreadInfo(global, chatId, topic.id, {
+      lastMessageId: topic.lastMessageId,
+      threadId: topic.id,
+      chatId,
+    });
+  });
+
+  return global;
+}
+
+export function updateTopic<T extends GlobalState>(
+  global: T, chatId: string, topicId: number, update: Partial<ApiTopic>,
+): T {
+  const chat = selectChat(global, chatId);
+
+  if (!chat) return global;
+
+  const topic = chat?.topics?.[topicId];
+
+  const updatedTopic = {
+    ...topic,
+    ...update,
+  } as ApiTopic;
+
+  if (!updatedTopic.id) return global;
+
+  global = updateChat(global, chatId, {
+    topics: {
+      ...(chat.topics || {}),
+      [topicId]: updatedTopic,
+    },
+  });
+
+  global = updateThread(global, chatId, updatedTopic.id, {
+    firstMessageId: updatedTopic.id,
+  });
+
+  global = updateThreadInfo(global, chatId, updatedTopic.id, {
+    lastMessageId: updatedTopic.lastMessageId,
+    threadId: updatedTopic.id,
+    chatId,
+  });
+
+  return global;
+}
+
+export function deleteTopic<T extends GlobalState>(
+  global: T, chatId: string, topicId: number,
+) {
+  const chat = selectChat(global, chatId);
+  const topics = chat?.topics || [];
+
+  global = updateChat(global, chatId, {
+    topics: omit(topics, [topicId]),
+  });
+
+  return global;
 }

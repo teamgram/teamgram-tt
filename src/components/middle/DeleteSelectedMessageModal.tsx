@@ -2,7 +2,9 @@ import type { FC } from '../../lib/teact/teact';
 import React, { useCallback, memo, useEffect } from '../../lib/teact/teact';
 import { getActions, withGlobal } from '../../global';
 
-import { selectCanDeleteSelectedMessages, selectCurrentChat, selectUser } from '../../global/selectors';
+import {
+  selectCanDeleteSelectedMessages, selectCurrentChat, selectTabState, selectUser,
+} from '../../global/selectors';
 import {
   isUserId,
   getUserFirstOrLastName,
@@ -51,14 +53,14 @@ const DeleteSelectedMessageModal: FC<OwnProps & StateProps> = ({
 
   const handleDeleteMessageForAll = useCallback(() => {
     onClose();
-    deleteMessages({ messageIds: selectedMessageIds, shouldDeleteForAll: true });
+    deleteMessages({ messageIds: selectedMessageIds!, shouldDeleteForAll: true });
   }, [deleteMessages, selectedMessageIds, onClose]);
 
   const handleDeleteMessageForSelf = useCallback(() => {
     if (isSchedule) {
-      deleteScheduledMessages({ messageIds: selectedMessageIds });
+      deleteScheduledMessages({ messageIds: selectedMessageIds! });
     } else {
-      deleteMessages({ messageIds: selectedMessageIds, shouldDeleteForAll: false });
+      deleteMessages({ messageIds: selectedMessageIds!, shouldDeleteForAll: false });
     }
 
     onClose();
@@ -92,24 +94,26 @@ const DeleteSelectedMessageModal: FC<OwnProps & StateProps> = ({
       {willDeleteForAll && (
         <p>This will delete them for everyone in this chat.</p>
       )}
-      {canDeleteForAll && (
-        <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteMessageForAll}>
-          {contactName
-            ? renderText(lang('ChatList.DeleteForEveryone', contactName))
-            : lang('Conversation.DeleteMessagesForEveryone')}
+      <div className={canDeleteForAll ? 'dialog-buttons-column' : 'dialog-buttons'}>
+        {canDeleteForAll && (
+          <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteMessageForAll}>
+            {contactName
+              ? renderText(lang('ChatList.DeleteForEveryone', contactName))
+              : lang('Conversation.DeleteMessagesForEveryone')}
+          </Button>
+        )}
+        <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteMessageForSelf}>
+          {lang(canDeleteForAll ? 'ChatList.DeleteForCurrentUser' : 'Delete')}
         </Button>
-      )}
-      <Button color="danger" className="confirm-dialog-button" isText onClick={handleDeleteMessageForSelf}>
-        {lang(canDeleteForAll ? 'ChatList.DeleteForCurrentUser' : 'Delete')}
-      </Button>
-      <Button className="confirm-dialog-button" isText onClick={onClose}>{lang('Cancel')}</Button>
+        <Button className="confirm-dialog-button" isText onClick={onClose}>{lang('Cancel')}</Button>
+      </div>
     </Modal>
   );
 };
 
 export default memo(withGlobal<OwnProps>(
   (global, { isSchedule }): StateProps => {
-    const { messageIds: selectedMessageIds } = global.selectedMessages || {};
+    const { messageIds: selectedMessageIds } = selectTabState(global).selectedMessages || {};
     const { canDeleteForAll } = selectCanDeleteSelectedMessages(global);
     const chat = selectCurrentChat(global);
     const contactName = chat && isUserId(chat.id)

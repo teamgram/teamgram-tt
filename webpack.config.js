@@ -1,5 +1,5 @@
-const path = require("path");
-const dotenv = require("dotenv");
+const path = require('path');
+const dotenv = require('dotenv');
 
 const {
   DefinePlugin,
@@ -7,61 +7,66 @@ const {
   ProvidePlugin,
   ContextReplacementPlugin,
   NormalModuleReplacementPlugin,
-} = require("webpack");
-const HtmlWebpackPlugin = require("html-webpack-plugin");
-const MiniCssExtractPlugin = require("mini-css-extract-plugin");
-const { GitRevisionPlugin } = require("git-revision-webpack-plugin");
-const StatoscopeWebpackPlugin = require("@statoscope/webpack-plugin").default;
-const WebpackContextExtension = require("./dev/webpackContextExtension");
-const appVersion = require("./package.json").version;
+} = require('webpack');
+const HtmlWebpackPlugin = require('html-webpack-plugin');
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const { GitRevisionPlugin } = require('git-revision-webpack-plugin');
+const StatoscopeWebpackPlugin = require('@statoscope/webpack-plugin').default;
+const WebpackContextExtension = require('./dev/webpackContextExtension');
+const appVersion = require('./package.json').version;
 
-const { HEAD, APP_ENV = "production", APP_MOCKED_CLIENT = "" } = process.env;
+const { HEAD, APP_ENV = 'production', APP_MOCKED_CLIENT = '' } = process.env;
 
 dotenv.config();
 
-const { BASE_URL = "https://web.teamgram.net/z/" } = process.env;
+const DEFAULT_APP_TITLE = `Teamgram${APP_ENV !== 'production' ? ' Beta' : ''}`;
 
-module.exports = (_env, { mode = "production" }) => {
+const {
+  BASE_URL = 'https://web.teamgram.net/z/',
+  APP_TITLE = DEFAULT_APP_TITLE,
+} = process.env;
+
+module.exports = (_env, { mode = 'production' }) => {
   return {
     mode,
-    entry: "./src/index.tsx",
-    target: "web",
+    entry: './src/index.tsx',
+    target: 'web',
 
     devServer: {
-      port: 50234,
-      host: "0.0.0.0",
-      allowedHosts: "all",
+      port: 1234,
+      host: '0.0.0.0',
+      allowedHosts: 'all',
       hot: false,
       static: [
         {
-          directory: path.resolve(__dirname, "public"),
+          directory: path.resolve(__dirname, 'public'),
         },
         {
-          directory: path.resolve(__dirname, "node_modules/emoji-data-ios"),
+          directory: path.resolve(__dirname, 'node_modules/emoji-data-ios'),
         },
         {
-          directory: path.resolve(__dirname, "node_modules/opus-recorder/dist"),
+          directory: path.resolve(__dirname, 'node_modules/opus-recorder/dist'),
         },
         {
-          directory: path.resolve(__dirname, "src/lib/webp"),
+          directory: path.resolve(__dirname, 'src/lib/webp'),
         },
         {
-          directory: path.resolve(__dirname, "src/lib/rlottie"),
+          directory: path.resolve(__dirname, 'src/lib/rlottie'),
         },
         {
-          directory: path.resolve(__dirname, "src/lib/secret-sauce"),
+          directory: path.resolve(__dirname, 'src/lib/secret-sauce'),
         },
       ],
       devMiddleware: {
-        stats: "minimal",
+        stats: 'minimal',
       },
     },
 
     output: {
-      filename: "[name].[contenthash].js",
-      chunkFilename: "[id].[chunkhash].js",
-      assetModuleFilename: "[name].[contenthash][ext]",
-      path: path.resolve(__dirname, "dist"),
+      filename: '[name].[contenthash].js',
+      chunkFilename: '[id].[chunkhash].js',
+      assetModuleFilename: '[name].[contenthash][ext]',
+      path: path.resolve(__dirname, 'dist'),
       clean: true,
     },
 
@@ -69,7 +74,7 @@ module.exports = (_env, { mode = "production" }) => {
       rules: [
         {
           test: /\.(ts|tsx|js)$/,
-          loader: "babel-loader",
+          loader: 'babel-loader',
           exclude: /node_modules/,
         },
         {
@@ -77,12 +82,12 @@ module.exports = (_env, { mode = "production" }) => {
           use: [
             MiniCssExtractPlugin.loader,
             {
-              loader: "css-loader",
+              loader: 'css-loader',
               options: {
                 importLoaders: 1,
               },
             },
-            "postcss-loader",
+            'postcss-loader',
           ],
         },
         {
@@ -90,41 +95,41 @@ module.exports = (_env, { mode = "production" }) => {
           use: [
             MiniCssExtractPlugin.loader,
             {
-              loader: "css-loader",
+              loader: 'css-loader',
               options: {
                 modules: {
-                  exportLocalsConvention: "camelCase",
+                  exportLocalsConvention: 'camelCase',
                   auto: true,
                   localIdentName:
-                    mode === "production" ? "[hash:base64]" : "[name]__[local]",
+                    mode === 'production' ? '[hash:base64]' : '[name]__[local]',
                 },
               },
             },
-            "postcss-loader",
-            "sass-loader",
+            'postcss-loader',
+            'sass-loader',
           ],
         },
         {
           test: /\.(woff(2)?|ttf|eot|svg|png|jpg|tgs)(\?v=\d+\.\d+\.\d+)?$/,
-          type: "asset/resource",
+          type: 'asset/resource',
         },
         {
           test: /\.wasm$/,
-          type: "asset/resource",
+          type: 'asset/resource',
         },
         {
           test: /\.(txt|tl)$/i,
-          type: "asset/source",
+          type: 'asset/source',
         },
       ],
     },
 
     resolve: {
-      extensions: [".js", ".ts", ".tsx"],
+      extensions: ['.js', '.ts', '.tsx'],
       fallback: {
-        path: require.resolve("path-browserify"),
-        os: require.resolve("os-browserify/browser"),
-        buffer: require.resolve("buffer/"),
+        path: require.resolve('path-browserify'),
+        os: require.resolve('os-browserify/browser'),
+        buffer: require.resolve('buffer/'),
         fs: false,
         crypto: false,
       },
@@ -133,79 +138,80 @@ module.exports = (_env, { mode = "production" }) => {
     plugins: [
       // Clearing of the unused files for code highlight for smaller chunk count
       new ContextReplacementPlugin(
-        /highlight\.js\/lib\/languages/,
-        /^((?!\.js\.js).)*$/
+        /highlight\.js[\\/]lib[\\/]languages/,
+        /^((?!\.js\.js).)*$/,
       ),
-      ...(APP_MOCKED_CLIENT === "1"
+      ...(APP_MOCKED_CLIENT === '1'
         ? [
-            new NormalModuleReplacementPlugin(
-              /src\/lib\/gramjs\/client\/TelegramClient\.js/,
-              "./MockClient.ts"
-            ),
-          ]
+          new NormalModuleReplacementPlugin(
+            /src[\\/]lib[\\/]gramjs[\\/]client[\\/]TelegramClient\.js/,
+            './MockClient.ts',
+          ),
+        ]
         : []),
       new HtmlWebpackPlugin({
-        appName:
-          APP_ENV === "production" ? "Teamgram Web" : "Teamgram Web Beta",
+        appTitle: APP_TITLE,
         appleIcon:
-          APP_ENV === "production"
-            ? "apple-touch-icon"
-            : "apple-touch-icon-dev",
+          APP_ENV === 'production'
+            ? 'apple-touch-icon'
+            : 'apple-touch-icon-dev',
         mainIcon:
-          APP_ENV === "production" ? "icon-192x192" : "icon-dev-192x192",
+          APP_ENV === 'production' ? 'icon-192x192' : 'icon-dev-192x192',
         manifest:
-          APP_ENV === "production"
-            ? "site.webmanifest"
-            : "site_dev.webmanifest",
+          APP_ENV === 'production'
+            ? 'site.webmanifest'
+            : 'site_dev.webmanifest',
         baseUrl: BASE_URL,
-        template: "src/index.html",
+        template: 'src/index.html',
       }),
       new MiniCssExtractPlugin({
-        filename: "[name].[contenthash].css",
-        chunkFilename: "[name].[chunkhash].css",
+        filename: '[name].[contenthash].css',
+        chunkFilename: '[name].[chunkhash].css',
         ignoreOrder: true,
       }),
       new EnvironmentPlugin({
         APP_ENV,
         APP_MOCKED_CLIENT,
+        // eslint-disable-next-line no-null/no-null
         APP_NAME: null,
         APP_VERSION: appVersion,
+        APP_TITLE,
         RELEASE_DATETIME: Date.now(),
         TELEGRAM_T_API_ID: undefined,
         TELEGRAM_T_API_HASH: undefined,
+        // eslint-disable-next-line no-null/no-null
         TEST_SESSION: null,
       }),
       new DefinePlugin({
         APP_REVISION: DefinePlugin.runtimeValue(
           () => {
             const { branch, commit } = getGitMetadata();
-            const shouldDisplayCommit =
-              APP_ENV === "staging" || !branch || branch === "HEAD";
+            const shouldDisplayCommit = APP_ENV === 'staging' || !branch || branch === 'HEAD';
             return JSON.stringify(shouldDisplayCommit ? commit : branch);
           },
-          mode === "development" ? true : []
+          mode === 'development' ? true : [],
         ),
       }),
       new ProvidePlugin({
-        Buffer: ["buffer", "Buffer"],
+        Buffer: ['buffer', 'Buffer'],
       }),
       new StatoscopeWebpackPlugin({
         statsOptions: {
           context: __dirname,
         },
-        saveReportTo: path.resolve("./public/statoscope-report.html"),
-        saveStatsTo: path.resolve("./public/build-stats.json"),
+        saveReportTo: path.resolve('./public/statoscope-report.html'),
+        saveStatsTo: path.resolve('./public/build-stats.json'),
         normalizeStats: true,
-        open: "file",
+        open: 'file',
         extensions: [new WebpackContextExtension()],
       }),
     ],
 
-    devtool: "source-map",
+    devtool: 'source-map',
 
-    ...(APP_ENV !== "production" && {
+    ...(APP_ENV !== 'production' && {
       optimization: {
-        chunkIds: "named",
+        chunkIds: 'named',
       },
     }),
   };

@@ -2,13 +2,12 @@ import React, { memo, useCallback, useEffect } from '../../lib/teact/teact';
 import { getActions } from '../../lib/teact/teactn';
 
 import type { FC } from '../../lib/teact/teact';
-import type { GlobalState } from '../../global/types';
+import type { TabState } from '../../global/types';
 import { MAIN_THREAD_ID } from '../../api/types';
 
 import { withGlobal } from '../../global';
 import { selectChat } from '../../global/selectors';
 import { getCanPostInChat } from '../../global/helpers';
-import windowSize from '../../util/windowSize';
 
 import useLang from '../../hooks/useLang';
 import useSendMessageAction from '../../hooks/useSendMessageAction';
@@ -23,7 +22,7 @@ type GameEvents = { eventType: 'share_score' | 'share_game' };
 const PLAY_GAME_ACTION_INTERVAL = 5000;
 
 type OwnProps = {
-  openedGame?: GlobalState['openedGame'];
+  openedGame?: TabState['openedGame'];
   gameTitle?: string;
 };
 
@@ -67,17 +66,6 @@ const GameModal: FC<OwnProps & StateProps> = ({ openedGame, gameTitle, canPost }
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [handleMessage]);
-
-  // Prevent refresh when rotating device
-  useEffect(() => {
-    if (!isOpen) return undefined;
-
-    windowSize.disableRefresh();
-
-    return () => {
-      windowSize.enableRefresh();
-    };
-  }, [isOpen]);
 
   return (
     <Modal

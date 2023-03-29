@@ -80,7 +80,7 @@ const GroupCallParticipantMenu: FC<OwnProps & StateProps> = ({
       ? VOLUME_ZERO
       : ((participant?.volume || GROUP_CALL_DEFAULT_VOLUME) / GROUP_CALL_VOLUME_MULTIPLIER));
     // We only want to initialize local volume when switching participants and ignore following updates from server
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks-static-deps/exhaustive-deps
   }, [id]);
 
   const runThrottled = useRunThrottled(VOLUME_CHANGE_THROTTLE);
@@ -108,7 +108,7 @@ const GroupCallParticipantMenu: FC<OwnProps & StateProps> = ({
     }
 
     toggleGroupCallMute({
-      participantId: id,
+      participantId: id!,
       value: isAdmin ? !shouldRaiseHand : !isMutedByMe,
     });
   }, [closeDropdown, toggleGroupCallMute, id, isAdmin, shouldRaiseHand, isMutedByMe]);
@@ -131,12 +131,12 @@ const GroupCallParticipantMenu: FC<OwnProps & StateProps> = ({
     runThrottled(() => {
       if (value === VOLUME_ZERO) {
         toggleGroupCallMute({
-          participantId: id,
+          participantId: id!,
           value: true,
         });
       } else {
         setGroupCallParticipantVolume({
-          participantId: id,
+          participantId: id!,
           volume: Math.floor(value * GROUP_CALL_VOLUME_MULTIPLIER),
         });
       }

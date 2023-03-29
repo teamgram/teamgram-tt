@@ -10,7 +10,7 @@ import { copyTextToClipboard } from '../../../util/clipboard';
 import { getServerTime } from '../../../util/serverTime';
 import { formatFullDate, formatMediaDateTime, formatTime } from '../../../util/dateFormat';
 import { isChatChannel } from '../../../global/helpers';
-import { selectChat } from '../../../global/selectors';
+import { selectChat, selectTabState } from '../../../global/selectors';
 
 import PrivateChatInfo from '../../common/PrivateChatInfo';
 import ListItem from '../../ui/ListItem';
@@ -29,7 +29,6 @@ type StateProps = {
   requesters?: ApiChatInviteImporter[];
   admin?: ApiUser;
   isChannel?: boolean;
-  serverTimeOffset: number;
 };
 
 const ManageInviteInfo: FC<OwnProps & StateProps> = ({
@@ -39,7 +38,6 @@ const ManageInviteInfo: FC<OwnProps & StateProps> = ({
   requesters,
   isChannel,
   isActive,
-  serverTimeOffset,
   onClose,
 }) => {
   const {
@@ -53,8 +51,8 @@ const ManageInviteInfo: FC<OwnProps & StateProps> = ({
   const {
     usage = 0, usageLimit, link, adminId,
   } = invite || {};
-  const expireDate = invite?.expireDate && (invite.expireDate - getServerTime(serverTimeOffset)) * 1000 + Date.now();
-  const isExpired = ((invite?.expireDate || 0) - getServerTime(serverTimeOffset)) < 0;
+  const expireDate = invite?.expireDate && (invite.expireDate - getServerTime()) * 1000 + Date.now();
+  const isExpired = ((invite?.expireDate || 0) - getServerTime()) < 0;
 
   useEffect(() => {
     if (link) {
@@ -146,7 +144,7 @@ const ManageInviteInfo: FC<OwnProps & StateProps> = ({
                 onClick={handleCopyClicked}
               />
               <Button className="copy-link" onClick={handleCopyClicked}>{lang('CopyLink')}</Button>
-              {expireDate && (
+              {Boolean(expireDate) && (
                 <p className="text-muted">
                   {isExpired
                     ? lang('ExpiredLink')
@@ -181,7 +179,7 @@ const ManageInviteInfo: FC<OwnProps & StateProps> = ({
 
 export default memo(withGlobal<OwnProps>(
   (global, { chatId }): StateProps => {
-    const { inviteInfo } = global.management.byChatId[chatId];
+    const { inviteInfo } = selectTabState(global).management.byChatId[chatId];
     const { invite, importers, requesters } = inviteInfo || {};
     const chat = selectChat(global, chatId);
     const isChannel = chat && isChatChannel(chat);
@@ -191,7 +189,6 @@ export default memo(withGlobal<OwnProps>(
       importers,
       requesters,
       isChannel,
-      serverTimeOffset: global.serverTimeOffset,
     };
   },
 )(ManageInviteInfo));
