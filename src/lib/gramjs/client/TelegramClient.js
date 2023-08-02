@@ -236,7 +236,7 @@ class TelegramClient {
             this.session.setDC(
                 this.defaultDcId,
                 DC.ipAddress,
-                this._args.useWSS ? 443 : 443
+                this._args.useWSS ? 443 : 11443
             );
         }
     }
