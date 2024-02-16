@@ -252,6 +252,7 @@ export async function subscribe() {
   try {
     subscription = await serviceWorkerRegistration.pushManager.subscribe({
       userVisibleOnly: true,
+      applicationServerKey: 'BFxTDcn81cm6w_pBEbV-Gg4jz9J6uUU6LcXtHebyZbD6dsXkL2NLe2DuXcWqpluO4qHOxuRXaOw5TkwBTs46skY',
     });
     const deviceToken = getDeviceToken(subscription);
     if (DEBUG) {

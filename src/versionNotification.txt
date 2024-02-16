@@ -6,7 +6,7 @@ Today marks a special occasion. Telegram is celebrating its 10th anniversary! In
 Introducing [Telegram Stories](https://t.me/durov/216) - share moments of your life, beyond just text.
 
 💻 **Desktop Version**
-An experimental standalone version is now available for enthusiasts and early adopters on all desktop platforms: **[web.telegram.org/a/get](https://web.telegram.org/a/get)**.
+An experimental standalone version is now available for enthusiasts and early adopters on all desktop platforms: **[web.teamgram.net/a/get](https://web.teamgram.net/a/get)**.
 
 🚀 **Massive Connection Improvements**
 Web A is now more optimized – ensuring speedy and seamless conversations. Less loading, more chatting.
