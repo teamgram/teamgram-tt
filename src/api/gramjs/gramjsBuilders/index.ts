@@ -93,6 +93,13 @@ export function buildInputPeer(chatOrUserId: string, accessHash?: string): GramJ
   }
 }
 
+export function buildInputUser(chatOrUserId: string, accessHash?: string): GramJs.TypeInputUser {
+  return new GramJs.InputUser({
+    userId: buildMtpPeerId(chatOrUserId, 'user'),
+    accessHash: BigInt(accessHash!),
+  });
+}
+
 export function buildInputPeerFromLocalDb(chatOrUserId: string): GramJs.TypeInputPeer | undefined {
   const type = getEntityTypeById(chatOrUserId);
   let accessHash: BigInt.BigInteger | undefined;

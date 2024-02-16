@@ -142,6 +142,11 @@ export function sendUpdate(update: ApiUpdate) {
 }
 
 export function updater(update: Update) {
+  if (DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log('UPDATE', update);
+  }
+
   if (update instanceof connection.UpdateServerTimeOffset) {
     setServerTimeOffset(update.timeOffset);
 
