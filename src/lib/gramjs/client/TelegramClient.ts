@@ -82,8 +82,8 @@ type EventBuilder = {
     build: (update: Update) => Update;
 }
 
-const DEFAULT_DC_ID = 2;
-const DEFAULT_WEBDOCUMENT_DC_ID = 4;
+const DEFAULT_DC_ID = 1;
+const DEFAULT_WEBDOCUMENT_DC_ID = 1;
 const EXPORTED_SENDER_RECONNECT_TIMEOUT = 1000; // 1 sec
 const EXPORTED_SENDER_RELEASE_TIMEOUT = 30000; // 30 sec
 const WEBDOCUMENT_REQUEST_PART_SIZE = 131072; // 128kb

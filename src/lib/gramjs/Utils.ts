@@ -204,31 +204,8 @@ export function getDC(dcId: number, downloadDC = false) {
         case 1:
             return {
                 id: 1,
-                ipAddress: `zws1${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
-            };
-        case 2:
-            return {
-                id: 2,
-                ipAddress: `zws2${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
-            };
-        case 3:
-            return {
-                id: 3,
-                ipAddress: `zws3${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
-            };
-        case 4:
-            return {
-                id: 4,
-                ipAddress: `zws4${downloadDC ? '-1' : ''}.web.telegram.org`,
-                port: 443,
-            };
-        case 5:
-            return {
-                id: 5,
-                ipAddress: `zws5${downloadDC ? '-1' : ''}.web.telegram.org`,
+                ipAddress: `web.teamgram.net`,
+                // ipAddress: `127.0.0.1`,
                 port: 443,
             };
         default:
