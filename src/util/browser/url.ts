@@ -1,7 +1,7 @@
 import { DEBUG } from '../../config';
 import convertPunycode from '../../lib/punycode';
 
-const PROTOCOL_WHITELIST = new Set(['http:', 'https:', 'tg:', 'ton:', 'mailto:', 'tel:']);
+const PROTOCOL_WHITELIST = new Set(['http:', 'https:', 'tg2:', 'ton:', 'mailto:', 'tel:']);
 const FALLBACK_PREFIX = 'https://';
 
 export function ensureProtocol(url: string) {

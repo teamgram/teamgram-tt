@@ -5,7 +5,7 @@ if (pathname.startsWith('/z')) {
 }
 
 if (
-  (hostname === 'weba.telegram.org' || hostname === 'webz.telegram.org') && !localStorage.getItem('tt-global-state')
+  (hostname === 'weba.teamgram.net' || hostname === 'webz.teamgram.net') && !localStorage.getItem('tt-global-state')
 ) {
-  window.location.href = 'https://web.telegram.org/a';
+  window.location.href = 'https://web.teamgram.net/a';
 }

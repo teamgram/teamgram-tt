@@ -114,7 +114,7 @@ function getErrorHeader(error: ApiError) {
   }
 
   if (!error.hasErrorKey) {
-    return 'Telegram';
+    return 'Teamgram';
   }
 
   return 'Something went wrong';

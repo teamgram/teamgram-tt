@@ -1143,7 +1143,7 @@ class TelegramClient {
                         || e.errorMessage.match(/INTERDC_\d_CALL(_RICH)?_ERROR/)
                     ))
                 ) {
-                    this._log.warn(`Telegram is having internal issues ${e.constructor.name}`);
+                    this._log.warn(`Teamgram is having internal issues ${e.constructor.name}`);
                     await sleep(2000);
                 } else if (e instanceof FloodWaitError || e instanceof FloodTestPhoneWaitError) {
                     if (e.seconds <= this.floodSleepLimit) {

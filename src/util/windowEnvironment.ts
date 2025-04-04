@@ -116,7 +116,7 @@ export const IS_TRANSLATION_SUPPORTED = !IS_TEST;
 export const IS_INTL_LIST_FORMAT_SUPPORTED = 'ListFormat' in Intl;
 export const IS_VIEW_TRANSITION_SUPPORTED = 'ViewTransition' in window;
 
-export const IS_BAD_URL_PARSER = new URL('tg://host').host !== 'host';
+export const IS_BAD_URL_PARSER = new URL('tg2://host').host !== 'host';
 
 export const MESSAGE_LIST_SENSITIVE_AREA = 750;
 

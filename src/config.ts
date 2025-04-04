@@ -273,7 +273,7 @@ export const CONTENT_TYPES_WITH_PREVIEW = new Set([
   ...SUPPORTED_VIDEO_CONTENT_TYPES,
 ]);
 
-export const CONTENT_NOT_SUPPORTED = 'The message is not supported on this version of Telegram.';
+export const CONTENT_NOT_SUPPORTED = 'The message is not supported on this version of Teamgram.';
 
 // Taken from https://github.com/telegramdesktop/tdesktop/blob/41d9a9fcbd0c809c60ddbd9350791b1436aff7d9/Telegram/SourceFiles/ui/boxes/choose_language_box.cpp#L28
 export const SUPPORTED_TRANSLATION_LANGUAGES = [
@@ -297,16 +297,16 @@ export const SUPPORTED_TRANSLATION_LANGUAGES = [
 // eslint-disable-next-line max-len
 export const RE_LINK_TEMPLATE = '((ftp|https?):\\/\\/)?((www\\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\\.[a-zA-Z][-a-zA-Z0-9]{1,62})\\b([-a-zA-Z0-9()@:%_+.,~#?&/=]*)';
 export const RE_MENTION_TEMPLATE = '(@[\\w\\d_-]+)';
-export const RE_TG_LINK = /^tg:(\/\/)?/i;
-export const RE_TME_LINK = /^(https?:\/\/)?([-a-zA-Z0-9@:%_+~#=]{1,32}\.)?t\.me/i;
-export const RE_TELEGRAM_LINK = /^(https?:\/\/)?telegram\.org\//i;
-export const TME_LINK_PREFIX = 'https://t.me/';
+export const RE_TG_LINK = /^tg2:(\/\/)?/i;
+export const RE_TME_LINK = /^(https?:\/\/)?([-a-zA-Z0-9@:%_+~#=]{1,32}\.)?teamgram\.me/i;
+export const RE_TELEGRAM_LINK = /^(https?:\/\/)?teamgram\.net\//i;
+export const TME_LINK_PREFIX = 'https://teamgram.me/';
 export const BOT_FATHER_USERNAME = 'botfather';
 export const USERNAME_PURCHASE_ERROR = 'USERNAME_PURCHASE_AVAILABLE';
 export const MESSAGE_ID_REQUIRED_ERROR = 'MESSAGE_ID_REQUIRED';
 export const PURCHASE_USERNAME = 'auction';
 export const ACCEPTABLE_USERNAME_ERRORS = new Set([USERNAME_PURCHASE_ERROR, 'USERNAME_INVALID']);
-export const TME_WEB_DOMAINS = new Set(['t.me', 'web.t.me', 'a.t.me', 'k.t.me', 'z.t.me']);
+export const TME_WEB_DOMAINS = new Set(['teamgram.me', 'web.teamgram.me', 'a.teamgram.me', 'k.teamgram.me', 'z.teamgram.me']);
 export const WEB_APP_PLATFORM = 'weba';
 export const LANG_PACK = 'weba';
 
@@ -336,11 +336,11 @@ export const MAX_MEDIA_FILES_FOR_ALBUM = 10;
 export const MAX_ACTIVE_PINNED_CHATS = 5;
 export const SCHEDULED_WHEN_ONLINE = 0x7FFFFFFE;
 export const LANG_PACKS = ['android', 'ios', 'tdesktop', 'macos'] as const;
-export const FEEDBACK_URL = 'https://bugs.telegram.org/?tag_ids=41&sort=time';
-export const FAQ_URL = 'https://telegram.org/faq';
-export const PRIVACY_URL = 'https://telegram.org/privacy';
-export const MINI_APP_TOS_URL = 'https://telegram.org/tos/mini-apps';
-export const FRAGMENT_ADS_URL = 'https://fragment.com/ads';
+export const FEEDBACK_URL = 'https://teamgram.net/bugs/?tag_ids=41&sort=time';
+export const FAQ_URL = 'https://teamgram.net/faq';
+export const PRIVACY_URL = 'https://teamgram.net/privacy';
+export const MINI_APP_TOS_URL = 'https://teamgram.net/tos/mini-apps';
+export const FRAGMENT_ADS_URL = 'https://teamgram.net/fragment/ads';
 export const GENERAL_TOPIC_ID = 1;
 export const STORY_EXPIRE_PERIOD = 86400; // 1 day
 export const STORY_VIEWERS_EXPIRE_PERIOD = 86400; // 1 day

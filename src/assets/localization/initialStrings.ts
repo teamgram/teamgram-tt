@@ -6,7 +6,7 @@ import type { LangKey } from '../../types/language';
 
 export default {
   "WrongNumber": "Wrong number?",
-  "SentAppCode": "We've sent the code to the **Telegram** app on your other device.",
+  "SentAppCode": "We've sent the code to the **Teamgram** app on your other device.",
   "LoginJustSentSms": "We've sent you a code via SMS. Please enter it above.",
   "LoginHeaderPassword": "Enter Password",
   "LoginEnterPasswordDescription": "You have Two-Step Verification enabled, so your account is protected with an additional password.",
@@ -14,8 +14,8 @@ export default {
   "LoginPhonePlaceholder": "Your phone number",
   "LoginNext": "Next",
   "LoginQRLogin": "Log in by QR Code",
-  "LoginQRTitle": "Log in to Telegram by QR Code",
-  "LoginQRHelp1": "Open Telegram on your phone",
+  "LoginQRTitle": "Log in to Teamgram by QR Code",
+  "LoginQRHelp1": "Open Teamgram on your phone",
   "LoginQRHelp2": "Go to **Settings** > **Devices** > **Link Desktop Device**",
   "LoginQRHelp3": "Point your phone at this screen to confirm login",
   "LoginQRCancel": "Log in by phone Number",

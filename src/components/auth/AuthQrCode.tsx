@@ -28,7 +28,7 @@ type StateProps =
   Pick<GlobalState, 'connectionState' | 'authState' | 'authQrCode'>
   & { language?: string };
 
-const DATA_PREFIX = 'tg://login?token=';
+const DATA_PREFIX = 'tg2://login?token=';
 const QR_SIZE = 280;
 const QR_PLANE_SIZE = 54;
 const QR_CODE_MUTATION_DURATION = 50; // The library is asynchronous and we need to wait for its mutation code

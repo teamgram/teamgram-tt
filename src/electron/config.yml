@@ -1,9 +1,9 @@
-productName: Telegram A
+productName: Teamgram A
 artifactName: ${productName}-${arch}.${ext}
-appId: org.telegram.TelegramA
+appId: net.teamgram.TeamgramA
 extraMetadata:
   main: ./dist/electron.js
-  productName: Telegram A
+  productName: Teamgram A
 files:
   - "dist"
   - "package.json"
@@ -47,7 +47,7 @@ mac:
   notarize:
     teamId: Y54Z4K69Z9
 dmg:
-  title: Telegram A installer
+  title: Teamgram A installer
   background: public/background-electron-dmg.tiff
   iconSize: 100
   contents:

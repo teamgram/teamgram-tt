@@ -7,7 +7,7 @@ import {
   focusLastWindow, getLastWindow, IS_LINUX, IS_MAC_OS, IS_WINDOWS,
 } from './utils';
 
-const TG_PROTOCOL = 'tg';
+const TG_PROTOCOL = 'tg2';
 
 let deeplinkUrl: string | undefined;
 
