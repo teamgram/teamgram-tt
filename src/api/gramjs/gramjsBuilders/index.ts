@@ -106,6 +106,13 @@ export function buildInputPaidReactionPrivacy(isPrivate?: boolean, peerId?: stri
   return new GramJs.PaidReactionPrivacyDefault();
 }
 
+export function buildInputUser(chatOrUserId: string, accessHash?: string): GramJs.TypeInputUser {
+  return new GramJs.InputUser({
+    userId: buildMtpPeerId(chatOrUserId, 'user'),
+    accessHash: BigInt(accessHash!),
+  });
+}
+
 export function buildInputPeerFromLocalDb(chatOrUserId: string): GramJs.TypeInputPeer | undefined {
   const type = getEntityTypeById(chatOrUserId);
   let accessHash: BigInt.BigInteger | undefined;
