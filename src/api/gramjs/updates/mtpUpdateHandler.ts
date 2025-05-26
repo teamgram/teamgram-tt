@@ -89,6 +89,11 @@ import { LocalUpdateChannelPts, LocalUpdatePts } from './UpdatePts';
 const sentMessageIds = new Set();
 
 export function updater(update: Update) {
+  if (DEBUG) {
+    // eslint-disable-next-line no-console
+    console.log('UPDATE', update);
+  }
+  
   if (update instanceof UpdateServerTimeOffset) {
     setServerTimeOffset(update.timeOffset);
 

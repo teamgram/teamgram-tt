@@ -14,6 +14,7 @@ import {
   buildInputEmojiStatus,
   buildInputEntity,
   buildInputPeer,
+  buildInputUser,
   buildMtpPeerId,
   getEntityTypeById,
 } from '../gramjsBuilders';
@@ -142,7 +143,7 @@ export async function fetchContactList() {
 
 export async function fetchUsers({ users }: { users: ApiUser[] }) {
   const result = await invokeRequest(new GramJs.users.GetUsers({
-    id: users.map(({ id, accessHash }) => buildInputPeer(id, accessHash)),
+    id: users.map(({ id, accessHash }) => buildInputUser(id, accessHash)),
   }));
   if (!result || !result.length) {
     return undefined;

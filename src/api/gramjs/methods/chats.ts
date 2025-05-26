@@ -170,7 +170,11 @@ export async function fetchChats({
       return;
     }
 
-    const peerEntity = peersByKey[getPeerKey(dialog.peer)];
+    const k2 = getPeerKey(dialog.peer);
+    const peerEntity = peersByKey[k2];
+    if (!peerEntity) {
+      return;
+    }
     const chat = buildApiChatFromDialog(dialog, peerEntity);
     lastMessageByChatId[chat.id] = dialog.topMessage;
 
@@ -1405,8 +1409,8 @@ export function setDiscussionGroup({
   chat?: ApiChat;
 }) {
   return invokeRequest(new GramJs.channels.SetDiscussionGroup({
-    broadcast: buildInputPeer(channel.id, channel.accessHash),
-    group: chat ? buildInputPeer(chat.id, chat.accessHash) : new GramJs.InputChannelEmpty(),
+    broadcast: buildInputEntity(channel.id, channel.accessHash) as GramJs.InputChannel,
+    group: chat ? buildInputEntity(chat.id, chat.accessHash) as GramJs.InputChannel : new GramJs.InputChannelEmpty(),
   }), {
     shouldReturnTrue: true,
   });
